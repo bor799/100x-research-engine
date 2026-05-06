@@ -1,0 +1,252 @@
+# Real URL candidates for a V3 shadow run.
+# Created: 2026-04-28
+# This file contains public URLs only. It contains no V2 state, secrets, tokens,
+# cookies, Telegram config, or live Obsidian paths.
+
+version: 1
+active_prompt_bundle: primary_market_v1
+parallel_test_bundles:
+  - v2_legacy
+
+defaults:
+  mode: staging
+  source: shadow_real_url
+  max_history_days: 120
+  output: staging_only
+  telegram: stub_only
+
+smoke_ids:
+  - tc-scaleops-2026-03-30
+  - tc-google-cloud-next-startups-2026-04-22
+  - ti-openclaw-2026-04-22
+
+candidates:
+  - id: tc-scaleops-2026-03-30
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-03-30"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "ScaleOps raises $130M to improve computing efficiency amid AI demand"
+    url: "https://techcrunch.com/2026/03/30/scaleops-130m-series-c-kubernetes-efficiency-ai-demand-funding/"
+    notes: "AI infrastructure, concrete funding, customers, growth, and cost-reduction claim."
+
+  - id: tc-fundamental-2026-02-05
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-02-05"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Fundamental raises $255M Series A with a new take on big data analysis"
+    url: "https://techcrunch.com/2026/02/05/fundamental-raises-255-million-series-a-with-a-new-take-on-big-data-analysis/"
+    notes: "Large Series A, structured-data AI wedge, enterprise use case."
+
+  - id: tc-lio-2026-03-05
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-03-05"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Lio raises $30M from Andreessen Horowitz and others to automate enterprise procurement"
+    url: "https://techcrunch.com/2026/03/05/lio-ai-series-a-a16z-30m-raise-automate-enterprise-procurement/"
+    notes: "Enterprise procurement agent, repeatable workflow wedge, named investors."
+
+  - id: tc-rebellions-2026-03-30
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-03-30"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "AI chip startup Rebellions raises $400 million at $2.3B valuation in pre-IPO round"
+    url: "https://techcrunch.com/2026/03/30/ai-chip-startup-rebellions-raises-400-million-at-2-3b-valuation-in-pre-ipo-round/"
+    notes: "AI inference chip market, international expansion, pre-IPO financing."
+
+  - id: tc-mind-robotics-2026-03-11
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-03-11"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Rivian spin-out Mind Robotics raises $500M for industrial AI-powered robots"
+    url: "https://techcrunch.com/2026/03/11/rivian-mind-robotics-series-a-500m-fund-raise-industrial-ai-powered-robots/"
+    notes: "Industrial robotics spinout, large Series A, factory data advantage."
+
+  - id: tc-articul8-2026-01-07
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-01-07"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Intel spinout Articul8 raises more than half of $70M round at $500M valuation"
+    url: "https://techcrunch.com/2026/01/07/intel-spin-off-articul8-is-halfway-to-70m-ai-funding-round-at-500m-valuation/"
+    notes: "Enterprise AI in regulated industries, spinout, revenue-positive claim."
+
+  - id: tc-runway-2026-02-10
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-02-10"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "AI video startup Runway raises $315M at $5.3B valuation"
+    url: "https://techcrunch.com/2026/02/10/ai-video-startup-runway-raises-315m-at-5-3b-valuation-eyes-more-capable-world-models/"
+    notes: "World models, expansion beyond media, funding and competitive benchmark."
+
+  - id: tc-outtake-2026-01-28
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-01-28"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "AI security startup Outtake raises $40M from Iconiq, Satya Nadella, Bill Ackman, and other big names"
+    url: "https://techcrunch.com/2026/01/28/ai-security-startup-outtake-raises-40m-from-iconiq-satya-nadella-bill-ackman-and-other-big-names/"
+    notes: "Agentic cybersecurity, notable investor cluster, enterprise fraud problem."
+
+  - id: tc-depthfirst-2026-01-14
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-01-14"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "AI security firm, depthfirst, announces $40 million Series A"
+    url: "https://techcrunch.com/2026/01/14/ai-security-firm-depthfirst-announces-40-million-series-a/"
+    notes: "AI-native security platform, Series A, clear problem space."
+
+  - id: tc-skild-2026-01-14
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-01-14"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Robotics software maker Skild AI hits $14B valuation"
+    url: "https://techcrunch.com/2026/01/14/robotic-software-maker-skild-ai-hits-14b-valuation/"
+    notes: "Robotics foundation model funding; valuation and capital concentration test."
+
+  - id: vb-traza-2026-04-15
+    source_name: VentureBeat
+    source_type: web_article
+    published_at: "2026-04-15"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Traza raises $2.1 million led by Base10 to automate procurement workflows with AI"
+    url: "https://venturebeat.com/orchestration/traza-raises-usd2-1-million-led-by-base10-to-automate-procurement-workflows-with-ai"
+    notes: "Pre-seed enterprise AI; useful test for small but actionable rounds."
+
+  - id: axios-hilbert-2026-04-15
+    source_name: Axios
+    source_type: web_article
+    published_at: "2026-04-15"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Exclusive: a16z-backed Hilbert raises $28 million"
+    url: "https://www.axios.com/2026/04/15/exclusive-a16z-backed-hilbert-raises-28-million"
+    notes: "AI decision automation, named customers, Series A."
+
+  - id: sifted-wayve-2026-02-25
+    source_name: Sifted
+    source_type: web_article
+    published_at: "2026-02-25"
+    expected_class: high_signal
+    expected_status_hint: done
+    title: "Nvidia, Microsoft and SoftBank back self-driving startup Wayve in $1.2bn round"
+    url: "https://sifted.eu/articles/wayve-nvidia-softbank-microsoft-uber-funding-round"
+    notes: "European autonomous driving, deployment path, large strategic investors."
+
+  - id: crunchbase-q1-record-2026-04-01
+    source_name: Crunchbase News
+    source_type: web_article
+    published_at: "2026-04-01"
+    expected_class: market_context
+    expected_status_hint: done_or_medium
+    title: "Q1 2026 Shatters Venture Funding Records As AI Boom Pushes Startup Investment To $300B"
+    url: "https://news.crunchbase.com/venture/record-breaking-funding-ai-global-q1-2026/"
+    notes: "Market context; should not be treated like a single startup signal."
+
+  - id: crunchbase-foundational-ai-2026-04-02
+    source_name: Crunchbase News
+    source_type: web_article
+    published_at: "2026-04-02"
+    expected_class: market_context
+    expected_status_hint: done_or_medium
+    title: "Venture Funding To Foundational AI Startups In Q1 Was Double All Of 2025"
+    url: "https://news.crunchbase.com/venture/foundational-ai-startup-funding-doubled-openai-anthropic-xai-q1-2026/"
+    notes: "Tests capital-concentration synthesis."
+
+  - id: crunchbase-av-funding-2026-04-17
+    source_name: Crunchbase News
+    source_type: web_article
+    published_at: "2026-04-17"
+    expected_class: market_context
+    expected_status_hint: done_or_medium
+    title: "Autonomous Vehicle Funding More Than Triples In 2026 To Hit Record Amount"
+    url: "https://news.crunchbase.com/venture/record-funding-autonomous-vehicles-q1-2026/"
+    notes: "Sector snapshot; tests market context vs direct company actionability."
+
+  - id: tc-ai-megarounds-2026-02-17
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-02-17"
+    expected_class: market_context
+    expected_status_hint: done_or_medium
+    title: "Here are the 17 US-based AI companies that have raised $100M or more in 2026"
+    url: "https://techcrunch.com/2026/02/17/here-are-the-17-us-based-ai-companies-that-have-raised-100m-or-more-in-2026/"
+    notes: "Listicle with useful funding facts; should avoid over-indexing on every item."
+
+  - id: tc-google-cloud-next-startups-2026-04-22
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-04-22"
+    expected_class: low_signal_control
+    expected_status_hint: rejected_or_medium
+    title: "The most interesting startups showcased at Google Cloud Next 2026"
+    url: "https://techcrunch.com/2026/04/22/the-most-interesting-startups-showcased-at-google-cloud-next-2026/"
+    notes: "Conference/showcase article; useful rejection-control candidate."
+
+  - id: tc-tokyo-2026-04-25
+    source_name: TechCrunch
+    source_type: web_article
+    published_at: "2026-04-25"
+    expected_class: low_signal_control
+    expected_status_hint: rejected_or_medium
+    title: "Why Tokyo is the most important tech destination of 2026"
+    url: "https://techcrunch.com/2026/04/25/why-tokyo-is-the-most-important-tech-destination-of-2026/"
+    notes: "Event/city theme; should not become a strong company brief."
+
+  - id: sifted-ai-entrepreneurship-2026-04-09
+    source_name: Sifted
+    source_type: web_article
+    published_at: "2026-04-09"
+    expected_class: low_signal_control
+    expected_status_hint: rejected_or_medium
+    title: "AI is rewriting the rules of European entrepreneurship"
+    url: "https://sifted.eu/articles/ai-european-entrepreneurship-brnd/"
+    notes: "Sponsored/branded broad trend piece; tests promotional filtering."
+
+  - id: ti-openclaw-2026-04-22
+    source_name: The Information
+    source_type: paywalled_web_article
+    published_at: "2026-04-22"
+    expected_class: paywall_edge
+    expected_status_hint: content_blocked_or_manual_review
+    title: "OpenClaw Struggles to Grow Up After Overnight Success"
+    url: "https://www.theinformation.com/articles/openclaw-struggles-grow-overnight-success"
+    notes: "Paywall/content-block test; must not mark done with teaser-only body."
+
+  - id: ti-sv-ceos-ai-tools-2026-02-14
+    source_name: The Information
+    source_type: paywalled_web_article
+    published_at: "2026-02-14"
+    expected_class: paywall_edge
+    expected_status_hint: content_blocked_or_manual_review
+    title: "Silicon Valley CEOs Find New Ethos From AI Tools: I'll Do It Myself"
+    url: "https://www.theinformation.com/articles/silicon-valley-ceos-find-new-ethos-ai-tools"
+    notes: "Paywall/content-block test; useful if later authenticated fetch exists."
+
+  - id: ti-consumer-agents-2026-02-07
+    source_name: The Information
+    source_type: paywalled_web_article
+    published_at: "2026-02-07"
+    expected_class: paywall_edge
+    expected_status_hint: content_blocked_or_manual_review
+    title: "After OpenClaw, a Wild, Weird Age of Consumer Agents Lies Ahead"
+    url: "https://www.theinformation.com/articles/openclaw-wild-weird-age-consumer-agents-lies-ahead"
+    notes: "Paywall/content-block test; should preserve typed failure if blocked."

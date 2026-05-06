@@ -1,0 +1,56 @@
+# V3 example configuration. Copy to config/config.local.yaml and fill locally.
+# Never copy V2 config/config.yaml or any live V2 secrets into this repository.
+# live.enabled defaults to false — live mode must be explicitly unlocked.
+
+runtime:
+  state_root: "~/.100x_v3"
+  queue_db_path: "~/.100x_v3/queue.db"
+  log_path: "~/100x-v3-daemon.log"
+
+live:
+  enabled: false
+  require_runtime_guard: true
+  require_operator_confirmation: false
+  max_tasks_per_run: 0
+  max_consecutive_failures: 5
+
+llm:
+  provider: "placeholder"
+  api_key_env: "ZHIPU_API_KEY"
+  scoring_model: "placeholder-scoring-model"
+  extraction_model: "placeholder-extraction-model"
+  telegram_brief_model: "placeholder-brief-model"
+  request_timeout_seconds: 60
+  max_retries: 3
+  min_delay_seconds: 2
+
+outputs:
+  obsidian_root: ""
+  obsidian_subdir: "inbox"
+  write_manifest: true
+  telegram_bot_token_env: "TELEGRAM_BOT_TOKEN"
+  telegram_admin_chat_id_env: "TELEGRAM_ADMIN_CHAT_ID"
+  telegram_enabled: true
+
+prompts:
+  registry: "prompts/registry.json"
+  active_bundle: "primary_market_v1"
+  parallel_test_bundles:
+    - "primary_market_v1"
+    - "v2_legacy"
+  scoring: "prompts/primary_market_scoring.md"
+  extraction: "prompts/primary_market_extraction.md"
+  telegram_brief: "prompts/telegram_brief.md"
+
+sources: []
+
+scheduler:
+  enabled: false
+  interval_seconds: 300
+
+worker:
+  batch_size: 10
+  poll_interval_seconds: 30
+
+telegram_bot:
+  enabled: false

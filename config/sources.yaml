@@ -1,0 +1,467 @@
+# V3 RSS 信息源配置 - 从 V2 迁移
+# 共 70+ 信息源，12 小时轮询间隔
+
+sources:
+# ===== AI 进展 =====
+- name: The Batch (deeplearning.ai)
+  type: rss
+  url: https://charonhub.deeplearning.ai/feed
+  enabled: true
+
+- name: Gary Marcus
+  type: rss
+  url: https://garymarcus.substack.com/feed
+  enabled: true
+
+- name: Dwarkesh Patel
+  type: rss
+  url: https://www.dwarkeshpatel.com/feed
+  enabled: true
+
+- name: Minimaxir
+  type: rss
+  url: https://minimaxir.com/index.xml
+  enabled: true
+
+- name: Gwern
+  type: rss
+  url: https://gwern.substack.com/feed
+  enabled: true
+
+- name: Experimental History
+  type: rss
+  url: https://www.experimental-history.com/feed
+  enabled: true
+
+# ===== AI 工程 =====
+- name: Simon Willison
+  type: rss
+  url: https://simonwillison.net/atom/everything/
+  enabled: true
+
+# ===== 技术资讯 =====
+- name: HackerNews
+  type: rss
+  url: https://hnrss.org/frontpage
+  enabled: true
+
+- name: Jeff Geerling
+  type: rss
+  url: https://www.jeffgeerling.com/blog.xml
+  enabled: true
+
+- name: Daring Fireball
+  type: rss
+  url: https://daringfireball.net/feeds/main
+  enabled: true
+
+- name: Mitchelh
+  type: rss
+  url: https://mitchellh.com/feed.xml
+  enabled: true
+
+# ===== 安全/逆向 =====
+- name: Krebs on Security
+  type: rss
+  url: https://krebsonsecurity.com/feed/
+  enabled: true
+
+- name: lcamtuf
+  type: rss
+  url: https://lcamtuf.substack.com/feed
+  enabled: true
+
+# ===== 创业/商业 =====
+- name: Steve Blank
+  type: rss
+  url: https://steveblank.com/feed/
+  enabled: true
+
+- name: Pluralistic
+  type: rss
+  url: https://pluralistic.net/feed/
+  enabled: true
+
+# ===== 编程/语言 =====
+- name: Antirez
+  type: rss
+  url: http://antirez.com/rss
+  enabled: true
+
+- name: Miguel Grinberg
+  type: rss
+  url: https://blog.miguelgrinberg.com/feed
+  enabled: true
+
+# ===== 系统/底层 =====
+- name: Old New Thing
+  type: rss
+  url: https://devblogs.microsoft.com/oldnewthing/feed
+  enabled: true
+
+# ===== 前端/设计 =====
+- name: Overreacted
+  type: rss
+  url: https://overreacted.io/rss.xml
+  enabled: true
+
+# ===== 综合博客 =====
+- name: Sean Goedecke
+  type: rss
+  url: https://www.seangoedecke.com/rss.xml
+  enabled: true
+
+- name: Eric Mig
+  type: rss
+  url: https://ericmigi.com/rss.xml
+  enabled: true
+
+- name: Idiallo
+  type: rss
+  url: https://idiallo.com/feed.rss
+  enabled: true
+
+- name: Maurycy Z
+  type: rss
+  url: https://maurycyz.com/index.xml
+  enabled: true
+
+- name: Shkspr Mobi
+  type: rss
+  url: https://shkspr.mobi/blog/feed/
+  enabled: true
+
+- name: Dynomight
+  type: rss
+  url: https://dynomight.net/feed.xml
+  enabled: true
+
+- name: UTCC Blog
+  type: rss
+  url: https://utcc.utoronto.ca/~cks/space/blog/?atom
+  enabled: true
+
+- name: Xeiaso
+  type: rss
+  url: https://xeiaso.net/blog.rss
+  enabled: true
+
+- name: Righto
+  type: rss
+  url: https://www.righto.com/feeds/posts/default
+  enabled: true
+
+- name: Lucumr
+  type: rss
+  url: https://lucumr.pocoo.org/feed.atom
+  enabled: true
+
+- name: Skyfall Dev
+  type: rss
+  url: https://skyfall.dev/rss.xml
+  enabled: true
+
+- name: Timsh
+  type: rss
+  url: https://timsh.org/rss/
+  enabled: true
+
+- name: John D Cook
+  type: rss
+  url: https://www.johndcook.com/blog/feed/
+  enabled: true
+
+- name: Giles Thomas
+  type: rss
+  url: https://gilesthomas.com/feed/rss.xml
+  enabled: true
+
+- name: Matklad
+  type: rss
+  url: https://matklad.github.io/feed.xml
+  enabled: true
+
+- name: Derek Thompson
+  type: rss
+  url: https://www.theatlantic.com/feed/author/derek-thompson/
+  enabled: true
+
+- name: Evan Hahn
+  type: rss
+  url: https://evanhahn.com/feed.xml
+  enabled: true
+
+- name: Terrible Software
+  type: rss
+  url: https://terriblesoftware.org/feed/
+  enabled: true
+
+- name: Rakhim Exotext
+  type: rss
+  url: https://rakhim.exotext.com/rss.xml
+  enabled: true
+
+- name: Joan Westenberg
+  type: rss
+  url: https://joanwestenberg.com/rss
+  enabled: true
+
+- name: Xania
+  type: rss
+  url: https://xania.org/feed
+  enabled: true
+
+- name: Micah Lee
+  type: rss
+  url: https://micahflee.com/feed/
+  enabled: true
+
+- name: Nesbitt
+  type: rss
+  url: https://nesbitt.io/feed.xml
+  enabled: true
+
+- name: Construction Physics
+  type: rss
+  url: https://www.construction-physics.com/feed
+  enabled: true
+
+- name: Tedium
+  type: rss
+  url: https://feed.tedium.co/
+  enabled: true
+
+- name: Susam
+  type: rss
+  url: https://susam.net/feed.xml
+  enabled: true
+
+- name: Entropic Thoughts
+  type: rss
+  url: https://entropicthoughts.com/feed.xml
+  enabled: true
+
+- name: Hillel Wayne
+  type: rss
+  url: https://buttondown.com/hillelwayne/rss
+  enabled: true
+
+- name: Borretti
+  type: rss
+  url: https://borretti.me/feed.xml
+  enabled: true
+
+- name: Where's Your Ed At
+  type: rss
+  url: https://www.wheresyoured.at/rss/
+  enabled: true
+
+- name: Jayd
+  type: rss
+  url: https://jayd.ml/feed.xml
+  enabled: true
+
+- name: Geohot
+  type: rss
+  url: https://geohot.github.io/blog/feed.xml
+  enabled: true
+
+- name: Paul Graham
+  type: rss
+  url: http://www.aaronsw.com/2002/feeds/pgessays.rss
+  enabled: true
+
+- name: Filfre
+  type: rss
+  url: https://www.filfre.net/feed/
+  enabled: true
+
+- name: Jim Nielsen
+  type: rss
+  url: https://blog.jim-nielsen.com/feed.xml
+  enabled: true
+
+- name: Jyn
+  type: rss
+  url: https://jyn.dev/atom.xml
+  enabled: true
+
+- name: Geoffrey Litt
+  type: rss
+  url: https://www.geoffreylitt.com/feed.xml
+  enabled: true
+
+- name: Downtown Doug Brown
+  type: rss
+  url: https://www.downtowndougbrown.com/feed/
+  enabled: true
+
+- name: Brutecat
+  type: rss
+  url: https://brutecat.com/rss.xml
+  enabled: true
+
+- name: Eli The Greenplace
+  type: rss
+  url: https://eli.thegreenplace.net/feeds/all.atom.xml
+  enabled: true
+
+- name: Abort Retry Fail
+  type: rss
+  url: https://www.abortretry.fail/feed
+  enabled: true
+
+- name: Fabien Sanglard
+  type: rss
+  url: https://fabiensanglard.net/rss.xml
+  enabled: true
+
+- name: Old VCR
+  type: rss
+  url: https://oldvcr.blogspot.com/feeds/posts/default
+  enabled: true
+
+- name: Bogdan The Geek
+  type: rss
+  url: https://bogdanthegeek.github.io/blog/index.xml
+  enabled: true
+
+- name: Hugo Tunius
+  type: rss
+  url: https://hugotunius.se/feed.xml
+  enabled: true
+
+- name: Berthub
+  type: rss
+  url: https://berthub.eu/articles/index.xml
+  enabled: true
+
+- name: Chad Nauseam
+  type: rss
+  url: https://chadnauseam.com/rss.xml
+  enabled: true
+
+- name: Simone
+  type: rss
+  url: https://simone.org/feed/
+  enabled: true
+
+- name: IT Notes
+  type: rss
+  url: https://it-notes.dragas.net/feed/
+  enabled: true
+
+- name: Beej
+  type: rss
+  url: https://beej.us/blog/rss.xml
+  enabled: true
+
+- name: Hey Paris
+  type: rss
+  url: https://hey.paris/index.xml
+  enabled: true
+
+- name: Daniel Wirtz
+  type: rss
+  url: https://danielwirtz.com/rss.xml
+  enabled: true
+
+- name: Mat Duggan
+  type: rss
+  url: https://matduggan.com/rss/
+  enabled: true
+
+- name: Refactoring English
+  type: rss
+  url: https://refactoringenglish.com/index.xml
+  enabled: true
+
+- name: Works On My Machine
+  type: rss
+  url: https://worksonmymachine.substack.com/feed
+  enabled: true
+
+- name: Philip Laine
+  type: rss
+  url: https://philiplaine.com/index.xml
+  enabled: true
+
+- name: Bernstein Bear
+  type: rss
+  url: https://bernsteinbear.com/feed.xml
+  enabled: true
+
+- name: Daniel Delaney
+  type: rss
+  url: https://danieldelaney.net/feed
+  enabled: true
+
+- name: Troy Hunt
+  type: rss
+  url: https://www.troyhunt.com/rss/
+  enabled: true
+
+- name: Herman
+  type: rss
+  url: https://herman.bearblog.dev/feed/
+  enabled: true
+
+- name: Tom Renner
+  type: rss
+  url: https://tomrenner.com/index.xml
+  enabled: true
+
+- name: Pixel Melt
+  type: rss
+  url: https://blog.pixelmelt.dev/rss/
+  enabled: true
+
+- name: Martin Alderson
+  type: rss
+  url: https://martinalderson.com/feed.xml
+  enabled: true
+
+- name: Daniel Chase Hooper
+  type: rss
+  url: https://danielchasehooper.com/feed.xml
+  enabled: true
+
+- name: SGTatham
+  type: rss
+  url: https://www.chiark.greenend.org.uk/~sgtatham/quasiblog/feed.xml
+  enabled: true
+
+- name: Grant Slatton
+  type: rss
+  url: https://grantslatton.com/rss.xml
+  enabled: true
+
+- name: Anil Dash
+  type: rss
+  url: https://anildash.com/feed.xml
+  enabled: true
+
+- name: Ares Luna
+  type: rss
+  url: https://aresluna.org/main.rss
+  enabled: true
+
+- name: Michael Stapelberg
+  type: rss
+  url: https://michael.stapelberg.ch/feed.xml
+  enabled: true
+
+- name: Keygen
+  type: rss
+  url: https://keygen.sh/blog/feed.xml
+  enabled: true
+
+- name: MJG59
+  type: rss
+  url: https://mjg59.dreamwidth.org/data/rss
+  enabled: true
+
+- name: Computer RIP
+  type: rss
+  url: https://computer.rip/rss.xml
+  enabled: true

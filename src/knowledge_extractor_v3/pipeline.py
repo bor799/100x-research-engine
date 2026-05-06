@@ -1,0 +1,618 @@
+"""Sequential Phase 2 pipeline for dry-run and staging verification."""
+
+from __future__ import annotations
+
+import time
+from dataclasses import replace
+from pathlib import Path
+from typing import Callable, TypeVar
+
+from .fetchers.base import Fetcher
+from .fetchers.fixture import FixtureFetcher
+from .llm.provider import LLMProvider, StubLLMProvider
+from .models import (
+    ExtractionResult,
+    FetchedContent,
+    ProcessResult,
+    PromptRunResult,
+    RuntimeMode,
+    ScoreResult,
+    StageResult,
+    TypedError,
+    retry_at,
+    sha256_text,
+    utc_now,
+)
+from .outputs.obsidian import DryRunOutputPort, OutputPort, StagingOutputPort
+from .prompt_parser import parse_extraction_result, parse_score_result
+from .prompt_registry import PromptRegistry
+from .queue_store import FailureKind, NextAction, QueueStatus, QueueStore, QueueTask
+
+
+T = TypeVar("T")
+
+
+class Pipeline:
+    """Run one queue task through the V3 dry-run/staging backend core."""
+
+    def __init__(
+        self,
+        queue_store: QueueStore,
+        *,
+        fetcher: Fetcher | None = None,
+        llm_provider: LLMProvider | None = None,
+        prompt_registry: PromptRegistry | None = None,
+        staging_root: Path | None = None,
+        reject_threshold: float = 0.3,
+        live_output: OutputPort | None = None,
+    ) -> None:
+        project_root = Path(__file__).resolve().parents[2]
+        self.queue_store = queue_store
+        self.fetcher = fetcher or FixtureFetcher()
+        self.llm_provider = llm_provider or StubLLMProvider()
+        self.prompt_registry = prompt_registry or PromptRegistry.default(project_root)
+        self.staging_root = Path(staging_root or queue_store.db_path.parent / "staging")
+        self.reject_threshold = reject_threshold
+        self._live_output = live_output
+        self.dry_run_output = DryRunOutputPort()
+        self.staging_output = StagingOutputPort(self.staging_root)
+
+    def process_url(
+        self,
+        url: str,
+        *,
+        source: str = "manual",
+        queue_task_id: int | None = None,
+        mode: RuntimeMode = RuntimeMode.DRY_RUN,
+        prompt_bundle: str | None = None,
+        run_parallel_tests: bool = False,
+    ) -> ProcessResult:
+        mode = RuntimeMode(mode)
+        active_bundle = prompt_bundle or self.prompt_registry.active_bundle_name
+        stage_results: list[StageResult] = []
+        parallel_results: list[PromptRunResult] = []
+
+        if mode is RuntimeMode.LIVE and self._live_output is None:
+            error = TypedError(
+                failure_kind=FailureKind.RUNTIME_GUARD,
+                message="LIVE mode requires a live_output port",
+                stage="runtime_mode",
+                retryable=False,
+                next_action=NextAction.MANUAL_REVIEW,
+            )
+            _append_stage(stage_results, "runtime_mode", error=error)
+            return ProcessResult(
+                url=url,
+                source=source,
+                queue_task_id=queue_task_id,
+                current_stage="runtime_mode",
+                final_status=QueueStatus.FAILED_TERMINAL,
+                retryable=False,
+                failure_kind=error.failure_kind,
+                next_action=error.next_action,
+                output_path="",
+                telegram_status="",
+                prompt_bundle=active_bundle,
+                stage_results=stage_results,
+                error=error,
+            )
+
+        task = self._resolve_task(url, source=source, queue_task_id=queue_task_id)
+        task_url = task.url
+        self.queue_store.mark_processing(task.id)
+        _append_stage(stage_results, "queue_processing", detail={"task_id": task.id})
+
+        fetched = _run_stage(stage_results, "fetch", lambda: self.fetcher.fetch(task_url))
+        if isinstance(fetched, TypedError):
+            return self._fail(
+                task,
+                fetched,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage="fetch",
+                stage_results=stage_results,
+                parallel_results=parallel_results,
+            )
+        fetched = _with_queue_reply_metadata(fetched, task)
+
+        validation = _run_stage(stage_results, "validate", lambda: _validate_content(fetched))
+        if isinstance(validation, TypedError):
+            return self._fail(
+                task,
+                validation,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage="validate",
+                stage_results=stage_results,
+                parallel_results=parallel_results,
+            )
+
+        prompts = _run_stage(
+            stage_results,
+            "resolve_prompt_bundle",
+            lambda: self._load_prompts(active_bundle),
+        )
+        if isinstance(prompts, TypedError):
+            return self._fail(
+                task,
+                prompts,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage="resolve_prompt_bundle",
+                stage_results=stage_results,
+                parallel_results=parallel_results,
+            )
+        scoring_prompt, extraction_prompt, telegram_prompt, prompt_hash = prompts
+
+        score_result = self._score_and_parse(fetched, active_bundle, prompt_hash, scoring_prompt, stage_results)
+        if isinstance(score_result, TypedError):
+            return self._fail(
+                task,
+                score_result,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage=score_result.stage,
+                stage_results=stage_results,
+                parallel_results=parallel_results,
+            )
+
+        if _should_reject(score_result, self.reject_threshold):
+            error = TypedError(
+                failure_kind=FailureKind.VALIDATION_FAILED,
+                message="Scoring rejected content",
+                stage="score_gate",
+                retryable=False,
+                next_action=NextAction.DROP,
+                detail=f"final_score={score_result.final_score:g}, signal_tier={score_result.signal_tier}",
+            )
+            _append_stage(stage_results, "score_gate", error=error)
+            rejected = self.queue_store.mark_rejected(
+                task.id,
+                reason=error.message,
+                detail=error.detail,
+                failure_kind=error.failure_kind,
+            )
+            return self._result_from_task(
+                rejected,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage="score_gate",
+                stage_results=stage_results,
+                score_result=score_result,
+                parallel_results=parallel_results,
+                error=error,
+            )
+        _append_stage(stage_results, "score_gate", detail={"accepted": True})
+
+        extraction_result = self._extract_and_parse(
+            fetched,
+            score_result,
+            active_bundle,
+            prompt_hash,
+            extraction_prompt,
+            stage_results,
+        )
+        if isinstance(extraction_result, TypedError):
+            return self._fail(
+                task,
+                extraction_result,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage=extraction_result.stage,
+                stage_results=stage_results,
+                score_result=score_result,
+                parallel_results=parallel_results,
+            )
+
+        if run_parallel_tests:
+            parallel_results = _run_stage(
+                stage_results,
+                "parallel_bundles",
+                lambda: self._run_parallel_bundles(fetched, active_bundle),
+            )
+            if isinstance(parallel_results, TypedError):
+                parallel_results = [
+                    PromptRunResult(
+                        prompt_bundle="parallel_bundles",
+                        prompt_hash="",
+                        ok=False,
+                        error=parallel_results,
+                    )
+                ]
+
+        telegram_text = _run_stage(
+            stage_results,
+            "telegram_format",
+            lambda: self.llm_provider.format_telegram(score_result, extraction_result, telegram_prompt),
+        )
+        if isinstance(telegram_text, TypedError):
+            return self._fail(
+                task,
+                telegram_text,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage="telegram_format",
+                stage_results=stage_results,
+                score_result=score_result,
+                extraction_result=extraction_result,
+                parallel_results=parallel_results,
+            )
+
+        output = _run_stage(
+            stage_results,
+            "output",
+            lambda: self._output_port(mode).write(
+                fetched,
+                score_result,
+                extraction_result,
+                telegram_text,
+                prompt_bundle=active_bundle,
+                prompt_hash=prompt_hash,
+                task_id=task.id,
+            ),
+            error_selector=lambda result: result.error if not result.ok else None,
+        )
+        if not output.ok:
+            error = output.error or TypedError(
+                failure_kind=FailureKind.OUTPUT_FAILED,
+                message="Output failed without detail",
+                stage="output",
+                retryable=False,
+                next_action=NextAction.MANUAL_REVIEW,
+            )
+            return self._fail(
+                task,
+                error,
+                source=source,
+                prompt_bundle=active_bundle,
+                current_stage="output",
+                stage_results=stage_results,
+                score_result=score_result,
+                extraction_result=extraction_result,
+                parallel_results=parallel_results,
+            )
+
+        done = self.queue_store.mark_done(
+            task.id,
+            result_title=extraction_result.title,
+            output_path=output.obsidian_path,
+        )
+        return self._result_from_task(
+            done,
+            source=source,
+            prompt_bundle=active_bundle,
+            current_stage="done",
+            stage_results=stage_results,
+            score_result=score_result,
+            extraction_result=extraction_result,
+            parallel_results=parallel_results,
+            telegram_status=output.telegram_status,
+        )
+
+    def _resolve_task(self, url: str, *, source: str, queue_task_id: int | None) -> QueueTask:
+        if queue_task_id is not None:
+            return self.queue_store.get_task(queue_task_id)
+        return self.queue_store.enqueue(url, source=source)
+
+    def _load_prompts(self, bundle_name: str) -> tuple[str, str, str, str] | TypedError:
+        try:
+            scoring_prompt = self.prompt_registry.load_prompt(bundle_name, "scoring")
+            extraction_prompt = self.prompt_registry.load_prompt(bundle_name, "extraction")
+            telegram_prompt = self.prompt_registry.load_prompt(bundle_name, "telegram_brief")
+        except Exception as exc:
+            return TypedError(
+                failure_kind=FailureKind.UNKNOWN,
+                message=f"Prompt bundle could not be loaded: {bundle_name}",
+                stage="resolve_prompt_bundle",
+                retryable=False,
+                next_action=NextAction.INVESTIGATE,
+                detail=str(exc),
+            )
+        prompt_hash = sha256_text(scoring_prompt + extraction_prompt + telegram_prompt, length=16)
+        return scoring_prompt, extraction_prompt, telegram_prompt, prompt_hash
+
+    def _score_and_parse(
+        self,
+        content: FetchedContent,
+        bundle_name: str,
+        prompt_hash: str,
+        scoring_prompt: str,
+        stage_results: list[StageResult],
+    ) -> ScoreResult | TypedError:
+        raw_score = _run_stage(stage_results, "score", lambda: self.llm_provider.score(content, scoring_prompt))
+        if isinstance(raw_score, TypedError):
+            return raw_score
+        return _run_stage(
+            stage_results,
+            "score_parse",
+            lambda: parse_score_result(
+                raw_score,
+                prompt_bundle=bundle_name,
+                prompt_hash=prompt_hash,
+                model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
+            ),
+        )
+
+    def _extract_and_parse(
+        self,
+        content: FetchedContent,
+        score_result: ScoreResult,
+        bundle_name: str,
+        prompt_hash: str,
+        extraction_prompt: str,
+        stage_results: list[StageResult],
+    ) -> ExtractionResult | TypedError:
+        raw_extraction = _run_stage(
+            stage_results,
+            "extract",
+            lambda: self.llm_provider.extract(content, score_result, extraction_prompt),
+        )
+        if isinstance(raw_extraction, TypedError):
+            return raw_extraction
+        return _run_stage(
+            stage_results,
+            "extraction_parse",
+            lambda: parse_extraction_result(
+                raw_extraction,
+                prompt_bundle=bundle_name,
+                prompt_hash=prompt_hash,
+                model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
+            ),
+        )
+
+    def _run_parallel_bundles(
+        self,
+        content: FetchedContent,
+        active_bundle: str,
+    ) -> list[PromptRunResult] | TypedError:
+        results: list[PromptRunResult] = []
+        for bundle in self.prompt_registry.bundles_for_parallel_test():
+            if bundle.name == active_bundle:
+                continue
+            prompts = self._load_prompts(bundle.name)
+            if isinstance(prompts, TypedError):
+                results.append(
+                    PromptRunResult(
+                        prompt_bundle=bundle.name,
+                        prompt_hash="",
+                        ok=False,
+                        error=prompts,
+                    )
+                )
+                continue
+            scoring_prompt, extraction_prompt, _telegram_prompt, prompt_hash = prompts
+            raw_score = self.llm_provider.score(content, scoring_prompt)
+            if isinstance(raw_score, TypedError):
+                results.append(
+                    PromptRunResult(
+                        prompt_bundle=bundle.name,
+                        prompt_hash=prompt_hash,
+                        ok=False,
+                        error=raw_score,
+                    )
+                )
+                continue
+            score_result = parse_score_result(
+                raw_score,
+                prompt_bundle=bundle.name,
+                prompt_hash=prompt_hash,
+                model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
+            )
+            if isinstance(score_result, TypedError):
+                results.append(
+                    PromptRunResult(
+                        prompt_bundle=bundle.name,
+                        prompt_hash=prompt_hash,
+                        ok=False,
+                        error=score_result,
+                    )
+                )
+                continue
+            raw_extraction = self.llm_provider.extract(content, score_result, extraction_prompt)
+            if isinstance(raw_extraction, TypedError):
+                results.append(
+                    PromptRunResult(
+                        prompt_bundle=bundle.name,
+                        prompt_hash=prompt_hash,
+                        ok=False,
+                        score_result=score_result,
+                        error=raw_extraction,
+                    )
+                )
+                continue
+            extraction_result = parse_extraction_result(
+                raw_extraction,
+                prompt_bundle=bundle.name,
+                prompt_hash=prompt_hash,
+                model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
+            )
+            if isinstance(extraction_result, TypedError):
+                results.append(
+                    PromptRunResult(
+                        prompt_bundle=bundle.name,
+                        prompt_hash=prompt_hash,
+                        ok=False,
+                        score_result=score_result,
+                        error=extraction_result,
+                    )
+                )
+                continue
+            results.append(
+                PromptRunResult(
+                    prompt_bundle=bundle.name,
+                    prompt_hash=prompt_hash,
+                    ok=True,
+                    score_result=score_result,
+                    extraction_result=extraction_result,
+                )
+            )
+        return results
+
+    def _output_port(self, mode: RuntimeMode) -> OutputPort:
+        if mode is RuntimeMode.DRY_RUN:
+            return self.dry_run_output
+        if mode is RuntimeMode.STAGING:
+            return self.staging_output
+        if mode is RuntimeMode.LIVE:
+            if self._live_output is None:
+                raise ValueError("LIVE mode requires a live_output port")
+            return self._live_output
+        raise ValueError(f"Unsupported output mode: {mode.value}")
+
+    def _fail(
+        self,
+        task: QueueTask,
+        error: TypedError,
+        *,
+        source: str,
+        prompt_bundle: str,
+        current_stage: str,
+        stage_results: list[StageResult],
+        score_result: ScoreResult | None = None,
+        extraction_result: ExtractionResult | None = None,
+        parallel_results: list[PromptRunResult] | None = None,
+    ) -> ProcessResult:
+        if error.retryable:
+            updated = self.queue_store.schedule_retry(
+                task.id,
+                failure_kind=error.failure_kind,
+                last_error=error.message,
+                detail=error.detail,
+                next_retry_at=error.next_retry_at or retry_at(15),
+                next_action=error.next_action,
+            )
+        elif error.failure_kind is FailureKind.VALIDATION_FAILED and error.next_action is NextAction.DROP:
+            updated = self.queue_store.mark_rejected(
+                task.id,
+                reason=error.message,
+                detail=error.detail,
+                failure_kind=error.failure_kind,
+            )
+        else:
+            updated = self.queue_store.mark_failed_terminal(
+                task.id,
+                failure_kind=error.failure_kind,
+                last_error=error.message,
+                detail=error.detail,
+                next_action=error.next_action,
+            )
+        return self._result_from_task(
+            updated,
+            source=source,
+            prompt_bundle=prompt_bundle,
+            current_stage=current_stage,
+            stage_results=stage_results,
+            score_result=score_result,
+            extraction_result=extraction_result,
+            parallel_results=parallel_results or [],
+            error=error,
+        )
+
+    @staticmethod
+    def _result_from_task(
+        task: QueueTask,
+        *,
+        source: str,
+        prompt_bundle: str,
+        current_stage: str,
+        stage_results: list[StageResult],
+        score_result: ScoreResult | None = None,
+        extraction_result: ExtractionResult | None = None,
+        parallel_results: list[PromptRunResult] | None = None,
+        telegram_status: str = "",
+        error: TypedError | None = None,
+    ) -> ProcessResult:
+        return ProcessResult(
+            url=task.url,
+            source=source,
+            queue_task_id=task.id,
+            current_stage=current_stage,
+            final_status=task.status,
+            retryable=task.status is QueueStatus.RETRY_SCHEDULED,
+            failure_kind=task.failure_kind,
+            next_action=task.next_action,
+            output_path=task.output_path,
+            telegram_status=telegram_status,
+            prompt_bundle=prompt_bundle,
+            stage_results=stage_results,
+            score_result=score_result,
+            extraction_result=extraction_result,
+            parallel_results=parallel_results or [],
+            error=error,
+        )
+
+
+def _validate_content(content: FetchedContent) -> bool | TypedError:
+    if not content.text.strip():
+        return TypedError(
+            failure_kind=FailureKind.VALIDATION_FAILED,
+            message="Fetched content is empty",
+            stage="validate",
+            retryable=False,
+            next_action=NextAction.DROP,
+            detail=content.url,
+        )
+    return True
+
+
+def _with_queue_reply_metadata(content: FetchedContent, task: QueueTask) -> FetchedContent:
+    if not task.reply_channel and not task.reply_chat_id:
+        return content
+    metadata = dict(content.metadata)
+    if task.reply_channel:
+        metadata["reply_channel"] = task.reply_channel
+    if task.reply_chat_id:
+        metadata["reply_chat_id"] = task.reply_chat_id
+    return replace(content, metadata=metadata)
+
+
+def _should_reject(score: ScoreResult, threshold: float) -> bool:
+    return score.signal_tier.lower() == "reject" or score.final_score < threshold
+
+
+def _run_stage(
+    stage_results: list[StageResult],
+    stage: str,
+    fn: Callable[[], T],
+    *,
+    error_selector: Callable[[T], TypedError | None] | None = None,
+) -> T:
+    started_at = utc_now()
+    started = time.perf_counter()
+    result = fn()
+    ended_at = utc_now()
+    error = result if isinstance(result, TypedError) else None
+    if error is None and error_selector is not None:
+        error = error_selector(result)
+    stage_results.append(
+        StageResult(
+            stage=stage,
+            ok=error is None,
+            started_at=started_at,
+            ended_at=ended_at,
+            duration_ms=int((time.perf_counter() - started) * 1000),
+            error=error,
+        )
+    )
+    return result
+
+
+def _append_stage(
+    stage_results: list[StageResult],
+    stage: str,
+    *,
+    error: TypedError | None = None,
+    detail: dict[str, object] | None = None,
+) -> None:
+    now = utc_now()
+    stage_results.append(
+        StageResult(
+            stage=stage,
+            ok=error is None,
+            started_at=now,
+            ended_at=now,
+            duration_ms=0,
+            error=error,
+            detail=detail or {},
+        )
+    )

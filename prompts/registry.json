@@ -1,0 +1,32 @@
+{
+  "active_bundle": "primary_market_v1",
+  "parallel_test_bundles": [
+    "primary_market_v1",
+    "v2_legacy"
+  ],
+  "roles": [
+    "scoring",
+    "extraction",
+    "telegram_brief"
+  ],
+  "bundles": {
+    "primary_market_v1": {
+      "label": "Primary Market V1",
+      "description": "V3 first primary-market investor prompt set. Scoring and extraction are versioned separately from Telegram formatting.",
+      "roles": {
+        "scoring": "prompts/versions/primary_market_v1/scoring.md",
+        "extraction": "prompts/versions/primary_market_v1/extraction.md",
+        "telegram_brief": "prompts/telegram_brief.md"
+      }
+    },
+    "v2_legacy": {
+      "label": "V2 Legacy Baseline",
+      "description": "Unmodified V2 screening and extraction prompts for baseline comparison only.",
+      "roles": {
+        "scoring": "prompts/versions/v2_legacy/scoring.md",
+        "extraction": "prompts/versions/v2_legacy/extraction.md",
+        "telegram_brief": "prompts/telegram_brief.md"
+      }
+    }
+  }
+}
