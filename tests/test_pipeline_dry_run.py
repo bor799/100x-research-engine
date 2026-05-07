@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from knowledge_extractor_v3.models import RuntimeMode
+from knowledge_extractor_v3.llm.shadow import ShadowHeuristicLLMProvider
+from knowledge_extractor_v3.models import FetchedContent, RuntimeMode, sha256_text
 from knowledge_extractor_v3.outputs.live_obsidian import LiveObsidianWriter, LiveOutputPort
 from knowledge_extractor_v3.outputs.telegram_live import LiveTelegramClient
 from knowledge_extractor_v3.pipeline import Pipeline
@@ -84,6 +85,31 @@ def test_pipeline_dry_run_fetch_failed_is_not_done(tmp_path):
     assert result.output_path == ""
 
 
+class BlockedWechatFetcher:
+    def fetch(self, url: str) -> FetchedContent:
+        text = "## 环境异常\n\n当前环境异常，完成验证后即可继续访问。\n\n去验证"
+        return FetchedContent(
+            url=url,
+            source="agent-reach-wechat",
+            source_type="wechat_article",
+            title="Weixin Official Accounts Platform",
+            text=text,
+            fetched_at="2026-05-06T00:00:00+00:00",
+            content_hash=sha256_text(text),
+        )
+
+
+def test_pipeline_rejects_wechat_verification_page(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    pipeline = Pipeline(store, fetcher=BlockedWechatFetcher(), staging_root=tmp_path / "staging")
+
+    result = pipeline.process_url("https://mp.weixin.qq.com/s/example", mode=RuntimeMode.DRY_RUN)
+
+    assert result.final_status is QueueStatus.FAILED_TERMINAL
+    assert result.failure_kind is FailureKind.CONTENT_BLOCKED
+    assert result.current_stage == "validate"
+
+
 def test_pipeline_dry_run_output_failed_is_not_done(tmp_path):
     pipeline = _pipeline(tmp_path)
 
@@ -107,10 +133,35 @@ def test_pipeline_dry_run_parallel_bundles_do_not_affect_active_output(tmp_path)
 
     assert result.final_status is QueueStatus.DONE
     assert result.prompt_bundle == "primary_market_v1"
-    assert [item.prompt_bundle for item in result.parallel_results] == ["v2_legacy"]
-    assert result.parallel_results[0].ok
-    assert result.parallel_results[0].prompt_hash
+    parallel_bundles = [item.prompt_bundle for item in result.parallel_results]
+    assert "primary_market_v1" not in parallel_bundles
+    assert "rimbo_source_scored_v3" in parallel_bundles
+    assert "v2_legacy" in parallel_bundles
+    assert all(item.ok for item in result.parallel_results)
+    assert all(item.prompt_hash for item in result.parallel_results)
     assert result.output_path.startswith("dry-run://")
+
+
+def test_pipeline_can_run_explicit_rimbo_prompt_bundle(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    pipeline = Pipeline(
+        store,
+        llm_provider=ShadowHeuristicLLMProvider(),
+        staging_root=tmp_path / "staging",
+    )
+
+    result = pipeline.process_url(
+        "fixture://high_signal",
+        mode=RuntimeMode.DRY_RUN,
+        prompt_bundle="rimbo_source_scored_v3",
+    )
+
+    assert result.final_status is QueueStatus.DONE
+    assert result.prompt_bundle == "rimbo_source_scored_v3"
+    assert result.score_result is not None
+    assert result.extraction_result is not None
+    assert "source_score" in result.score_result.parsed
+    assert "content_compression" in result.extraction_result.parsed
 
 
 def test_pipeline_live_mode_is_refused_before_queue_write(tmp_path):

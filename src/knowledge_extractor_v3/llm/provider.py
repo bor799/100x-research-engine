@@ -21,6 +21,8 @@ class LLMProvider(Protocol):
         score: ScoreResult,
         extraction: ExtractionResult,
         prompt: str,
+        *,
+        content: FetchedContent | None = None,
     ) -> str | TypedError:
         ...
 
@@ -73,12 +75,14 @@ class StubLLMProvider:
         score: ScoreResult,
         extraction: ExtractionResult,
         prompt: str,
+        *,
+        content: FetchedContent | None = None,
     ) -> str | TypedError:
         return (
             f"{extraction.title}\n"
             f"{extraction.one_line_signal}\n"
             f"Score: {score.score:g}/10 ({score.signal_tier})\n"
-            f"{extraction.parsed.get('url', '')}"
+            f"{content.url if content is not None else extraction.parsed.get('url', '')}"
         ).strip()
 
 

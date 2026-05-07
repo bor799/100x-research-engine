@@ -1,7 +1,8 @@
 {
-  "active_bundle": "primary_market_v1",
+  "active_bundle": "rimbo_source_scored_v3",
   "parallel_test_bundles": [
     "primary_market_v1",
+    "rimbo_source_scored_v3",
     "v2_legacy"
   ],
   "roles": [
@@ -25,6 +26,15 @@
       "roles": {
         "scoring": "prompts/versions/v2_legacy/scoring.md",
         "extraction": "prompts/versions/v2_legacy/extraction.md",
+        "telegram_brief": "prompts/telegram_brief.md"
+      }
+    },
+    "rimbo_source_scored_v3": {
+      "label": "Rimbo Source-Scored V3",
+      "description": "Source-tier/D1-D5 aware V3 prompt bundle with content compression and source-score fields for Rimbo-style trust evaluation.",
+      "roles": {
+        "scoring": "prompts/versions/rimbo_source_scored_v3/scoring.md",
+        "extraction": "prompts/versions/rimbo_source_scored_v3/extraction.md",
         "telegram_brief": "prompts/telegram_brief.md"
       }
     }

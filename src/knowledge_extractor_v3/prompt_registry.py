@@ -40,24 +40,53 @@ class PromptBundle:
 class PromptRegistry:
     """Load versioned prompt bundles from a JSON registry."""
 
-    def __init__(self, registry_path: Path) -> None:
+    def __init__(
+        self,
+        registry_path: Path,
+        *,
+        active_bundle: str | None = None,
+        parallel_test_bundles: list[str] | None = None,
+    ) -> None:
         self.registry_path = Path(registry_path)
         self.root = self.registry_path.resolve().parents[1]
+        self._active_bundle_override = active_bundle
+        self._parallel_test_bundles_override = parallel_test_bundles
         self._data = self._load()
 
     @classmethod
     def default(cls, project_root: Path) -> "PromptRegistry":
         return cls(Path(project_root) / "prompts" / "registry.json")
 
+    @classmethod
+    def from_config(cls, project_root: Path, prompts_config: object) -> "PromptRegistry":
+        registry = Path(str(getattr(prompts_config, "registry", "prompts/registry.json")))
+        if not registry.is_absolute():
+            registry = Path(project_root) / registry
+
+        active_bundle = str(getattr(prompts_config, "active_bundle", "") or "") or None
+        raw_parallel = getattr(prompts_config, "parallel_test_bundles", None)
+        parallel_test_bundles = (
+            [str(item) for item in raw_parallel]
+            if isinstance(raw_parallel, list)
+            else None
+        )
+        return cls(
+            registry,
+            active_bundle=active_bundle,
+            parallel_test_bundles=parallel_test_bundles,
+        )
+
     @property
     def active_bundle_name(self) -> str:
-        name = self._data.get("active_bundle", "")
+        name = self._active_bundle_override or self._data.get("active_bundle", "")
         if not name:
             raise PromptRegistryError("Prompt registry must define active_bundle")
         return name
 
     @property
     def parallel_test_bundle_names(self) -> list[str]:
+        if self._parallel_test_bundles_override is not None:
+            return self._parallel_test_bundles_override
         values = self._data.get("parallel_test_bundles", [])
         if not isinstance(values, list):
             raise PromptRegistryError("parallel_test_bundles must be a list")

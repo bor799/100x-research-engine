@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import signal
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -350,14 +351,11 @@ class Scheduler:
         if seconds <= 0:
             return
 
-        import time
-        deadline = time.time() + seconds
-        while time.time() < deadline and not self._shutdown_requested:
-            remaining = int(deadline - time.time())
-            if remaining <= 0:
-                break
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline and not self._shutdown_requested:
+            remaining = deadline - time.monotonic()
             try:
-                signal.pause()
+                time.sleep(min(1.0, max(0.0, remaining)))
             except KeyboardInterrupt:
                 self._shutdown_requested = True
                 break

@@ -130,7 +130,7 @@ Prompt roles:
 - `extraction`: information extraction format.
 - `telegram_brief`: downstream delivery formatting.
 
-The active bundle is `primary_market_v1`. The V2 baseline is preserved as `v2_legacy` for comparison. Future pipeline code must load prompts through `PromptRegistry` so multiple bundles can run against the same fetched content during offline evaluation.
+The active bundle is `primary_market_v1`. The V2 baseline is preserved as `v2_legacy` for comparison. `rimbo_source_scored_v3` adds source-tier/D1-D5 scoring plus content compression while keeping the same parser contract. Pipeline code must load prompts through `PromptRegistry` so multiple bundles can run against the same fetched content during offline evaluation.
 
 The scoring prompt must output JSON containing:
 

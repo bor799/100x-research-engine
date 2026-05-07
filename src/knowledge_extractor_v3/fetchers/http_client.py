@@ -172,7 +172,7 @@ class HttpClient:
         request = urllib.request.Request(url, headers=request_headers)
 
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with self._urlopen(request, timeout=timeout) as response:
                 content_type = response.headers.get("Content-Type", "")
                 content = response.read().decode("utf-8", errors="replace")
                 return HttpClientResponse(
@@ -225,7 +225,7 @@ class HttpClient:
         try:
             # Jina Reader requires User-Agent header
             request = urllib.request.Request(jina_url, headers={"User-Agent": self.user_agent})
-            with urllib.request.urlopen(request, timeout=self.timeout + 10) as response:
+            with self._urlopen(request, timeout=self.timeout + 10) as response:
                 content_type = response.headers.get("Content-Type", "")
                 content = response.read().decode("utf-8", errors="replace")
                 status = getattr(response, "status", response.getcode())
@@ -257,16 +257,29 @@ class HttpClient:
                 detail=f"url={url} jina_error={exc}",
             )
 
+    def _urlopen(self, request: urllib.request.Request, *, timeout: int):
+        if not self.proxy:
+            return urllib.request.urlopen(request, timeout=timeout)
+
+        proxy_handler = urllib.request.ProxyHandler({
+            "http": self.proxy,
+            "https": self.proxy,
+        })
+        opener = urllib.request.build_opener(proxy_handler)
+        return opener.open(request, timeout=timeout)
+
 
 def create_http_client(
     *,
     user_agent: str = DEFAULT_USER_AGENT,
     timeout: int = DEFAULT_TIMEOUT,
     max_retries: int = DEFAULT_MAX_RETRIES,
+    proxy: str | None = None,
 ) -> HttpClient:
     """Factory function to create HttpClient with defaults."""
     return HttpClient(
         user_agent=user_agent,
         timeout=timeout,
         max_retries=max_retries,
+        proxy=proxy,
     )

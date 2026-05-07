@@ -368,6 +368,34 @@ def test_scheduler_run_once_empty():
         assert result.items_enqueued == 0
 
 
+def test_scheduler_wait_uses_timed_sleep(monkeypatch):
+    """Scheduler loop wait should wake by timeout instead of blocking on a signal."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_root = Path(tmpdir)
+        config = V3Config(
+            runtime=RuntimeConfig(
+                state_root=str(state_root),
+                queue_db_path=str(state_root / "queue.db"),
+            ),
+            live=LiveConfig(enabled=False),
+            worker=V3WorkerConfig(),
+        )
+        queue_store = QueueStore(state_root / "queue.db")
+        scheduler = Scheduler(config, queue_store=queue_store)
+        sleeps: list[float] = []
+
+        def fake_sleep(seconds: float) -> None:
+            sleeps.append(seconds)
+            scheduler._shutdown_requested = True
+
+        monkeypatch.setattr("knowledge_extractor_v3.scheduler.time.sleep", fake_sleep)
+
+        scheduler._wait(300)
+
+        assert sleeps
+        assert sleeps[0] <= 1.0
+
+
 def test_scheduler_respects_limit():
     """Scheduler respects max_total_items limit."""
     with tempfile.TemporaryDirectory() as tmpdir:

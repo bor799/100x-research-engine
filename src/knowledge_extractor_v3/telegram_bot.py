@@ -13,6 +13,7 @@ import json
 import re
 import signal
 import sys
+import time
 import urllib.request
 import urllib.error
 from dataclasses import dataclass
@@ -401,11 +402,11 @@ class TelegramInboundBot:
         if seconds <= 0:
             return
 
-        import time
-        deadline = time.time() + seconds
-        while time.time() < deadline and not self._shutdown_requested:
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline and not self._shutdown_requested:
+            remaining = deadline - time.monotonic()
             try:
-                signal.pause()
+                time.sleep(min(1.0, max(0.0, remaining)))
             except KeyboardInterrupt:
                 self._shutdown_requested = True
                 break

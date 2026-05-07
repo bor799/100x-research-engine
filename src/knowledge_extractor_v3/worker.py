@@ -16,6 +16,7 @@ import json
 import os
 import signal
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -115,7 +116,7 @@ class QueueWorker:
         self._queue = queue_store
         self._fetcher = fetcher or _create_default_fetcher(config)
         self._llm = llm_provider or StubLLMProvider()
-        self._prompts = prompt_registry or PromptRegistry.default(Path.cwd())
+        self._prompts = prompt_registry or PromptRegistry.from_config(Path.cwd(), config.prompts)
         self._worker_cfg = worker_config or WorkerConfig()
         self._log_path = log_path
 
@@ -344,12 +345,11 @@ class QueueWorker:
         if seconds <= 0:
             return
 
-        # Check for shutdown every second
-        for _ in range(seconds):
-            if self._state.shutdown_requested:
-                break
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline and not self._state.shutdown_requested:
+            remaining = deadline - time.monotonic()
             try:
-                signal.pause()
+                time.sleep(min(1.0, max(0.0, remaining)))
             except KeyboardInterrupt:
                 self._state.shutdown_requested = True
                 break

@@ -50,6 +50,16 @@ def main() -> int:
         action="store_true",
         help="Use shadow heuristic LLM instead of real API",
     )
+    parser.add_argument(
+        "--prompt-bundle",
+        default=None,
+        help="Prompt bundle to use for this run (default: config/registry active bundle)",
+    )
+    parser.add_argument(
+        "--run-parallel-prompts",
+        action="store_true",
+        help="Also run configured parallel prompt bundles for comparison",
+    )
 
     args = parser.parse_args()
 
@@ -85,8 +95,11 @@ def main() -> int:
         llm = create_live_provider(config.llm, env=os.environ)
 
     # Create prompt registry
-    prompts = PromptRegistry.default(project_root)
-    print(f"Active prompt bundle: {prompts.active_bundle_name}")
+    prompts = PromptRegistry.from_config(project_root, config.prompts)
+    active_prompt_bundle = args.prompt_bundle or prompts.active_bundle_name
+    print(f"Active prompt bundle: {active_prompt_bundle}")
+    if args.run_parallel_prompts:
+        print(f"Parallel prompt bundles: {', '.join(prompts.parallel_test_bundle_names) or 'none'}")
 
     # Create output port
     if mode is RuntimeMode.DRY_RUN:
@@ -140,7 +153,12 @@ def main() -> int:
     print("-" * 60)
 
     # Process URL
-    result = pipeline.process_url(args.url, mode=mode)
+    result = pipeline.process_url(
+        args.url,
+        mode=mode,
+        prompt_bundle=args.prompt_bundle,
+        run_parallel_tests=args.run_parallel_prompts,
+    )
 
     # Display results
     print()
@@ -168,6 +186,20 @@ def main() -> int:
         print("Extraction:")
         print(f"  Title: {ext.title}")
         print(f"  Signal: {ext.one_line_signal[:100]}...")
+        if "source_score" in ext.parsed:
+            source_score = ext.parsed["source_score"]
+            print(f"  Source score: {source_score}")
+        if "content_compression" in ext.parsed:
+            compression = ext.parsed["content_compression"]
+            print(f"  Compression: {compression}")
+
+    if result.parallel_results:
+        print()
+        print("Parallel prompts:")
+        for item in result.parallel_results:
+            status = "ok" if item.ok else "failed"
+            score = item.score_result.final_score if item.score_result else ""
+            print(f"  {item.prompt_bundle}: {status} {score}")
 
     print()
     print("Stages:")

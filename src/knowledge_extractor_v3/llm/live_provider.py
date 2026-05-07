@@ -283,6 +283,93 @@ def _retry_after_minutes(body: str) -> int:
     return max(1, int((seconds + 59) // 60))
 
 
+def _stringify(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _format_score(value: object) -> str:
+    if isinstance(value, bool):
+        return ""
+    if isinstance(value, (int, float)):
+        return f"{value:g}"
+    return str(value)
+
+
+def _numbered_lines(value: object) -> list[str]:
+    items = value if isinstance(value, list) else []
+    if not items:
+        return ["1. unavailable"]
+    return [f"{index}. {_stringify(item)}" for index, item in enumerate(items, start=1)]
+
+
+def _bullet_lines(value: object) -> list[str]:
+    items = value if isinstance(value, list) else []
+    if not items:
+        return ["- unavailable"]
+    return [f"- {_stringify(item)}" for item in items]
+
+
+def _evidence_lines(value: object) -> list[str]:
+    items = value if isinstance(value, list) else []
+    if not items:
+        return ["- unavailable"]
+
+    lines: list[str] = []
+    for index, item in enumerate(items, start=1):
+        if isinstance(item, dict):
+            evidence_id = item.get("id") or f"E{index}"
+            claim = item.get("claim") or ""
+            provenance = item.get("provenance") or item.get("source") or ""
+            suffix = f" ({provenance})" if provenance else ""
+            lines.append(f"- {evidence_id}: {claim}{suffix}".strip())
+        else:
+            lines.append(f"- {_stringify(item)}")
+    return lines
+
+
+def _build_extraction_input(content: FetchedContent, score: ScoreResult) -> str:
+    """Give extraction prompts the scoring context they are expected to honor."""
+    score_payload = getattr(score, "parsed", None)
+    if not isinstance(score_payload, dict):
+        score_payload = {
+            "score": getattr(score, "score", ""),
+            "final_score": getattr(score, "final_score", ""),
+            "signal_tier": getattr(score, "signal_tier", ""),
+            "decision_window_status": getattr(score, "decision_window_status", ""),
+            "source_type": getattr(score, "source_type", ""),
+            "source_tier": getattr(score, "source_tier", ""),
+            "interest_flag": getattr(score, "interest_flag", ""),
+            "attribution_chain": getattr(score, "attribution_chain", ""),
+        }
+
+    content_payload = {
+        "url": content.url,
+        "source": content.source,
+        "source_type": content.source_type,
+        "title": content.title,
+        "author": content.author,
+        "published_at": content.published_at,
+        "fetched_at": content.fetched_at,
+        "content_hash": content.content_hash,
+        "metadata": content.metadata,
+    }
+
+    return "\n\n".join(
+        [
+            "SCORING_CONTEXT_JSON:",
+            json.dumps(score_payload, ensure_ascii=False, sort_keys=True),
+            "CONTENT_METADATA_JSON:",
+            json.dumps(content_payload, ensure_ascii=False, sort_keys=True),
+            "SOURCE_TEXT:",
+            content.text,
+        ]
+    )
+
+
 # ---------------------------------------------------------------------------
 # LiveLLMProvider
 # ---------------------------------------------------------------------------
@@ -326,13 +413,9 @@ class LiveLLMProvider:
         score: ScoreResult,
         prompt: str,
     ) -> str | TypedError:
-        """Run extraction prompt against configured LLM.
-
-        Note: score parameter is part of the LLMProvider protocol but
-        not used directly in this implementation (content contains the text).
-        """
+        """Run extraction prompt against configured LLM."""
         model = self._config.extraction_model or _DEFAULT_MODELS.get(self._config.provider, "gpt-4o-mini")
-        raw = self._call_llm(content.text, prompt, model, stage="extract")
+        raw = self._call_llm(_build_extraction_input(content, score), prompt, model, stage="extract")
 
         return raw
 
@@ -341,21 +424,52 @@ class LiveLLMProvider:
         score: ScoreResult,
         extraction: ExtractionResult,
         prompt: str,
+        *,
+        content: FetchedContent | None = None,
     ) -> str | TypedError:
-        """Format telegram brief using configured LLM."""
-        # For telegram brief, we construct a simple text summary
-        # without needing an additional LLM call (to save tokens/cost)
+        """Format telegram brief from the V3 primary-market extraction schema."""
         title = extraction.title or "Untitled"
         one_liner = extraction.one_line_signal or ""
-        score_str = f"{score.score:g}/10 ({score.signal_tier})"
+        parsed = extraction.parsed
+        link = (
+            content.url if content is not None else
+            str(parsed.get("original_url") or parsed.get("url") or score.parsed.get("url") or "")
+        )
+        final_score = getattr(score, "final_score", "")
+        score_value = getattr(score, "score", "")
+        decision_window = getattr(score, "decision_window_status", "")
+        source_type = getattr(score, "source_type", "")
+        source_tier = getattr(score, "source_tier", "")
+        interest_flag = getattr(score, "interest_flag", "")
+        attribution_chain = getattr(score, "attribution_chain", "")
 
         lines = [
-            title,
+            f"[{score.signal_tier}] {title}",
+            "",
+            f"Score: {_format_score(final_score)} / {_format_score(score_value)}",
+            f"Window: {parsed.get('decision_window_status') or decision_window}",
+            f"Source: {parsed.get('source_type') or source_type} / {parsed.get('source_tier') or source_tier}",
+            f"Interest: {parsed.get('interest_flag') or interest_flag}",
+            "",
+            "Signal:",
             one_liner,
-            f"Score: {score_str}",
-            score.parsed.get("url", ""),
+            "",
+            "Why it matters:",
+            *_numbered_lines(parsed.get("why_it_matters")),
+            "",
+            "Evidence:",
+            *_evidence_lines(parsed.get("evidence")),
+            "",
+            "Action:",
+            *_bullet_lines(parsed.get("recommended_actions")),
+            "",
+            "Attribution:",
+            _stringify(parsed.get("attribution_chain") or attribution_chain),
+            "",
+            "Link:",
+            link,
         ]
-        return "\n".join(lines).strip()
+        return "\n".join(line for line in lines if line is not None).strip()
 
     def _call_llm(
         self,

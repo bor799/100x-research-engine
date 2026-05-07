@@ -128,6 +128,11 @@ def test_live_provider_extract_success():
 
     assert isinstance(result, str)
     assert result.startswith('{"title"')
+    request_payload = json.loads(http.calls[0]["data"].decode("utf-8"))
+    request_text = request_payload["messages"][0]["content"]
+    assert "SCORING_CONTEXT_JSON" in request_text
+    assert '"final_score": 0.8' in request_text
+    assert "SOURCE_TEXT" in request_text
 
 
 def test_live_provider_format_telegram():
@@ -140,20 +145,37 @@ def test_live_provider_format_telegram():
     from types import SimpleNamespace
     score = SimpleNamespace(
         score=8.5,
+        final_score=0.85,
         signal_tier="A",
+        decision_window_status="open",
+        source_type="SocialPost",
+        source_tier="Primary",
+        interest_flag="Independent",
+        attribution_chain="tweet -> evidence -> signal",
         parsed={"url": "https://example.com/article"},
     )
     extraction = SimpleNamespace(
         title="Test Article",
         one_line_signal="A test signal about something",
+        parsed={
+            "decision_window_status": "open",
+            "source_type": "SocialPost",
+            "source_tier": "Primary",
+            "interest_flag": "Independent",
+            "why_it_matters": ["Useful for sourcing"],
+            "evidence": [{"id": "E1", "claim": "A concrete claim", "provenance": "tweet"}],
+            "recommended_actions": ["Follow up"],
+            "attribution_chain": "tweet -> E1 -> signal",
+        },
     )
 
     result = provider.format_telegram(score, extraction, "ignored prompt")
 
     assert isinstance(result, str)
-    assert "Test Article" in result
-    assert "8.5/10" in result
+    assert "[A] Test Article" in result
+    assert "Score: 0.85 / 8.5" in result
     assert "A test signal" in result
+    assert "E1: A concrete claim" in result
     # No HTTP call should be made
     assert len(http.calls) == 0
 

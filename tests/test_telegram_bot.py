@@ -345,6 +345,29 @@ def test_bot_polling_loop():
         assert processed == 0
 
 
+def test_bot_wait_uses_timed_sleep(monkeypatch):
+    """Telegram polling wait should wake by timeout instead of blocking on a signal."""
+    queue_store = QueueStore(Path(tempfile.mkdtemp()) / "queue.db")
+    config = make_test_config(Path.cwd())
+    bot = TelegramInboundBot(
+        config=config,
+        queue_store=queue_store,
+        bot_token="test_token",
+    )
+    sleeps: list[float] = []
+
+    def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        bot._shutdown_requested = True
+
+    monkeypatch.setattr("knowledge_extractor_v3.telegram_bot.time.sleep", fake_sleep)
+
+    bot._wait(30)
+
+    assert sleeps
+    assert sleeps[0] <= 1.0
+
+
 def test_bot_unknown_command():
     """Bot handles unknown command."""
     queue_store = QueueStore(Path(tempfile.mkdtemp()) / "queue.db")

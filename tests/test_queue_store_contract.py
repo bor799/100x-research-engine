@@ -98,3 +98,58 @@ def test_queue_database_used_by_tests_is_tmp_path_only(tmp_path):
     assert count == 1
     assert str(db_path).startswith(str(tmp_path))
     assert ".100x_v2" not in str(db_path)
+
+
+def test_enqueue_revives_existing_terminal_task_for_manual_reprocess(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db")
+    task = store.enqueue("https://example.com/retry-me", source="telegram")
+    store.mark_failed_terminal(
+        task.id,
+        failure_kind=FailureKind.LLM_TIMEOUT,
+        last_error="timeout",
+    )
+
+    revived = store.enqueue("https://example.com/retry-me", source="telegram_bot", priority=10)
+
+    assert revived.status is QueueStatus.PENDING
+    assert revived.source == "telegram_bot"
+    assert revived.priority == 10
+    assert revived.attempt_count == 0
+    assert revived.failure_kind is FailureKind.NONE
+    assert revived.last_error == ""
+
+
+def test_mark_processing_counts_attempts_and_retry_caps_at_max_attempts(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db")
+    task = store.enqueue("https://example.com/unstable", max_attempts=1)
+
+    processing = store.mark_processing(task.id)
+    assert processing.attempt_count == 1
+
+    terminal = store.schedule_retry(
+        task.id,
+        failure_kind=FailureKind.LLM_TIMEOUT,
+        last_error="timeout",
+        next_retry_at="2026-04-28T12:00:00+00:00",
+    )
+
+    assert terminal.status is QueueStatus.FAILED_TERMINAL
+    assert terminal.failure_kind is FailureKind.LLM_TIMEOUT
+    assert terminal.next_action is NextAction.MANUAL_REVIEW
+
+
+def test_next_ready_tasks_orders_pending_and_retry_by_priority(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db")
+    pending = store.enqueue("https://example.com/pending", priority=50)
+    retry = store.enqueue("https://example.com/retry", priority=10)
+    store.mark_processing(retry.id)
+    store.schedule_retry(
+        retry.id,
+        failure_kind=FailureKind.LLM_RATE_LIMIT,
+        last_error="429",
+        next_retry_at="2026-04-28T12:00:00+00:00",
+    )
+
+    ready = store.next_ready_tasks(limit=2, now="2026-04-28T12:00:01+00:00")
+
+    assert [task.id for task in ready] == [retry.id, pending.id]

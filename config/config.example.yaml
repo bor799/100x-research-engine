@@ -37,6 +37,7 @@ prompts:
   active_bundle: "primary_market_v1"
   parallel_test_bundles:
     - "primary_market_v1"
+    - "rimbo_source_scored_v3"
     - "v2_legacy"
   scoring: "prompts/primary_market_scoring.md"
   extraction: "prompts/primary_market_extraction.md"

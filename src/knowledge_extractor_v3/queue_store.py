@@ -208,10 +208,21 @@ class QueueStore:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(url) DO UPDATE SET
                     source=excluded.source,
+                    status=excluded.status,
                     priority=excluded.priority,
+                    attempt_count=0,
                     max_attempts=excluded.max_attempts,
+                    next_retry_at='',
+                    failure_kind='',
+                    last_error='',
+                    last_status_detail='',
+                    next_action='',
+                    result_title='',
+                    output_path='',
                     reply_channel=excluded.reply_channel,
                     reply_chat_id=excluded.reply_chat_id,
+                    runtime_fingerprint=excluded.runtime_fingerprint,
+                    processed_at='',
                     updated_at=excluded.updated_at
                 """,
                 (
@@ -240,7 +251,26 @@ class QueueStore:
         return self._row_to_task(row)
 
     def mark_processing(self, task_id: int) -> QueueTask:
-        return self._update_status(task_id, QueueStatus.PROCESSING, processed_at="")
+        self.initialize()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                UPDATE queue
+                SET status=?,
+                    attempt_count=attempt_count + 1,
+                    failure_kind='',
+                    last_error='',
+                    last_status_detail='',
+                    next_action='',
+                    next_retry_at='',
+                    processed_at='',
+                    updated_at=?
+                WHERE id=?
+                """,
+                (QueueStatus.PROCESSING.value, _utc_now(), task_id),
+            )
+            conn.commit()
+        return self.get_task(task_id)
 
     def mark_done(self, task_id: int, *, result_title: str, output_path: str) -> QueueTask:
         if not output_path:
@@ -285,6 +315,18 @@ class QueueStore:
     ) -> QueueTask:
         if not next_retry_at:
             raise ValueError("retry_scheduled tasks must include next_retry_at")
+        current = self.get_task(task_id)
+        if current.attempt_count >= current.max_attempts:
+            terminal_next_action = (
+                NextAction.MANUAL_REVIEW if next_action is NextAction.RETRY_LATER else next_action
+            )
+            return self.mark_failed_terminal(
+                task_id,
+                failure_kind=failure_kind,
+                last_error=last_error,
+                detail=detail,
+                next_action=terminal_next_action,
+            )
         return self._update_status(
             task_id,
             QueueStatus.RETRY_SCHEDULED,
@@ -403,34 +445,22 @@ class QueueStore:
 
         with sqlite3.connect(self.db_path) as conn:
             # pending tasks (no retry time check needed)
-            pending_query = """
+            ready_query = """
                 SELECT * FROM queue
                 WHERE status = ?
+                    OR (
+                        status = ?
+                        AND (next_retry_at = '' OR next_retry_at <= ?)
+                    )
                 ORDER BY priority ASC, id ASC
                 LIMIT ?
             """
-            pending_rows = conn.execute(pending_query, (QueueStatus.PENDING.value, limit)).fetchall()
+            rows = conn.execute(
+                ready_query,
+                (QueueStatus.PENDING.value, QueueStatus.RETRY_SCHEDULED.value, now_ts, limit),
+            ).fetchall()
 
-            # retry_scheduled tasks that are ready
-            retry_query = """
-                SELECT * FROM queue
-                WHERE status = ?
-                    AND (next_retry_at = '' OR next_retry_at <= ?)
-                ORDER BY priority ASC, id ASC
-                LIMIT ?
-            """
-            retry_rows = conn.execute(retry_query, (QueueStatus.RETRY_SCHEDULED.value, now_ts, limit)).fetchall()
-
-        # Combine, preferring pending over retry at same priority
-        tasks = [self._row_to_task(row) for row in pending_rows]
-        retry_tasks = [self._row_to_task(row) for row in retry_rows]
-
-        # Merge preserving order: interleave by priority
-        # For simplicity, just append retry tasks after pending
-        tasks.extend(retry_tasks)
-
-        # Respect limit
-        return tasks[:limit]
+        return [self._row_to_task(row) for row in rows]
 
     def recover_stale_processing(self, before: str) -> int:
         """Recover tasks stuck in processing status back to retry_scheduled.

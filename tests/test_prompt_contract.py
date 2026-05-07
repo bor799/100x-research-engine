@@ -46,6 +46,35 @@ def test_scoring_prompt_declares_score_ranges():
     assert "0-10" in content
 
 
+def test_rimbo_source_scored_v3_declares_source_score_and_compression_contracts():
+    scoring = (PROMPTS / "versions" / "rimbo_source_scored_v3" / "scoring.md").read_text(
+        encoding="utf-8"
+    )
+    extraction = (PROMPTS / "versions" / "rimbo_source_scored_v3" / "extraction.md").read_text(
+        encoding="utf-8"
+    )
+
+    for field in [
+        "D1_score",
+        "D2_score",
+        "D3_score",
+        "D4_score",
+        "D5_score",
+        "L1_score",
+        "source_score",
+        "content_compression",
+        "source_tier",
+        "source_type",
+        "interest_flag",
+        "obsidian_brief_markdown",
+    ]:
+        assert field in scoring or field in extraction
+
+    assert "Simplified Chinese" in scoring
+    assert "Simplified Chinese" in extraction
+    assert "## 信源评分" in extraction
+
+
 def test_telegram_prompt_requires_plain_text_and_plain_urls():
     content = (PROMPTS / "telegram_brief.md").read_text(encoding="utf-8")
 

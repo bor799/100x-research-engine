@@ -29,9 +29,13 @@ prompts/versions/primary_market_v1/
 prompts/versions/v2_legacy/
   scoring.md
   extraction.md
+prompts/versions/rimbo_source_scored_v3/
+  scoring.md
+  extraction.md
 ```
 
 `primary_market_v1` is the V3 default. `v2_legacy` is the baseline copied from V2 prompts for comparison. Keep V2 legacy prompt text unchanged unless explicitly creating a new legacy-derived version.
+`rimbo_source_scored_v3` is the new source-tier/D1-D5 aware bundle. It keeps the same parser contract while adding nested `source_score` and `content_compression` payloads.
 
 ## Switching
 
@@ -47,11 +51,17 @@ To test another bundle without making it active, add it to:
 
 ```json
 {
-  "parallel_test_bundles": ["primary_market_v1", "v2_legacy"]
+  "parallel_test_bundles": ["primary_market_v1", "rimbo_source_scored_v3", "v2_legacy"]
 }
 ```
 
 The code path should load prompts through `PromptRegistry`, not hardcoded paths.
+
+For a one-off article test, pass an explicit bundle without editing the registry:
+
+```bash
+python scripts/test_url.py fixture://high_signal --mode staging --prompt-bundle rimbo_source_scored_v3 --use-shadow-llm
+```
 
 ## Parallel Evaluation
 

@@ -130,6 +130,25 @@ def test_worker_run_once_empty_queue():
         assert result.consecutive_failures == 0
 
 
+def test_worker_wait_uses_timed_sleep(monkeypatch):
+    """Worker loop wait should wake by timeout instead of blocking on a signal."""
+    config = make_test_config(Path(tempfile.mkdtemp()))
+    queue_store = QueueStore(Path(tempfile.mkdtemp()) / "queue.db")
+    worker = QueueWorker(config=config, queue_store=queue_store)
+    sleeps: list[float] = []
+
+    def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        worker._state.shutdown_requested = True
+
+    monkeypatch.setattr("knowledge_extractor_v3.worker.time.sleep", fake_sleep)
+
+    worker._wait(30)
+
+    assert sleeps
+    assert sleeps[0] <= 1.0
+
+
 def test_worker_run_once_successful_task():
     """Worker processes a single successful task (with stub fetcher)."""
     with tempfile.TemporaryDirectory() as tmpdir:

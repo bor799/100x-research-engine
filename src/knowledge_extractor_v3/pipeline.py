@@ -223,7 +223,12 @@ class Pipeline:
         telegram_text = _run_stage(
             stage_results,
             "telegram_format",
-            lambda: self.llm_provider.format_telegram(score_result, extraction_result, telegram_prompt),
+            lambda: self.llm_provider.format_telegram(
+                score_result,
+                extraction_result,
+                telegram_prompt,
+                content=fetched,
+            ),
         )
         if isinstance(telegram_text, TypedError):
             return self._fail(
@@ -319,7 +324,12 @@ class Pipeline:
         scoring_prompt: str,
         stage_results: list[StageResult],
     ) -> ScoreResult | TypedError:
-        raw_score = _run_stage(stage_results, "score", lambda: self.llm_provider.score(content, scoring_prompt))
+        # 对长内容进行预处理
+        processed_content = self._maybe_preprocess_content(content, stage_results)
+        if isinstance(processed_content, TypedError):
+            return processed_content
+
+        raw_score = _run_stage(stage_results, "score", lambda: self.llm_provider.score(processed_content, scoring_prompt))
         if isinstance(raw_score, TypedError):
             return raw_score
         return _run_stage(
@@ -342,10 +352,15 @@ class Pipeline:
         extraction_prompt: str,
         stage_results: list[StageResult],
     ) -> ExtractionResult | TypedError:
+        # 对长内容进行预处理
+        processed_content = self._maybe_preprocess_content(content, stage_results)
+        if isinstance(processed_content, TypedError):
+            return processed_content
+
         raw_extraction = _run_stage(
             stage_results,
             "extract",
-            lambda: self.llm_provider.extract(content, score_result, extraction_prompt),
+            lambda: self.llm_provider.extract(processed_content, score_result, extraction_prompt),
         )
         if isinstance(raw_extraction, TypedError):
             return raw_extraction
@@ -447,6 +462,83 @@ class Pipeline:
                 )
             )
         return results
+
+    def _maybe_preprocess_content(
+        self,
+        content: FetchedContent,
+        stage_results: list[StageResult],
+    ) -> FetchedContent | TypedError:
+        """
+        对长内容进行预处理，避免 LLM 超时
+
+        仅对超过长度阈值的内容进行压缩，并在 stage_results 中记录
+        """
+        # 长度阈值：10000 字符
+        LONG_CONTENT_THRESHOLD = 10000
+
+        if len(content.text) <= LONG_CONTENT_THRESHOLD:
+            return content
+
+        # 记录预处理阶段
+        from dataclasses import replace
+        import time
+
+        start_time = time.time()
+
+        try:
+            # 使用预处理函数压缩内容
+            compressed_text = _preprocess_long_content(content.text)
+            compression_ratio = len(compressed_text) / len(content.text)
+
+            # 创建新的 FetchedContent 对象
+            processed_content = replace(content, text=compressed_text)
+
+            # 记录预处理详情
+            duration_ms = int((time.time() - start_time) * 1000)
+            stage_results.append(
+                StageResult(
+                    stage="preprocess",
+                    ok=True,
+                    started_at=start_time,
+                    ended_at=time.time(),
+                    duration_ms=duration_ms,
+                    error=None,
+                    detail={
+                        "original_length": len(content.text),
+                        "compressed_length": len(compressed_text),
+                        "compression_ratio": round(compression_ratio, 3),
+                        "chars_saved": len(content.text) - len(compressed_text),
+                    },
+                )
+            )
+
+            return processed_content
+
+        except Exception as exc:
+            # 预处理失败，返回错误但允许使用原始内容重试
+            error = TypedError(
+                failure_kind=FailureKind.PARSE_ERROR,
+                message=f"Content preprocessing failed: {exc}",
+                stage="preprocess",
+                retryable=True,  # 允许重试
+                next_action=NextAction.RETRY_LATER,
+                detail=str(exc),
+            )
+
+            duration_ms = int((time.time() - start_time) * 1000)
+            stage_results.append(
+                StageResult(
+                    stage="preprocess",
+                    ok=False,
+                    started_at=start_time,
+                    ended_at=time.time(),
+                    duration_ms=duration_ms,
+                    error=error,
+                    detail={"error_message": str(exc)},
+                )
+            )
+
+            return error
 
     def _output_port(self, mode: RuntimeMode) -> OutputPort:
         if mode is RuntimeMode.DRY_RUN:
@@ -552,7 +644,32 @@ def _validate_content(content: FetchedContent) -> bool | TypedError:
             next_action=NextAction.DROP,
             detail=content.url,
         )
+    if _looks_content_blocked(content):
+        return TypedError(
+            failure_kind=FailureKind.CONTENT_BLOCKED,
+            message="Fetched content appears to be a platform block/verification page",
+            stage="validate",
+            retryable=False,
+            next_action=NextAction.MANUAL_REVIEW,
+            detail=content.url,
+        )
     return True
+
+
+def _looks_content_blocked(content: FetchedContent) -> bool:
+    text = content.text.strip()
+    lowered = text.lower()
+    blocked_markers = (
+        "当前环境异常",
+        "完成验证后即可继续访问",
+        "去验证",
+        "environment abnormal",
+        "verify you are human",
+        "please complete verification",
+    )
+    if any(marker in lowered or marker in text for marker in blocked_markers):
+        return True
+    return content.source_type == "wechat_article" and len(text) < 200
 
 
 def _with_queue_reply_metadata(content: FetchedContent, task: QueueTask) -> FetchedContent:
@@ -616,3 +733,135 @@ def _append_stage(
             detail=detail or {},
         )
     )
+
+
+def _preprocess_long_content(text: str, max_length: int = 8000) -> str:
+    """
+    预处理长文本内容，智能压缩到合适长度以避免 LLM 超时
+
+    Args:
+        text: 原始文本
+        max_length: 最大长度限制
+
+    Returns:
+        压缩后的文本
+    """
+    import re
+
+    if len(text) <= max_length:
+        return text
+
+    # 移除常见噪音内容
+    noise_patterns = [
+        r'点击.*?关注.*?',
+        r'扫码.*?关注.*?',
+        r'转载.*?授权.*?',
+        r'本文.*?版权.*?',
+        r'更多精彩.*?关注.*?',
+        r'欢迎.*?订阅.*?',
+    ]
+
+    cleaned_text = text
+    for pattern in noise_patterns:
+        cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE)
+
+    # 分段处理
+    paragraphs = cleaned_text.split('\n')
+    high_quality_paragraphs = []
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+
+        # 跳过噪音段落
+        skip_words = ['点击关注', '扫码关注', '转载请注明', '版权声明',
+                     '商务合作', '投稿', '广告', '更多精彩', '推荐阅读']
+        if any(skip_word in para.lower() for skip_word in skip_words):
+            continue
+
+        # 保留有实质内容的段落
+        if len(para) >= 20:
+            high_quality_paragraphs.append(para)
+
+    if not high_quality_paragraphs:
+        return text[:max_length]
+
+    # 关键词列表
+    key_phrases = [
+        '融资', '投资', '估值', '上市', 'IPO', '并购',
+        '技术', '研发', '创新', '发布', '推出',
+        '数据', '增长', '下降', '营收', '利润',
+        '认为', '指出', '强调', '透露', '宣布',
+    ]
+
+    # 段落评分
+    scored_paragraphs = []
+    for i, para in enumerate(high_quality_paragraphs):
+        score = 0
+
+        # 开头和结尾段落加分
+        if i < 3:
+            score += 3
+        elif i >= len(high_quality_paragraphs) - 3:
+            score += 3
+
+        # 包含关键词加分
+        para_lower = para.lower()
+        for phrase in key_phrases:
+            if phrase in para_lower:
+                score += 2
+
+        # 段落长度适中加分
+        if 50 <= len(para) <= 300:
+            score += 1
+
+        scored_paragraphs.append((score, i, para))
+
+    # 选择高分段落（去重）
+    seen_paras = set()
+    unique_paragraphs = []
+    for para in high_quality_paragraphs:
+        if para not in seen_paras:
+            seen_paras.add(para)
+            unique_paragraphs.append(para)
+
+    # 重新评分去重后的段落
+    scored_paragraphs = []
+    for i, para in enumerate(unique_paragraphs):
+        score = 0
+
+        # 开头和结尾段落加分
+        if i < 3:
+            score += 3
+        elif i >= len(unique_paragraphs) - 3:
+            score += 3
+
+        # 包含关键词加分
+        para_lower = para.lower()
+        for phrase in key_phrases:
+            if phrase in para_lower:
+                score += 2
+
+        # 段落长度适中加分
+        if 50 <= len(para) <= 300:
+            score += 1
+
+        scored_paragraphs.append((score, i, para))
+
+    # 按分数排序选择前15个
+    scored_paragraphs.sort(reverse=True)
+    selected_paragraphs = [
+        para for score, i, para in scored_paragraphs[:15]
+    ]
+
+    # 组合并限制长度
+    compressed_text = '\n\n'.join(selected_paragraphs)
+
+    if len(compressed_text) > max_length:
+        compressed_text = compressed_text[:max_length]
+        last_period = compressed_text.rfind('。')
+        if last_period > max_length * 0.8:
+            compressed_text = compressed_text[:last_period + 1]
+
+    return compressed_text.strip()

@@ -49,12 +49,25 @@ def test_router_sends_special_platforms_to_agent_reach():
     assert agent.urls == ["https://x.com/example/status/1"]
 
 
-def test_router_sends_normal_http_to_web_fetcher():
+def test_router_sends_normal_http_to_agent_reach():
+    agent = RecordingFetcher("agent")
+    router = FetcherRouter(
+        fixture_fetcher=RecordingFetcher("fixture"),
+        web_fetcher=RecordingFetcher("web"),
+        agent_reach_fetcher=agent,
+    )
+
+    result = router.fetch("https://example.com/article")
+
+    assert result.source == "agent"
+    assert agent.urls == ["https://example.com/article"]
+
+
+def test_router_uses_web_fetcher_as_legacy_agent_reach_fallback():
     web = RecordingFetcher("web")
     router = FetcherRouter(
         fixture_fetcher=RecordingFetcher("fixture"),
         web_fetcher=web,
-        agent_reach_fetcher=RecordingFetcher("agent"),
     )
 
     result = router.fetch("https://example.com/article")

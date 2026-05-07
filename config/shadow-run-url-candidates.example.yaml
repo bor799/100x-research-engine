@@ -6,6 +6,7 @@
 version: 1
 active_prompt_bundle: primary_market_v1
 parallel_test_bundles:
+  - rimbo_source_scored_v3
   - v2_legacy
 
 defaults:

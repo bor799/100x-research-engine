@@ -7,10 +7,14 @@ errors expected by the worker/router.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+import re
 import shutil
 import subprocess
+import sys
+import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -57,7 +61,10 @@ class WebChannelAdapter(BaseChannelAdapter):
     def fetch(self, url: str, config: dict[str, Any]) -> dict[str, Any] | None:
         client = config.get("http_client")
         if not isinstance(client, HttpClient):
-            client = create_http_client(timeout=int(config.get("timeout", 30)))
+            client = create_http_client(
+                timeout=int(config.get("timeout", 30)),
+                proxy=_proxy_from_config(config) or None,
+            )
         response = client.get_via_jina(url)
         if isinstance(response, TypedError) or not response.is_success:
             return None
@@ -71,7 +78,11 @@ class WebChannelAdapter(BaseChannelAdapter):
     def check(self, config: dict[str, Any]) -> str:
         client = config.get("http_client")
         if not isinstance(client, HttpClient):
-            client = create_http_client(timeout=5, max_retries=1)
+            client = create_http_client(
+                timeout=5,
+                max_retries=1,
+                proxy=_proxy_from_config(config) or None,
+            )
         result = client.get_via_jina("https://example.com")
         if not isinstance(result, TypedError) and result.is_success:
             return "ok"
@@ -98,6 +109,16 @@ class TwitterChannelAdapter(BaseChannelAdapter):
         ct0 = config.get("twitter_ct0") or config.get("twitter", {}).get("ct0", "")
         if auth_token and ct0:
             cmd.extend(["--auth-token", str(auth_token), "--ct0", str(ct0)])
+        proxy = (
+            config.get("proxy")
+            or config.get("twitter_proxy")
+            or config.get("twitter", {}).get("proxy", "")
+            or os.environ.get("HTTPS_PROXY")
+            or os.environ.get("HTTP_PROXY")
+            or os.environ.get("ALL_PROXY")
+        )
+        if proxy:
+            cmd.extend(["--proxy", str(proxy)])
         try:
             completed = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
         except (OSError, subprocess.TimeoutExpired):
@@ -132,9 +153,20 @@ class TwitterChannelAdapter(BaseChannelAdapter):
         if auth_token and ct0:
             return "ok"
 
+        proxy = (
+            config.get("proxy")
+            or config.get("twitter_proxy")
+            or config.get("twitter", {}).get("proxy", "")
+            or os.environ.get("HTTPS_PROXY")
+            or os.environ.get("HTTP_PROXY")
+            or os.environ.get("ALL_PROXY")
+        )
+        cmd = [str(xreach), "auth", "check"]
+        if proxy:
+            cmd.extend(["--proxy", str(proxy)])
         try:
             completed = subprocess.run(
-                [str(xreach), "auth", "check"],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=15,
@@ -204,6 +236,8 @@ class YouTubeChannelAdapter(BaseChannelAdapter):
 
 
 class WechatChannelAdapter(BaseChannelAdapter):
+    default_tool_path = Path.home() / ".agent-reach" / "tools" / "wechat-article-for-ai"
+
     @property
     def name(self) -> str:
         return "wechat"
@@ -212,10 +246,143 @@ class WechatChannelAdapter(BaseChannelAdapter):
         return self._domain(url) == "mp.weixin.qq.com"
 
     def fetch(self, url: str, config: dict[str, Any]) -> dict[str, Any] | None:
-        return WebChannelAdapter().fetch(url, config)
+        tool_path = self._tool_path(config)
+        if tool_path.exists():
+            result = self._fetch_in_process(url, config, tool_path)
+            if result:
+                return result
+
+            result = self._fetch_subprocess(url, config, tool_path)
+            if result:
+                return result
+
+        fallback = WebChannelAdapter().fetch(url, config)
+        if not fallback:
+            return None
+        fallback["source"] = "agent-reach-wechat"
+        metadata = fallback.setdefault("metadata", {})
+        if isinstance(metadata, dict):
+            metadata["wechat_fallback"] = "jina"
+        return fallback
 
     def check(self, config: dict[str, Any]) -> str:
-        return "ok"
+        return "ok" if self._tool_path(config).exists() else "missing_config"
+
+    def _tool_path(self, config: dict[str, Any]) -> Path:
+        wechat_config = config.get("wechat", {})
+        if not isinstance(wechat_config, dict):
+            wechat_config = {}
+        raw_path = (
+            config.get("wechat_tool_path")
+            or wechat_config.get("tool_path")
+            or self.default_tool_path
+        )
+        return Path(os.path.expanduser(str(raw_path)))
+
+    def _fetch_in_process(self, url: str, config: dict[str, Any], tool_path: Path) -> dict[str, Any] | None:
+        if not (tool_path / "wechat_to_md").exists():
+            return None
+
+        tool_str = str(tool_path)
+        added = tool_str not in sys.path
+        if added:
+            sys.path.insert(0, tool_str)
+        previous_env = _apply_proxy_env(config)
+        try:
+            from bs4 import BeautifulSoup  # type: ignore[import-untyped]
+            from wechat_to_md.converter import build_markdown, convert_html_to_markdown  # type: ignore[import-not-found]
+            from wechat_to_md.parser import extract_metadata, process_content  # type: ignore[import-not-found]
+            from wechat_to_md.scraper import fetch_page_html  # type: ignore[import-not-found]
+
+            html = asyncio.run(fetch_page_html(url, headless=True))
+            soup = BeautifulSoup(html, "html.parser")
+            meta = extract_metadata(soup, html, url=url)
+            if not getattr(meta, "title", ""):
+                return None
+            parsed = process_content(soup)
+            if not getattr(parsed, "content_html", "").strip():
+                return None
+            markdown_body = convert_html_to_markdown(parsed.content_html, parsed.code_blocks)
+            final_markdown = build_markdown(
+                meta,
+                markdown_body,
+                parsed.media_references,
+                use_frontmatter=True,
+            )
+            if _is_wechat_verification_page(final_markdown):
+                return None
+            return {
+                "title": getattr(meta, "title", "") or url[:100],
+                "content": final_markdown,
+                "source": "agent-reach-wechat",
+                "author": getattr(meta, "author", "") or "Wechat",
+                "published_at": getattr(meta, "date", "") or "",
+                "metadata": {
+                    "agent_reach_tool": "wechat-article-for-ai",
+                    "agent_reach_tool_path": str(tool_path),
+                    "agent_reach_tool_mode": "in_process",
+                },
+            }
+        except Exception:
+            return None
+        finally:
+            _restore_proxy_env(previous_env)
+            if added and tool_str in sys.path:
+                sys.path.remove(tool_str)
+
+    def _fetch_subprocess(self, url: str, config: dict[str, Any], tool_path: Path) -> dict[str, Any] | None:
+        main_py = tool_path / "main.py"
+        if not main_py.exists():
+            return None
+
+        with tempfile.TemporaryDirectory(prefix="100x-wechat-") as temp_dir:
+            output_dir = Path(temp_dir)
+            cmd = [
+                sys.executable,
+                "main.py",
+                url,
+                "--no-images",
+                "--force",
+                "-o",
+                str(output_dir),
+            ]
+            try:
+                completed = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                    cwd=str(tool_path),
+                    env=_proxy_env(config),
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                return None
+            if completed.returncode != 0:
+                return None
+
+            markdown_files = sorted(
+                output_dir.glob("**/*.md"),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+            if not markdown_files:
+                return None
+            markdown_path = markdown_files[0]
+            content = markdown_path.read_text(encoding="utf-8")
+            if not content.strip() or _is_wechat_verification_page(content):
+                return None
+            return {
+                "title": _title_from_wechat_markdown(content) or markdown_path.stem,
+                "content": content,
+                "source": "agent-reach-wechat",
+                "author": "Wechat",
+                "metadata": {
+                    "agent_reach_tool": "wechat-article-for-ai",
+                    "agent_reach_tool_path": str(tool_path),
+                    "agent_reach_tool_mode": "subprocess",
+                },
+            }
 
 
 class XiaoyuzhouChannelAdapter(BaseChannelAdapter):
@@ -263,11 +430,12 @@ class AgentReachFetcher:
         self.enabled_channels = enabled_channels
         self.silent = silent
         self.base_proxy = proxy
-        self.http_client = http_client or create_http_client()
         self.ar_config = self._load_ar_config()
+        effective_proxy = proxy or _proxy_from_config(self.ar_config)
+        self.http_client = http_client or create_http_client(proxy=effective_proxy or None)
         self.ar_config.setdefault("http_client", self.http_client)
-        if proxy:
-            self.ar_config["proxy"] = proxy
+        if effective_proxy:
+            self.ar_config["proxy"] = effective_proxy
         self.channels = self._load_channels()
 
     def _load_ar_config(self) -> dict[str, Any]:
@@ -297,10 +465,9 @@ class AgentReachFetcher:
             matched.append(WebChannelAdapter())
 
         for channel in matched:
-            if channel.name == "web" and not self._should_use_web(url, matched):
-                continue
             result = channel.fetch(url, self.ar_config)
-            if result and str(result.get("content", "")).strip():
+            content = str(result.get("content", "")).strip() if result else ""
+            if content and not _is_thin_channel_result(channel.name, content):
                 return self._to_fetched_content(result, url, channel.name)
 
         return TypedError(
@@ -348,11 +515,6 @@ class AgentReachFetcher:
             metadata=metadata,
         )
 
-    @staticmethod
-    def _should_use_web(url: str, matched: list[BaseChannelAdapter]) -> bool:
-        return not any(channel.name != "web" for channel in matched)
-
-
 def _normalize_url(url: str) -> str:
     url = url.strip()
     if not url.startswith(("http://", "https://")):
@@ -362,6 +524,58 @@ def _normalize_url(url: str) -> str:
 
 def _source_from_url(url: str) -> str:
     return urlparse(url).netloc.lower().removeprefix("www.")
+
+
+def _proxy_from_config(config: dict[str, Any]) -> str:
+    proxy = config.get("proxy")
+    if isinstance(proxy, dict):
+        return str(proxy.get("https") or proxy.get("http") or "")
+    return str(proxy or "")
+
+
+def _proxy_env(config: dict[str, Any]) -> dict[str, str]:
+    env = os.environ.copy()
+    proxy = _proxy_from_config(config)
+    if proxy:
+        env["HTTPS_PROXY"] = proxy
+        env["HTTP_PROXY"] = proxy
+        env["ALL_PROXY"] = proxy
+        env["https_proxy"] = proxy
+        env["http_proxy"] = proxy
+        env["all_proxy"] = proxy
+    return env
+
+
+def _apply_proxy_env(config: dict[str, Any]) -> dict[str, str | None]:
+    keys = ("HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY", "https_proxy", "http_proxy", "all_proxy")
+    previous = {key: os.environ.get(key) for key in keys}
+    proxy = _proxy_from_config(config)
+    if proxy:
+        for key in keys:
+            os.environ[key] = proxy
+    return previous
+
+
+def _restore_proxy_env(previous: dict[str, str | None]) -> None:
+    for key, value in previous.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
+
+
+def _title_from_wechat_markdown(content: str) -> str:
+    for line in content.splitlines()[:20]:
+        if line.lower().startswith("title:"):
+            return line.split(":", 1)[1].strip().strip("'\"")
+    return ""
+
+
+def _is_wechat_verification_page(content: str) -> bool:
+    if "环境异常" in content or "验证后即可继续访问" in content:
+        return True
+    header = content[:4000].lower()
+    return "captcha" in header or "verification page" in header
 
 
 def _title_from_jina(content: str) -> str:
@@ -376,6 +590,14 @@ def _body_from_jina(content: str) -> str:
     if marker in content:
         return content.split(marker, 1)[1].strip()
     return content.strip()
+
+
+def _is_thin_channel_result(channel_name: str, content: str) -> bool:
+    if channel_name != "twitter":
+        return False
+    if re.fullmatch(r"https?://t\.co/\S+", content.strip()):
+        return True
+    return len(content.strip()) < 80 and "t.co/" in content
 
 
 def fetch(url: str, config_path: str | None = None) -> FetchedContent | TypedError:

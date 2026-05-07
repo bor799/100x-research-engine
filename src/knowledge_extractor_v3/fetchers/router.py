@@ -1,13 +1,12 @@
 """Fetcher router for V3 worker tasks.
 
 Supports:
-- URL fetching (via multi-channel adapters)
-- Web search (via Exa API/MCP)
+- URL fetching through Agent Reach multi-channel adapters
+- Web search via Exa API/MCP
 """
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
 from typing import Any
 
 from ..models import FetchedContent, TypedError
@@ -15,23 +14,6 @@ from .base import Fetcher
 from .fixture import FixtureFetcher
 from .multi_channel import AgentReachFetcher
 from .search import SearchChannelAdapter, create_search_adapter
-from .web import WebPageFetcher
-
-
-SPECIAL_DOMAINS = (
-    "x.com",
-    "twitter.com",
-    "mobile.x.com",
-    "mobile.twitter.com",
-    "youtube.com",
-    "youtu.be",
-    "m.youtube.com",
-    "mp.weixin.qq.com",
-    "xiaoyuzhoufm.com",
-    "reddit.com",
-    "v2ex.com",
-    "news.ycombinator.com",
-)
 
 
 class FetcherRouter:
@@ -49,17 +31,15 @@ class FetcherRouter:
         search_adapter: SearchChannelAdapter | None = None,
     ) -> None:
         self.fixture_fetcher = fixture_fetcher or FixtureFetcher()
-        self.web_fetcher = web_fetcher or WebPageFetcher()
-        self.agent_reach_fetcher = agent_reach_fetcher or AgentReachFetcher()
+        self.web_fetcher = web_fetcher
+        self.agent_reach_fetcher = agent_reach_fetcher or web_fetcher or AgentReachFetcher()
         self.search_adapter = search_adapter or create_search_adapter()
 
     def fetch(self, url: str) -> FetchedContent | TypedError:
         """Fetch content from a URL."""
         if url.startswith("fixture://"):
             return self.fixture_fetcher.fetch(url)
-        if self._is_special_platform(url):
-            return self.agent_reach_fetcher.fetch(url)
-        return self.web_fetcher.fetch(url)
+        return self.agent_reach_fetcher.fetch(url)
 
     def search(
         self,
@@ -115,9 +95,3 @@ class FetcherRouter:
                 fetched.append(content)
 
         return fetched
-
-    @staticmethod
-    def _is_special_platform(url: str) -> bool:
-        parsed = urlparse(url if "://" in url else f"https://{url}")
-        host = parsed.netloc.lower().removeprefix("www.")
-        return any(host == domain or host.endswith(f".{domain}") for domain in SPECIAL_DOMAINS)
