@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -25,6 +26,15 @@ from ..queue_store import FailureKind, NextAction
 from .http_client import HttpClient, create_http_client
 from .rss_channel import RSSChannelAdapter
 from .social import RedditChannelAdapter, V2EXChannelAdapter, HackerNewsChannelAdapter
+
+
+@dataclass(frozen=True)
+class WechatConfig:
+    """WeChat fetcher configuration passed from V3Config."""
+    headless_first: bool = True
+    interactive_on_blocked: bool = True
+    profile_dir: str = "~/.100x_v3/browser-profiles/wechat"
+    verification_timeout_seconds: int = 300
 
 
 class BaseChannelAdapter(ABC):
@@ -65,15 +75,29 @@ class WebChannelAdapter(BaseChannelAdapter):
                 timeout=int(config.get("timeout", 30)),
                 proxy=_proxy_from_config(config) or None,
             )
+        # Strategy 1: Jina Reader (produces clean markdown, best for LLM)
         response = client.get_via_jina(url)
-        if isinstance(response, TypedError) or not response.is_success:
-            return None
-        return {
-            "title": _title_from_jina(response.content) or url[:100],
-            "content": _body_from_jina(response.content),
-            "source": "agent-reach-web",
-            "metadata": {"via_jina": True},
-        }
+        if not isinstance(response, TypedError) and response.is_success:
+            body = _body_from_jina(response.content)
+            if len(body.strip()) > 100:
+                return {
+                    "title": _title_from_jina(response.content) or url[:100],
+                    "content": body,
+                    "source": "agent-reach-web",
+                    "metadata": {"via_jina": True},
+                }
+        # Strategy 2: Direct HTTP GET (fallback — raw HTML, lower quality)
+        response = client.get(url)
+        if not isinstance(response, TypedError) and response.is_success:
+            content = response.content
+            if len(content.strip()) > 200:
+                return {
+                    "title": _title_from_html(content) or url[:100],
+                    "content": _body_from_html(content),
+                    "source": "agent-reach-web",
+                    "metadata": {"via": "direct"},
+                }
+        return None
 
     def check(self, config: dict[str, Any]) -> str:
         client = config.get("http_client")
@@ -237,6 +261,7 @@ class YouTubeChannelAdapter(BaseChannelAdapter):
 
 class WechatChannelAdapter(BaseChannelAdapter):
     default_tool_path = Path.home() / ".agent-reach" / "tools" / "wechat-article-for-ai"
+    default_profile_dir = Path.home() / ".100x_v3" / "browser-profiles" / "wechat"
 
     @property
     def name(self) -> str:
@@ -247,15 +272,36 @@ class WechatChannelAdapter(BaseChannelAdapter):
 
     def fetch(self, url: str, config: dict[str, Any]) -> dict[str, Any] | None:
         tool_path = self._tool_path(config)
-        if tool_path.exists():
-            result = self._fetch_in_process(url, config, tool_path)
-            if result:
-                return result
+        wechat_cfg = config.get("wechat", {})
+        if not isinstance(wechat_cfg, dict):
+            wechat_cfg = {}
 
-            result = self._fetch_subprocess(url, config, tool_path)
-            if result:
-                return result
+        # Strategy 1: Try headless mode first if configured
+        if wechat_cfg.get("headless_first", True):
+            if tool_path.exists():
+                result = self._fetch_in_process(url, config, tool_path, headless=True)
+                if result and not self._is_verification_result(result):
+                    return result
 
+                result = self._fetch_subprocess(url, config, tool_path, headless=True)
+                if result and not self._is_verification_result(result):
+                    return result
+
+        # Strategy 2: Try visible browser with profile if interactive_on_blocked
+        if wechat_cfg.get("interactive_on_blocked", True):
+            if tool_path.exists():
+                profile_dir = self._profile_dir(config)
+                profile_dir.mkdir(parents=True, exist_ok=True)
+
+                result = self._fetch_in_process(url, config, tool_path, headless=False, profile_dir=profile_dir)
+                if result and not self._is_verification_result(result):
+                    return result
+
+                result = self._fetch_subprocess(url, config, tool_path, headless=False, profile_dir=profile_dir)
+                if result and not self._is_verification_result(result):
+                    return result
+
+        # Strategy 3: Fallback to Jina
         fallback = WebChannelAdapter().fetch(url, config)
         if not fallback:
             return None
@@ -279,7 +325,31 @@ class WechatChannelAdapter(BaseChannelAdapter):
         )
         return Path(os.path.expanduser(str(raw_path)))
 
-    def _fetch_in_process(self, url: str, config: dict[str, Any], tool_path: Path) -> dict[str, Any] | None:
+    def _profile_dir(self, config: dict[str, Any]) -> Path:
+        wechat_config = config.get("wechat", {})
+        if not isinstance(wechat_config, dict):
+            wechat_config = {}
+        raw_path = wechat_config.get("profile_dir") or config.get("wechat_profile_dir")
+        if raw_path:
+            return Path(os.path.expanduser(str(raw_path)))
+        return self.default_profile_dir
+
+    @staticmethod
+    def _is_verification_result(result: dict[str, Any] | None) -> bool:
+        if not result:
+            return False
+        content = str(result.get("content", ""))
+        return _is_wechat_verification_page(content)
+
+    def _fetch_in_process(
+        self,
+        url: str,
+        config: dict[str, Any],
+        tool_path: Path,
+        *,
+        headless: bool = True,
+        profile_dir: Path | None = None,
+    ) -> dict[str, Any] | None:
         if not (tool_path / "wechat_to_md").exists():
             return None
 
@@ -294,7 +364,11 @@ class WechatChannelAdapter(BaseChannelAdapter):
             from wechat_to_md.parser import extract_metadata, process_content  # type: ignore[import-not-found]
             from wechat_to_md.scraper import fetch_page_html  # type: ignore[import-not-found]
 
-            html = asyncio.run(fetch_page_html(url, headless=True))
+            # Pass headless to the scraper
+            html = asyncio.run(fetch_page_html(
+                url,
+                headless=headless,
+            ))
             soup = BeautifulSoup(html, "html.parser")
             meta = extract_metadata(soup, html, url=url)
             if not getattr(meta, "title", ""):
@@ -321,6 +395,8 @@ class WechatChannelAdapter(BaseChannelAdapter):
                     "agent_reach_tool": "wechat-article-for-ai",
                     "agent_reach_tool_path": str(tool_path),
                     "agent_reach_tool_mode": "in_process",
+                    "headless": headless,
+                    "interactive_mode": not headless,
                 },
             }
         except Exception:
@@ -330,7 +406,15 @@ class WechatChannelAdapter(BaseChannelAdapter):
             if added and tool_str in sys.path:
                 sys.path.remove(tool_str)
 
-    def _fetch_subprocess(self, url: str, config: dict[str, Any], tool_path: Path) -> dict[str, Any] | None:
+    def _fetch_subprocess(
+        self,
+        url: str,
+        config: dict[str, Any],
+        tool_path: Path,
+        *,
+        headless: bool = True,
+        profile_dir: Path | None = None,
+    ) -> dict[str, Any] | None:
         main_py = tool_path / "main.py"
         if not main_py.exists():
             return None
@@ -346,12 +430,21 @@ class WechatChannelAdapter(BaseChannelAdapter):
                 "-o",
                 str(output_dir),
             ]
+            # Add headless and profile options if supported
+            if not headless:
+                cmd.append("--visible")
+            if profile_dir:
+                cmd.extend(["--profile", str(profile_dir)])
+
+            wechat_cfg = config.get("wechat", {})
+            timeout = wechat_cfg.get("verification_timeout_seconds", 120)
+
             try:
                 completed = subprocess.run(
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=timeout,
                     check=False,
                     cwd=str(tool_path),
                     env=_proxy_env(config),
@@ -381,6 +474,8 @@ class WechatChannelAdapter(BaseChannelAdapter):
                     "agent_reach_tool": "wechat-article-for-ai",
                     "agent_reach_tool_path": str(tool_path),
                     "agent_reach_tool_mode": "subprocess",
+                    "headless": headless,
+                    "interactive_mode": not headless,
                 },
             }
 
@@ -416,6 +511,8 @@ DEFAULT_CHANNELS = [
 class AgentReachFetcher:
     """V3 multi-channel fetcher with V3 typed errors."""
 
+    _SHARED_PROXY_FILE = Path.home() / ".100x_v3" / "network_state.json"
+
     def __init__(
         self,
         config_path: str | None = None,
@@ -424,18 +521,28 @@ class AgentReachFetcher:
         proxy: str | None = None,
         silent: bool = False,
         http_client: HttpClient | None = None,
+        wechat_config: WechatConfig | None = None,
     ) -> None:
         self.config_path = Path(os.path.expanduser(config_path)) if config_path else Path.home() / ".agent-reach" / "config.yaml"
         self.fallback_to_jina = fallback_to_jina
         self.enabled_channels = enabled_channels
         self.silent = silent
         self.base_proxy = proxy
+        self._last_working_proxy: Any = None
         self.ar_config = self._load_ar_config()
         effective_proxy = proxy or _proxy_from_config(self.ar_config)
         self.http_client = http_client or create_http_client(proxy=effective_proxy or None)
         self.ar_config.setdefault("http_client", self.http_client)
         if effective_proxy:
             self.ar_config["proxy"] = effective_proxy
+        # Merge wechat_config into ar_config if provided
+        if wechat_config is not None:
+            self.ar_config.setdefault("wechat", {}).update({
+                "headless_first": wechat_config.headless_first,
+                "interactive_on_blocked": wechat_config.interactive_on_blocked,
+                "profile_dir": wechat_config.profile_dir,
+                "verification_timeout_seconds": wechat_config.verification_timeout_seconds,
+            })
         self.channels = self._load_channels()
 
     def _load_ar_config(self) -> dict[str, Any]:
@@ -464,11 +571,42 @@ class AgentReachFetcher:
         if self.fallback_to_jina and not any(channel.name == "web" for channel in matched):
             matched.append(WebChannelAdapter())
 
+        proxy_candidates = self._get_proxy_candidates()
+
         for channel in matched:
-            result = channel.fetch(url, self.ar_config)
-            content = str(result.get("content", "")).strip() if result else ""
-            if content and not _is_thin_channel_result(channel.name, content):
-                return self._to_fetched_content(result, url, channel.name)
+            last_error: Exception | None = None
+            for p_mode in proxy_candidates:
+                # Set proxy on ar_config for this attempt
+                self.ar_config["proxy"] = p_mode
+                try:
+                    result = channel.fetch(url, self.ar_config)
+                    content = str(result.get("content", "")).strip() if result else ""
+                    if channel.name == "wechat" and content and _is_wechat_verification_page(content):
+                        return TypedError(
+                            failure_kind=FailureKind.CONTENT_BLOCKED,
+                            message="Wechat article requires verification before content can be fetched",
+                            stage="fetch",
+                            retryable=False,
+                            next_action=NextAction.MANUAL_REVIEW,
+                            detail=f"url={url}",
+                        )
+                    if content and not _is_thin_channel_result(channel.name, content):
+                        # Success — remember the working proxy
+                        if p_mode != self._last_working_proxy:
+                            self._last_working_proxy = p_mode
+                            self._save_shared_proxy(p_mode)
+                        return self._to_fetched_content(result, url, channel.name)
+                except Exception as e:
+                    last_error = e
+                    # If shared proxy failed, invalidate it
+                    shared = self._load_shared_proxy()
+                    if shared == p_mode:
+                        self._save_shared_proxy(None)
+                    continue
+
+            if not self.silent and last_error:
+                p_str = p_mode.get("https") if isinstance(p_mode, dict) else (p_mode or "Direct/TUN")
+                print(f"  ⚠️  Channel {channel.name} failed (all proxy modes) | last: {last_error}")
 
         return TypedError(
             failure_kind=FailureKind.FETCH_FAILED,
@@ -478,6 +616,63 @@ class AgentReachFetcher:
             next_action=NextAction.RETRY_LATER,
             detail=f"url={url}",
         )
+
+    # -- Proxy auto-detection (ported from V2) --
+
+    def _get_proxy_candidates(self) -> list[Any]:
+        """Build ordered list of proxy modes to try."""
+        candidates: list[Any] = []
+
+        # 1. Shared memory (cross-session / cross-process)
+        shared = self._load_shared_proxy()
+        if shared:
+            candidates.append(shared)
+        if self._last_working_proxy and self._last_working_proxy != shared:
+            candidates.append(self._last_working_proxy)
+
+        # 2. Explicit proxy from config or env
+        p = self.base_proxy or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+        if p:
+            if not p.startswith("http"):
+                p = f"http://{p}"
+            mode = {"http": p, "https": p}
+            if mode not in candidates:
+                candidates.append(mode)
+
+        # 3. Direct / TUN (no proxy)
+        if None not in candidates:
+            candidates.append(None)
+
+        # 4. Common local proxy ports
+        for port in ["7890", "7897", "1080", "1087"]:
+            hp = f"http://127.0.0.1:{port}"
+            mode = {"http": hp, "https": hp}
+            if mode not in candidates:
+                candidates.append(mode)
+
+        return candidates
+
+    def _load_shared_proxy(self) -> Any:
+        path = self._SHARED_PROXY_FILE
+        if not path.exists():
+            return None
+        try:
+            import time as _time
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if _time.time() - data.get("timestamp", 0) > 3600:
+                return None
+            return data.get("proxy")
+        except Exception:
+            return None
+
+    def _save_shared_proxy(self, proxy: Any) -> None:
+        path = self._SHARED_PROXY_FILE
+        try:
+            import time as _time
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"proxy": proxy, "timestamp": _time.time()}))
+        except Exception:
+            pass
 
     def health_check(self) -> dict[str, str]:
         return {channel.name: channel.check(self.ar_config) for channel in self.channels}
@@ -583,6 +778,17 @@ def _title_from_jina(content: str) -> str:
         if line.startswith("Title: "):
             return line.removeprefix("Title: ").strip()
     return ""
+
+
+def _title_from_html(html: str) -> str:
+    m = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    return m.group(1).strip() if m else ""
+
+
+def _body_from_html(html: str) -> str:
+    m = re.search(r"<body[^>]*>(.*)</body>", html, re.IGNORECASE | re.DOTALL)
+    raw = m.group(1) if m else html
+    return re.sub(r"<[^>]+>", " ", raw).strip()
 
 
 def _body_from_jina(content: str) -> str:

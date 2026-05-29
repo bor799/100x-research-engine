@@ -6,6 +6,8 @@ from knowledge_extractor_v3.fetchers.multi_channel import (
     WechatChannelAdapter,
     YouTubeChannelAdapter,
 )
+from knowledge_extractor_v3.models import TypedError
+from knowledge_extractor_v3.queue_store import FailureKind
 
 
 def _write_executable(path: Path, content: str) -> Path:
@@ -217,3 +219,30 @@ def test_agent_reach_skips_tco_only_twitter_result_for_fallback(tmp_path):
 
     assert result.source == "agent-reach-web"
     assert result.text == "Fallback content from Jina"
+
+
+class VerificationWechatChannel:
+    name = "wechat"
+
+    def can_handle(self, url: str) -> bool:
+        return "mp.weixin.qq.com" in url
+
+    def fetch(self, url: str, config: dict):
+        return {
+            "title": "Weixin Official Accounts Platform",
+            "content": "## 环境异常\n\n当前环境异常，完成验证后即可继续访问。\n\n去验证",
+            "source": "agent-reach-wechat",
+        }
+
+    def check(self, config: dict) -> str:
+        return "ok"
+
+
+def test_agent_reach_reports_wechat_verification_as_content_blocked(tmp_path):
+    fetcher = AgentReachFetcher(config_path=str(tmp_path / "missing.yaml"), fallback_to_jina=False)
+    fetcher.channels = [VerificationWechatChannel()]  # type: ignore[list-item]
+
+    result = fetcher.fetch("https://mp.weixin.qq.com/s/example")
+
+    assert isinstance(result, TypedError)
+    assert result.failure_kind is FailureKind.CONTENT_BLOCKED

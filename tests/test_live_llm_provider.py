@@ -105,6 +105,33 @@ def test_live_provider_score_success():
     assert result.startswith('{"score"')
     assert len(http.calls) == 1
     assert http.calls[0]["url"] == "https://api.openai.com/v1/chat/completions"
+    request_payload = json.loads(http.calls[0]["data"].decode("utf-8"))
+    request_text = request_payload["messages"][0]["content"]
+    assert "CONTENT_METADATA_JSON" in request_text
+    assert "SOURCE_TEXT" in request_text
+
+
+def test_live_provider_zhipu_appends_chat_completions_to_configured_api_base():
+    """Zhipu request appends chat/completions to the configured API base."""
+    http = FakeHTTPPost()
+    http.response_body = _success_response('{"score": 8, "final_score": 0.8, "signal_tier": "A"}')
+
+    config = LiveLLMConfig(
+        provider="zhipu",
+        api_key="direct-key",
+        api_base="https://open.bigmodel.cn/api/coding/paas/v4",
+        scoring_model="GLM-4.5",
+        temperature=0.1,
+    )
+    provider = LiveLLMProvider(config, env={}, http_post=http)
+
+    result = provider.score(make_test_content(), "Score this article")
+
+    assert isinstance(result, str)
+    assert http.calls[0]["url"] == "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions"
+    request_payload = json.loads(http.calls[0]["data"].decode("utf-8"))
+    assert request_payload["model"] == "GLM-4.5"
+    assert request_payload["temperature"] == 0.1
 
 
 def test_live_provider_extract_success():
@@ -136,7 +163,7 @@ def test_live_provider_extract_success():
 
 
 def test_live_provider_format_telegram():
-    """Telegram formatting uses local logic, not LLM."""
+    """Telegram formatting uses local Chinese fallback when no telegram model is configured."""
     http = FakeHTTPPost()
 
     config = LiveLLMConfig(provider="openai")
@@ -172,12 +199,48 @@ def test_live_provider_format_telegram():
     result = provider.format_telegram(score, extraction, "ignored prompt")
 
     assert isinstance(result, str)
-    assert "[A] Test Article" in result
-    assert "Score: 0.85 / 8.5" in result
+    assert "🎯 Test Article" in result
+    assert "📡 2. 信号萃取" in result
     assert "A test signal" in result
-    assert "E1: A concrete claim" in result
+    assert "A concrete claim" in result
     # No HTTP call should be made
     assert len(http.calls) == 0
+
+
+def test_live_provider_format_telegram_uses_prompt_model_when_configured():
+    """Telegram formatting can use the configured V2 stable prompt model."""
+    http = FakeHTTPPost()
+    http.response_body = _success_response("TG READY")
+
+    config = LiveLLMConfig(provider="openai", telegram_model="gpt-4o-mini")
+    provider = LiveLLMProvider(config, env={"ZHIPU_API_KEY": "test-key"}, http_post=http)
+
+    from types import SimpleNamespace
+    score = SimpleNamespace(
+        score=8.5,
+        final_score=0.85,
+        signal_tier="A",
+        decision_window_status="open",
+        source_type="SocialPost",
+        source_tier="Primary",
+        interest_flag="Independent",
+        attribution_chain="tweet -> evidence -> signal",
+        parsed={"url": "https://example.com/article"},
+    )
+    extraction = SimpleNamespace(
+        title="Test Article",
+        one_line_signal="A test signal about something",
+        parsed={"recommended_actions": ["Follow up"]},
+    )
+
+    result = provider.format_telegram(score, extraction, "Format for Telegram", content=make_test_content())
+
+    assert result == "TG READY"
+    assert len(http.calls) == 1
+    request_payload = json.loads(http.calls[0]["data"].decode("utf-8"))
+    request_text = request_payload["messages"][0]["content"]
+    assert "Format for Telegram" in request_text
+    assert "TELEGRAM_INPUT_JSON" in request_text
 
 
 def test_live_provider_missing_api_key():
@@ -246,7 +309,11 @@ def test_map_http_error_client():
 
 
 def test_live_provider_http_error_returns_typed_error():
-    """HTTP error from provider returns TypedError with correct mapping."""
+    """HTTP error from provider returns TypedError with correct mapping.
+
+    NOTE: After implementing immediate fallback on 429, when all providers fail
+    we return LLM_QUOTA_EXHAUSTED (not LLM_RATE_LIMIT) to trigger cooldown.
+    """
     http = FakeHTTPPost()
     http.response_status = 429
     http.response_body = "Rate limit exceeded"
@@ -259,7 +326,8 @@ def test_live_provider_http_error_returns_typed_error():
 
     from knowledge_extractor_v3.models import TypedError
     assert isinstance(result, TypedError)
-    assert result.failure_kind == FailureKind.LLM_RATE_LIMIT
+    # All providers failed -> quota exhausted (triggers cooldown)
+    assert result.failure_kind == FailureKind.LLM_QUOTA_EXHAUSTED
     assert result.stage == "score"
     assert result.retryable is True
     assert result.next_action == NextAction.RETRY_LATER
@@ -325,16 +393,34 @@ def test_live_provider_empty_response():
 
 
 def test_live_provider_model_route_property():
-    """model_route reflects configured provider."""
+    """model_route reflects configured provider with stable route key.
+
+    The new format includes provider index, name, api_key_env, and model
+    for proper circuit breaker isolation per provider configuration.
+    """
     config = LiveLLMConfig(provider="zhipu")
     provider = LiveLLMProvider(config)
 
-    assert provider.model_route == "live://zhipu"
+    # Format: live://<index>:<provider>:<api_key_env>:<model>
+    assert provider.model_route.startswith("live://0:zhipu:ZHIPU_API_KEY:")
 
     config = LiveLLMConfig(provider="anthropic")
     provider = LiveLLMProvider(config)
 
-    assert provider.model_route == "live://anthropic"
+    assert provider.model_route.startswith("live://0:anthropic:ZHIPU_API_KEY:")
+
+    # Test with fallback providers
+    config = LiveLLMConfig(
+        provider="zhipu",
+        fallback_providers=[
+            {"provider": "openai", "api_key_env": "OPENAI_API_KEY"},
+        ],
+    )
+    provider = LiveLLMProvider(config)
+
+    # Should contain both providers in route
+    assert "0:zhipu:ZHIPU_API_KEY:" in provider.model_route
+    assert "1:openai:OPENAI_API_KEY:" in provider.model_route
 
 
 def test_live_provider_non_json_response():
@@ -360,13 +446,17 @@ def test_create_live_provider_helper():
     llm_config = LLMConfig(
         provider="zhipu",
         api_key_env="TEST_KEY",
+        api_base="https://open.bigmodel.cn/api/coding/paas/v4",
         scoring_model="test-model",
     )
 
     provider = create_live_provider(llm_config, env={"TEST_KEY": "secret"})
 
-    assert provider.model_route == "live://zhipu"
+    # Check model_route format includes index, provider, key env, and model
+    assert provider.model_route.startswith("live://0:zhipu:TEST_KEY:test-model")
     assert provider._config.scoring_model == "test-model"
+    assert provider._config.api_base == "https://open.bigmodel.cn/api/coding/paas/v4"
+    assert provider._config.telegram_model == ""
 
 
 if __name__ == "__main__":
@@ -374,8 +464,10 @@ if __name__ == "__main__":
 
     tests = [
         test_live_provider_score_success,
+        test_live_provider_zhipu_appends_chat_completions_to_configured_api_base,
         test_live_provider_extract_success,
         test_live_provider_format_telegram,
+        test_live_provider_format_telegram_uses_prompt_model_when_configured,
         test_live_provider_missing_api_key,
         test_map_http_error_rate_limit,
         test_map_http_error_timeout,

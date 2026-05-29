@@ -2,6 +2,7 @@
 
 import json
 import os
+import pytest
 import signal
 import sys
 import tempfile
@@ -9,7 +10,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
+PROJECT_ROOT = Path(__file__).parents[1]
+
 from knowledge_extractor_v3.worker import (
+    LiveModeUnavailable,
     QueueWorker,
     WorkerConfig,
     WorkerRunResult,
@@ -22,12 +26,23 @@ from knowledge_extractor_v3.config_loader import (
     V3Config,
     LiveConfig,
     RuntimeConfig,
+    ScoreGateConfig,
     WorkerConfig as V3WorkerConfig,
 )
 from knowledge_extractor_v3.models import RuntimeMode
 from knowledge_extractor_v3.fetchers.fixture import FixtureFetcher
 from knowledge_extractor_v3.fetchers.multi_channel import AgentReachFetcher
 from knowledge_extractor_v3.fetchers.router import FetcherRouter
+from knowledge_extractor_v3.prompt_registry import PromptRegistry
+
+
+class CapturingReplyClient:
+    def __init__(self) -> None:
+        self.messages: list[dict[str, str]] = []
+
+    def deliver(self, content, text: str, *, chat_id: str | None = None):
+        self.messages.append({"chat_id": chat_id or "", "text": text})
+        return "sent", text[:80]
 
 
 def make_test_config(state_root: Path) -> V3Config:
@@ -180,6 +195,133 @@ def test_worker_run_once_successful_task():
         assert updated.output_path != ""
 
 
+def test_worker_force_extracts_score_reject_when_score_gate_disabled():
+    """Worker must pass score_gate.enabled=false through to Pipeline."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_root = Path(tmpdir)
+        config = make_test_config(state_root)
+        config = V3Config(
+            runtime=config.runtime,
+            live=config.live,
+            worker=config.worker,
+            agent_reach=config.agent_reach,
+            score_gate=ScoreGateConfig(enabled=False),
+        )
+        queue_store = QueueStore(state_root / "queue.db")
+        task = queue_store.enqueue("fixture://low_quality", source="test")
+
+        worker = QueueWorker(
+            config=config,
+            queue_store=queue_store,
+            fetcher=FixtureFetcher(),
+            worker_config=WorkerConfig(batch_size=10),
+        )
+
+        result = worker.run_once()
+
+        assert result.tasks_processed == 1
+        assert result.tasks_succeeded == 1
+        updated = queue_store.get_task(task.id)
+        assert updated.status == QueueStatus.DONE
+        assert updated.output_path
+        assert Path(updated.output_path).exists()
+
+
+def test_worker_notifies_telegram_reply_chat_on_terminal_failure():
+    """Manual Telegram tasks receive a closing failure message."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_root = Path(tmpdir)
+        config = make_test_config(state_root)
+        queue_store = QueueStore(state_root / "queue.db")
+        queue_store.enqueue(
+            "fixture://fetch_failed",
+            source="telegram_bot",
+            priority=10,
+            reply_channel="telegram",
+            reply_chat_id="chat-123",
+        )
+        reply_client = CapturingReplyClient()
+
+        worker = QueueWorker(
+            config=config,
+            queue_store=queue_store,
+            fetcher=FixtureFetcher(),
+            reply_telegram_client=reply_client,
+        )
+
+        result = worker.run_once()
+
+        assert result.tasks_failed == 1
+        assert len(reply_client.messages) == 1
+        assert reply_client.messages[0]["chat_id"] == "chat-123"
+        assert "Failed (ID:" in reply_client.messages[0]["text"]
+        assert "Fixture fetch failed" in reply_client.messages[0]["text"]
+
+
+def test_worker_live_mode_does_not_silently_fall_back_to_staging():
+    """A requested live worker should fail loudly when the live gate is closed."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_root = Path(tmpdir)
+        config = make_test_config(state_root)
+        queue_store = QueueStore(state_root / "queue.db")
+        queue_store.enqueue("fixture://high_signal", source="test")
+        worker = QueueWorker(
+            config=config,
+            queue_store=queue_store,
+            fetcher=FixtureFetcher(),
+            worker_config=WorkerConfig(mode=RuntimeMode.LIVE),
+        )
+
+        with pytest.raises(LiveModeUnavailable):
+            worker.run_once()
+
+
+def test_worker_live_gate_loader_is_loaded_before_check(tmp_path, monkeypatch):
+    """Regression: worker-created ConfigLoader must know config.local.yaml was used."""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "config.local.yaml").write_text(
+        "runtime:\n  queue_db_path: \"queue.db\"\n",
+        encoding="utf-8",
+    )
+
+    class InspectingGate:
+        def __init__(self, config, *, config_loader, runtime_guard):
+            assert config_loader.using_local_config is True
+
+        def check(self):
+            class Result:
+                passed = False
+                rejection_reasons = ["expected test rejection"]
+
+            return Result()
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("knowledge_extractor_v3.worker.LiveGate", InspectingGate)
+    monkeypatch.setattr("knowledge_extractor_v3.worker.RuntimeGuard.from_env", lambda project_root: object())
+
+    config = V3Config(
+        runtime=RuntimeConfig(
+            state_root=str(tmp_path),
+            queue_db_path=str(tmp_path / "queue.db"),
+        ),
+        live=LiveConfig(enabled=True),
+        worker=V3WorkerConfig(batch_size=1),
+    )
+    queue_store = QueueStore(tmp_path / "queue.db")
+    queue_store.enqueue("fixture://high_signal", source="test")
+    worker = QueueWorker(
+        config=config,
+        queue_store=queue_store,
+        fetcher=FixtureFetcher(),
+        prompt_registry=PromptRegistry.default(PROJECT_ROOT),
+        worker_config=WorkerConfig(mode=RuntimeMode.LIVE),
+    )
+
+    with pytest.raises(LiveModeUnavailable, match="expected test rejection"):
+        worker.run_once()
+
+
 def test_worker_run_once_respects_batch_size():
     """Worker respects batch_size limit."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -232,6 +374,32 @@ def test_worker_stops_after_max_consecutive_failures():
         assert result.consecutive_failures >= 3
         assert result.tasks_processed >= 3
         assert result.should_stop is True
+
+
+def test_worker_stops_batch_on_llm_rate_limit():
+    """Rate limits should pause the worker before burning through the queue."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_root = Path(tmpdir)
+        config = make_test_config(state_root)
+        queue_store = QueueStore(state_root / "queue.db")
+
+        queue_store.enqueue("fixture://llm_rate_limit", source="test")
+        queue_store.enqueue("fixture://high_signal", source="test")
+        queue_store.enqueue("fixture://low_quality", source="test")
+
+        worker = QueueWorker(
+            config=config,
+            queue_store=queue_store,
+            fetcher=FixtureFetcher(),
+            worker_config=WorkerConfig(batch_size=10, max_consecutive_failures=5),
+        )
+
+        result = worker.run_once()
+
+        assert result.tasks_processed == 1
+        assert result.should_stop is True
+        counts = queue_store.count_by_status()
+        assert counts.get("pending", 0) == 2
 
 
 def test_worker_next_ready_tasks_priority_order():
@@ -399,6 +567,38 @@ def test_worker_signal_handler_sets_shutdown_flag():
     worker._handle_shutdown(signal.SIGINT, None)
 
     assert worker._state.shutdown_requested is True
+
+
+def test_worker_guard_does_not_leave_task_in_processing():
+    """Regression: real URL + stub provider must not leave task stuck in PROCESSING.
+
+    The provider guard in Pipeline blocks test providers from processing real URLs.
+    Before the fix, the worker marked the task PROCESSING first, then the pipeline
+    guard returned early without resolving the queue task — leaving it orphaned.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_root = Path(tmpdir)
+        config = make_test_config(state_root)
+        queue_store = QueueStore(state_root / "queue.db")
+
+        # Enqueue a real (non-fixture) URL
+        task = queue_store.enqueue("https://example.com/article", source="test")
+
+        worker = QueueWorker(
+            config=config,
+            queue_store=queue_store,
+            # Default _llm is StubLLMProvider — exactly the scenario that triggers the guard
+        )
+
+        result = worker.run_once()
+
+        # The task should be resolved, not stuck in PROCESSING
+        updated = queue_store.get_task(task.id)
+        assert updated.status == QueueStatus.FAILED_TERMINAL, (
+            f"Expected FAILED_TERMINAL, got {updated.status}"
+        )
+        assert updated.failure_kind == "runtime_guard"
+        assert result.tasks_failed == 1
 
 
 if __name__ == "__main__":

@@ -131,6 +131,65 @@ def test_bot_direct_url_parsing():
     assert cmd.args == "https://example.com/direct"
 
 
+def test_bot_url_inside_text_parsing():
+    """Bot accepts a URL pasted inside ordinary text."""
+    queue_store = QueueStore(Path(tempfile.mkdtemp()) / "queue.db")
+    config = make_test_config(Path.cwd())
+
+    bot = TelegramInboundBot(
+        config=config,
+        queue_store=queue_store,
+        bot_token="test_token",
+    )
+
+    update = {
+        "update_id": 1,
+        "message": {
+            "message_id": 100,
+            "chat": {"id": "123456"},
+            "text": "帮我读一下 https://example.com/direct?x=1。",
+        },
+    }
+
+    cmd = bot._parse_command(update)
+
+    assert cmd is not None
+    assert cmd.command == "url"
+    assert cmd.args == "帮我读一下 https://example.com/direct?x=1。"
+
+
+def test_bot_plain_text_input_gets_response():
+    """Bot acknowledges text input instead of silently ignoring it."""
+    queue_store = QueueStore(Path(tempfile.mkdtemp()) / "queue.db")
+    config = make_test_config(Path.cwd())
+    mock_post = MockHTTPPost()
+
+    bot = TelegramInboundBot(
+        config=config,
+        queue_store=queue_store,
+        bot_token="test_token",
+        http_post=mock_post,
+    )
+
+    update = {
+        "update_id": 1,
+        "message": {
+            "message_id": 100,
+            "chat": {"id": "123456"},
+            "text": "hello v3",
+        },
+    }
+
+    cmd = bot._parse_command(update)
+    assert cmd is not None
+    assert cmd.command == "input"
+
+    bot._handle_command(cmd)
+
+    assert len(mock_post.messages_sent) == 1
+    assert "Text input is active" in mock_post.messages_sent[0].get("text", "")
+
+
 def test_bot_command_unknown_chat():
     """Unknown chat is rejected when allowed_chat_ids is set."""
     queue_store = QueueStore(Path(tempfile.mkdtemp()) / "queue.db")
@@ -219,6 +278,37 @@ def test_bot_cmd_url_enqueues():
         # Verify response message
         assert len(mock_post.messages_sent) == 1
         assert "Enqueued" in mock_post.messages_sent[0].get("text", "")
+
+
+def test_bot_cmd_url_enqueues_embedded_and_www_urls():
+    """Bot enqueues URLs from prose and normalizes www links."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_root = Path(tmpdir)
+        config = make_test_config(state_root)
+        queue_store = QueueStore(state_root / "queue.db")
+
+        mock_post = MockHTTPPost()
+        bot = TelegramInboundBot(
+            config=config,
+            queue_store=queue_store,
+            bot_token="test_token",
+            http_post=mock_post,
+        )
+
+        cmd = BotCommand(
+            chat_id="123456",
+            command="url",
+            args="读这两个：https://example.com/a， www.example.org/b",
+            message_id=100,
+            is_allowed=True,
+        )
+
+        bot._handle_command(cmd)
+
+        assert queue_store.find_by_url("https://example.com/a") is not None
+        assert queue_store.find_by_url("https://www.example.org/b") is not None
+        assert len(mock_post.messages_sent) == 1
+        assert "Enqueued URLs" in mock_post.messages_sent[0].get("text", "")
 
 
 def test_bot_cmd_status():

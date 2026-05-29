@@ -43,6 +43,7 @@ class FailureKind(str, Enum):
     VALIDATION_FAILED = "validation_failed"
     PARSE_ERROR = "parse_error"
     LLM_RATE_LIMIT = "llm_rate_limit"
+    LLM_QUOTA_EXHAUSTED = "llm_quota_exhausted"
     LLM_TIMEOUT = "llm_timeout"
     OUTPUT_FAILED = "output_failed"
     RUNTIME_GUARD = "runtime_guard"
@@ -79,6 +80,12 @@ QUEUE_REQUIRED_COLUMNS = {
     "created_at",
     "updated_at",
     "processed_at",
+    # Lease/diagnostic fields for orphan task recovery
+    "processing_owner",
+    "processing_started_at",
+    "processing_heartbeat_at",
+    "provider_route",
+    "last_reply_status",
 }
 
 
@@ -104,6 +111,12 @@ class QueueTask:
     created_at: str = ""
     updated_at: str = ""
     processed_at: str = ""
+    # Lease/diagnostic fields for orphan task recovery
+    processing_owner: str = ""
+    processing_started_at: str = ""
+    processing_heartbeat_at: str = ""
+    provider_route: str = ""
+    last_reply_status: str = ""
 
 
 def _utc_now() -> str:
@@ -156,15 +169,32 @@ class QueueStore:
                     runtime_fingerprint TEXT DEFAULT '',
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    processed_at TEXT DEFAULT ''
+                    processed_at TEXT DEFAULT '',
+                    processing_owner TEXT DEFAULT '',
+                    processing_started_at TEXT DEFAULT '',
+                    processing_heartbeat_at TEXT DEFAULT '',
+                    provider_route TEXT DEFAULT '',
+                    last_reply_status TEXT DEFAULT ''
                 )
                 """
             )
+            conn.commit()
+
+        # Migrate legacy schema before creating indexes that depend on new columns
+        self._migrate_legacy_schema()
+
+        with sqlite3.connect(self.db_path) as conn:
+            # Create indexes after migration to ensure all columns exist
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_queue_status_retry "
                 "ON queue(status, next_retry_at, priority, id)"
             )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_queue_processing_heartbeat "
+                "ON queue(processing_heartbeat_at) WHERE processing_heartbeat_at != ''"
+            )
             conn.commit()
+
         self.validate_schema()
 
     def schema_columns(self) -> set[str]:
@@ -180,6 +210,21 @@ class QueueStore:
         if missing:
             missing_list = ", ".join(sorted(missing))
             raise QueueStoreSchemaError(f"V3 queue schema is missing columns: {missing_list}")
+
+    def _migrate_legacy_schema(self) -> None:
+        """Add new columns to existing databases without full migration."""
+        columns = self.schema_columns()
+        new_columns = self.REQUIRED_COLUMNS - columns
+        if not new_columns:
+            return
+
+        with sqlite3.connect(self.db_path) as conn:
+            for col in new_columns:
+                try:
+                    conn.execute(f"ALTER TABLE queue ADD COLUMN {col} TEXT DEFAULT ''")
+                except sqlite3.OperationalError:
+                    pass  # Column already exists
+            conn.commit()
 
     def enqueue(
         self,
@@ -250,8 +295,9 @@ class QueueStore:
             raise KeyError(f"Queue task not found: {task_id}")
         return self._row_to_task(row)
 
-    def mark_processing(self, task_id: int) -> QueueTask:
+    def mark_processing(self, task_id: int, *, owner: str = "", provider_route: str = "") -> QueueTask:
         self.initialize()
+        now = _utc_now()
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """
@@ -264,15 +310,51 @@ class QueueStore:
                     next_action='',
                     next_retry_at='',
                     processed_at='',
+                    processing_owner=?,
+                    processing_started_at=?,
+                    processing_heartbeat_at=?,
+                    provider_route=?,
                     updated_at=?
                 WHERE id=?
                 """,
-                (QueueStatus.PROCESSING.value, _utc_now(), task_id),
+                (QueueStatus.PROCESSING.value, owner, now, now, provider_route, now, task_id),
             )
             conn.commit()
         return self.get_task(task_id)
 
-    def mark_done(self, task_id: int, *, result_title: str, output_path: str) -> QueueTask:
+    def update_heartbeat(self, task_id: int, *, owner: str = "") -> QueueTask:
+        """Update processing heartbeat to keep task lease alive."""
+        self.initialize()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                UPDATE queue
+                SET processing_heartbeat_at=?,
+                    updated_at=?
+                WHERE id=? AND (processing_owner=? OR processing_owner='')
+                """,
+                (_utc_now(), _utc_now(), task_id, owner),
+            )
+            conn.commit()
+        return self.get_task(task_id)
+
+    def find_stale_leases(self, heartbeat_before: str) -> list[QueueTask]:
+        """Find tasks with stale processing leases for recovery."""
+        self.initialize()
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM queue
+                WHERE status = ?
+                    AND processing_heartbeat_at != ''
+                    AND processing_heartbeat_at < ?
+                ORDER BY processing_heartbeat_at ASC
+                """,
+                (QueueStatus.PROCESSING.value, heartbeat_before),
+            ).fetchall()
+        return [self._row_to_task(row) for row in rows]
+
+    def mark_done(self, task_id: int, *, result_title: str, output_path: str, provider_route: str = "") -> QueueTask:
         if not output_path:
             raise ValueError("Done tasks must include an output_path proving the output loop closed")
         return self._update_status(
@@ -283,6 +365,7 @@ class QueueStore:
             result_title=result_title,
             output_path=output_path,
             processed_at=_utc_now(),
+            provider_route=provider_route,
         )
 
     def mark_rejected(
@@ -292,6 +375,7 @@ class QueueStore:
         reason: str,
         detail: str = "",
         failure_kind: FailureKind = FailureKind.VALIDATION_FAILED,
+        provider_route: str = "",
     ) -> QueueTask:
         return self._update_status(
             task_id,
@@ -301,6 +385,7 @@ class QueueStore:
             last_error=reason,
             last_status_detail=detail,
             processed_at=_utc_now(),
+            provider_route=provider_route,
         )
 
     def schedule_retry(
@@ -312,6 +397,7 @@ class QueueStore:
         next_retry_at: str,
         next_action: NextAction = NextAction.RETRY_LATER,
         detail: str = "",
+        provider_route: str = "",
     ) -> QueueTask:
         if not next_retry_at:
             raise ValueError("retry_scheduled tasks must include next_retry_at")
@@ -326,6 +412,7 @@ class QueueStore:
                 last_error=last_error,
                 detail=detail,
                 next_action=terminal_next_action,
+                provider_route=provider_route,
             )
         return self._update_status(
             task_id,
@@ -336,6 +423,7 @@ class QueueStore:
             last_status_detail=detail,
             next_retry_at=next_retry_at,
             processed_at="",
+            provider_route=provider_route,
         )
 
     def mark_failed_terminal(
@@ -346,6 +434,7 @@ class QueueStore:
         last_error: str,
         detail: str = "",
         next_action: NextAction = NextAction.MANUAL_REVIEW,
+        provider_route: str = "",
     ) -> QueueTask:
         return self._update_status(
             task_id,
@@ -355,6 +444,7 @@ class QueueStore:
             last_error=last_error,
             last_status_detail=detail,
             processed_at=_utc_now(),
+            provider_route=provider_route,
         )
 
     def _update_status(
@@ -370,37 +460,73 @@ class QueueStore:
         output_path: str = "",
         next_retry_at: str = "",
         processed_at: str = "",
+        last_reply_status: str = "",
+        provider_route: str = "",
     ) -> QueueTask:
         self.initialize()
+        now = _utc_now()
         with sqlite3.connect(self.db_path) as conn:
+            # Build SET clause dynamically to preserve provider_route and last_reply_status
+            # when empty values are passed (only update when explicitly provided)
+            set_clauses = [
+                "status=?",
+                "failure_kind=?",
+                "last_error=?",
+                "last_status_detail=?",
+                "next_action=?",
+                "result_title=?",
+                "output_path=?",
+                "next_retry_at=?",
+                "processed_at=?",
+                "updated_at=?",
+            ]
+            params = [
+                status.value,
+                failure_kind.value,
+                last_error,
+                last_status_detail,
+                next_action.value,
+                result_title,
+                output_path,
+                next_retry_at,
+                processed_at,
+                now,
+            ]
+
+            # Only update provider_route if explicitly provided
+            if provider_route:
+                set_clauses.append("provider_route=?")
+                params.append(provider_route)
+            else:
+                set_clauses.append("provider_route=provider_route")
+
+            # Only update last_reply_status if explicitly provided
+            if last_reply_status:
+                set_clauses.append("last_reply_status=?")
+                params.append(last_reply_status)
+            else:
+                set_clauses.append("last_reply_status=last_reply_status")
+
+            # Clear lease fields for any non-processing status
+            if status != QueueStatus.PROCESSING:
+                set_clauses.extend([
+                    "processing_owner=''",
+                    "processing_started_at=''",
+                    "processing_heartbeat_at=''",
+                ])
+            else:
+                set_clauses.extend([
+                    "processing_owner=processing_owner",
+                    "processing_started_at=processing_started_at",
+                    "processing_heartbeat_at=processing_heartbeat_at",
+                ])
+
+            set_clause = ", ".join(set_clauses)
+            params.append(task_id)
+
             conn.execute(
-                """
-                UPDATE queue
-                SET status=?,
-                    failure_kind=?,
-                    last_error=?,
-                    last_status_detail=?,
-                    next_action=?,
-                    result_title=?,
-                    output_path=?,
-                    next_retry_at=?,
-                    processed_at=?,
-                    updated_at=?
-                WHERE id=?
-                """,
-                (
-                    status.value,
-                    failure_kind.value,
-                    last_error,
-                    last_status_detail,
-                    next_action.value,
-                    result_title,
-                    output_path,
-                    next_retry_at,
-                    processed_at,
-                    _utc_now(),
-                    task_id,
-                ),
+                f"UPDATE queue SET {set_clause} WHERE id=?",
+                params,
             )
             conn.commit()
         return self.get_task(task_id)
@@ -409,6 +535,7 @@ class QueueStore:
     def _row_to_task(row: Optional[sqlite3.Row | tuple]) -> QueueTask:
         if row is None:
             raise KeyError("Queue task row not found")
+        # Support both legacy (20 cols) and new (25 cols) schemas
         return QueueTask(
             id=row[0],
             url=row[1],
@@ -430,6 +557,11 @@ class QueueStore:
             created_at=row[17] or "",
             updated_at=row[18] or "",
             processed_at=row[19] or "",
+            processing_owner=row[20] or "" if len(row) > 20 else "",
+            processing_started_at=row[21] or "" if len(row) > 21 else "",
+            processing_heartbeat_at=row[22] or "" if len(row) > 22 else "",
+            provider_route=row[23] or "" if len(row) > 23 else "",
+            last_reply_status=row[24] or "" if len(row) > 24 else "",
         )
 
     # -- Helper methods for Phase 4 worker -----------------------------------
@@ -465,24 +597,52 @@ class QueueStore:
     def recover_stale_processing(self, before: str) -> int:
         """Recover tasks stuck in processing status back to retry_scheduled.
 
+        Prioritizes processing_heartbeat_at for staleness detection; falls back
+        to updated_at for legacy tasks without heartbeat data.
+
         Returns count of tasks recovered.
         """
         self.initialize()
+        now = _utc_now()
 
         with sqlite3.connect(self.db_path) as conn:
+            # First recover tasks with stale heartbeat (preferred for new schema)
             cursor = conn.execute(
                 """
                 UPDATE queue
                 SET status = ?,
                     next_retry_at = ?,
-                    updated_at = ?
+                    updated_at = ?,
+                    processing_owner = '',
+                    processing_started_at = '',
+                    processing_heartbeat_at = ''
                 WHERE status = ?
+                    AND processing_heartbeat_at != ''
+                    AND processing_heartbeat_at < ?
+                """,
+                (QueueStatus.RETRY_SCHEDULED.value, now, now, QueueStatus.PROCESSING.value, before),
+            )
+            recovered_heartbeat = cursor.rowcount
+
+            # Then recover legacy tasks without heartbeat (using updated_at)
+            cursor = conn.execute(
+                """
+                UPDATE queue
+                SET status = ?,
+                    next_retry_at = ?,
+                    updated_at = ?,
+                    processing_owner = '',
+                    processing_started_at = ''
+                WHERE status = ?
+                    AND processing_heartbeat_at = ''
                     AND updated_at < ?
                 """,
-                (QueueStatus.RETRY_SCHEDULED.value, before, _utc_now(), QueueStatus.PROCESSING.value, before),
+                (QueueStatus.RETRY_SCHEDULED.value, now, now, QueueStatus.PROCESSING.value, before),
             )
+            recovered_legacy = cursor.rowcount
+
             conn.commit()
-            return cursor.rowcount
+            return recovered_heartbeat + recovered_legacy
 
     def count_by_status(self) -> dict[str, int]:
         """Return count of tasks by status."""
@@ -505,3 +665,20 @@ class QueueStore:
         if row is None:
             return None
         return self._row_to_task(row)
+
+    def update_reply_status(self, task_id: int, status: str) -> QueueTask:
+        """Update only last_reply_status and updated_at without changing task state."""
+        self.initialize()
+        now = _utc_now()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """
+                UPDATE queue
+                SET last_reply_status=?,
+                    updated_at=?
+                WHERE id=?
+                """,
+                (status, now, task_id),
+            )
+            conn.commit()
+        return self.get_task(task_id)

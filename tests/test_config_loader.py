@@ -14,6 +14,7 @@ from knowledge_extractor_v3.config_loader import (
     LiveConfig,
     OutputsConfig,
     SchedulerConfig,
+    ScoreGateConfig,
     V3Config,
     WorkerConfig,
     _deep_merge,
@@ -115,7 +116,24 @@ class TestConfigLoader:
 
         assert isinstance(config, V3Config)
         assert config.runtime.state_root == "~/.100x_v3"
+        assert config.prompts.active_bundle == "v2_stable_cn"
         assert loader.config_path_used.name == "config.example.yaml"
+
+    def test_prompts_default_to_v2_stable_cn_without_config_section(self, tmp_path):
+        config_file = tmp_path / "minimal.yaml"
+        config_file.write_text(
+            "\n".join([
+                "runtime:",
+                "  state_root: \"/explicit\"",
+                "  queue_db_path: \"/explicit/q.db\"",
+                "  log_path: \"/explicit/log\"",
+            ]),
+            encoding="utf-8",
+        )
+        loader = ConfigLoader(explicit_path=config_file)
+        config = loader.load()
+
+        assert config.prompts.active_bundle == "v2_stable_cn"
 
     def test_load_from_local_overrides_example(self, tmp_path):
         project = _make_local_config(tmp_path, "\n".join([
@@ -172,7 +190,13 @@ class TestConfigLoader:
     def test_expand_path_tilde(self):
         loader = ConfigLoader()
         expanded = loader.expand_path("~/test")
-        assert str(expanded).startswith(str(Path.home()))
+        # Check that tilde was expanded (path is absolute and contains 'test' at end)
+        assert expanded.is_absolute()
+        assert expanded.name == "test"
+        # The parent should be the home directory (or equivalent via /private symlink on macOS)
+        # Use os.path.samefile to handle symlink differences
+        import os
+        assert os.path.samefile(expanded.parent, Path.home())
 
     def test_expand_path_relative(self, tmp_path):
         loader = ConfigLoader(project_root=tmp_path)
@@ -195,6 +219,9 @@ class TestConfigLoader:
         assert config.worker.batch_size == 10
         assert config.worker.poll_interval_seconds == 30
         assert config.telegram_bot.enabled is False
+        assert isinstance(config.score_gate, ScoreGateConfig)
+        assert config.score_gate.enabled is True
+        assert config.score_gate.reject_threshold == 0.3
         assert isinstance(config.sources, list)
 
     def test_config_path_used_raises_before_load(self):
@@ -223,9 +250,71 @@ class TestConfigLoader:
         config = loader.load()
 
         assert config.llm.provider == "placeholder"
+        assert config.llm.api_base == "https://open.bigmodel.cn/api/coding/paas/v4"
         assert config.llm.request_timeout_seconds == 60
         assert config.llm.max_retries == 3
         assert config.llm.min_delay_seconds == 2.0
+        assert config.llm.temperature == 0.1
+
+    def test_v2_llm_and_output_shape_is_normalized(self, tmp_path):
+        project = _make_local_config(tmp_path, "\n".join([
+            "runtime:",
+            "  state_root: \"/tmp/state\"",
+            "llm:",
+            "  provider: zhipu",
+            "  api_base: https://open.bigmodel.cn/api/coding/paas/v4",
+            "  api_key: direct-key",
+            "  api_key_env: ZHIPU_API_KEY",
+            "  temperature: 0.1",
+            "  router:",
+            "    quality_filter:",
+            "      model: GLM-4.5",
+            "    deep_analysis:",
+            "      model: GLM-4.7",
+            "    telegram_format:",
+            "      model: GLM-4.5-Air",
+            "output:",
+            "  obsidian_root: /tmp/obsidian",
+            "  obsidian_folder: AI进展",
+            "filter:",
+            "  scoring_prompt: config/prompts/scoring.md",
+            "extraction_prompt: config/prompts/extraction.md",
+        ]))
+
+        config = ConfigLoader(project_root=project).load()
+
+        assert config.llm.provider == "zhipu"
+        assert config.llm.api_key == "direct-key"
+        assert config.llm.api_base == "https://open.bigmodel.cn/api/coding/paas/v4"
+        assert config.llm.scoring_model == "GLM-4.5"
+        assert config.llm.extraction_model == "GLM-4.7"
+        assert config.llm.telegram_brief_model == "GLM-4.5-Air"
+        assert config.outputs.obsidian_root == "/tmp/obsidian"
+        assert config.outputs.obsidian_subdir == "AI进展"
+        assert config.prompts.scoring == "config/prompts/scoring.md"
+        assert config.prompts.extraction == "config/prompts/extraction.md"
+
+    def test_v2_telegram_token_and_chat_id_are_normalized(self, tmp_path):
+        """V2 used output.telegram_token and output.telegram_chat_id directly."""
+        project = _make_local_config(tmp_path, "\n".join([
+            "runtime:",
+            "  state_root: \"/tmp/state\"",
+            "output:",
+            "  obsidian_root: /tmp/obsidian",
+            "  obsidian_folder: AI进展",
+            "  telegram_token: \"123456:ABC-DEF\"",
+            "  telegram_chat_id: \"123456789\"",
+        ]))
+
+        config = ConfigLoader(project_root=project).load()
+
+        # V2 的 telegram_token 应该映射到 telegram_bot_token
+        assert config.outputs.telegram_bot_token == "123456:ABC-DEF"
+        # V2 的 telegram_chat_id 应该映射到 telegram_admin_chat_id
+        assert config.outputs.telegram_admin_chat_id == "123456789"
+        # 环境变量配置应该保持默认值
+        assert config.outputs.telegram_bot_token_env == "TELEGRAM_BOT_TOKEN"
+        assert config.outputs.telegram_admin_chat_id_env == "TELEGRAM_ADMIN_CHAT_ID"
 
     def test_agent_reach_section_loaded(self, tmp_path):
         project = _make_local_config(tmp_path, "\n".join([
@@ -249,6 +338,31 @@ class TestConfigLoader:
         assert config.agent_reach.enabled_channels == ["youtube", "twitter"]
         assert config.agent_reach.fallback_to_jina is False
         assert config.agent_reach.proxy == "http://127.0.0.1:7890"
+
+    def test_score_gate_section_loaded(self, tmp_path):
+        project = _make_local_config(tmp_path, "\n".join([
+            "runtime:",
+            "  state_root: \"/tmp/state\"",
+            "score_gate:",
+            "  enabled: false",
+            "  reject_threshold: 0.6",
+        ]))
+
+        config = ConfigLoader(project_root=project).load()
+
+        assert config.score_gate.enabled is False
+        assert config.score_gate.reject_threshold == 0.6
+
+    def test_legacy_score_threshold_is_normalized_to_final_score_scale(self, tmp_path):
+        project = _make_local_config(tmp_path, "\n".join([
+            "runtime:",
+            "  state_root: \"/tmp/state\"",
+            "score_threshold: 6.0",
+        ]))
+
+        config = ConfigLoader(project_root=project).load()
+
+        assert config.score_gate.reject_threshold == 0.6
 
     def test_external_sources_file_is_loaded_and_deduped(self, tmp_path):
         project = _make_local_config(tmp_path, "\n".join([

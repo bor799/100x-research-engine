@@ -31,6 +31,10 @@ class OutputPort(Protocol):
         prompt_bundle: str,
         prompt_hash: str,
         task_id: int | None,
+        runtime_mode: str = "",
+        provider_route: str = "",
+        is_test_provider: bool = False,
+        runtime_fingerprint: str = "",
     ) -> OutputResult:
         ...
 
@@ -53,6 +57,10 @@ class DryRunOutputPort:
         prompt_bundle: str,
         prompt_hash: str,
         task_id: int | None,
+        runtime_mode: str = "",
+        provider_route: str = "",
+        is_test_provider: bool = False,
+        runtime_fingerprint: str = "",
     ) -> OutputResult:
         delivery = self.telegram.deliver(content, telegram_text)
         if isinstance(delivery, TypedError):
@@ -82,6 +90,10 @@ class StagingObsidianWriter:
         *,
         prompt_bundle: str,
         prompt_hash: str,
+        runtime_mode: str = "",
+        provider_route: str = "",
+        is_test_provider: bool = False,
+        runtime_fingerprint: str = "",
     ) -> str | TypedError:
         if content.metadata.get("fixture_scenario") == "output_failed":
             return TypedError(
@@ -106,6 +118,10 @@ class StagingObsidianWriter:
                 prompt_bundle=prompt_bundle,
                 prompt_hash=prompt_hash,
                 processed_at=processed_at,
+                runtime_mode=runtime_mode,
+                provider_route=provider_route,
+                is_test_provider=is_test_provider,
+                runtime_fingerprint=runtime_fingerprint,
             ),
             encoding="utf-8",
         )
@@ -132,6 +148,10 @@ class StagingOutputPort:
         prompt_bundle: str,
         prompt_hash: str,
         task_id: int | None,
+        runtime_mode: str = "",
+        provider_route: str = "",
+        is_test_provider: bool = False,
+        runtime_fingerprint: str = "",
     ) -> OutputResult:
         output_path = self.writer.write(
             content,
@@ -139,6 +159,10 @@ class StagingOutputPort:
             extraction,
             prompt_bundle=prompt_bundle,
             prompt_hash=prompt_hash,
+            runtime_mode=runtime_mode,
+            provider_route=provider_route,
+            is_test_provider=is_test_provider,
+            runtime_fingerprint=runtime_fingerprint,
         )
         if isinstance(output_path, TypedError):
             return OutputResult(ok=False, mode=self.mode, error=output_path)
@@ -165,6 +189,10 @@ def _render_markdown(
     prompt_bundle: str,
     prompt_hash: str,
     processed_at: str,
+    runtime_mode: str = "",
+    provider_route: str = "",
+    is_test_provider: bool = False,
+    runtime_fingerprint: str = "",
 ) -> str:
     frontmatter = {
         "title": extraction.title,
@@ -178,6 +206,13 @@ def _render_markdown(
         "processed_at": processed_at,
         "url": content.url,
     }
+    if runtime_mode:
+        frontmatter["runtime_mode"] = runtime_mode
+    if provider_route:
+        frontmatter["provider_route"] = provider_route
+    frontmatter["is_test_provider"] = is_test_provider
+    if runtime_fingerprint:
+        frontmatter["runtime_fingerprint"] = runtime_fingerprint[:64]
     lines = ["---"]
     for key, value in frontmatter.items():
         lines.append(f"{key}: {_yaml_value(value)}")

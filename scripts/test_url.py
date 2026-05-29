@@ -60,6 +60,11 @@ def main() -> int:
         action="store_true",
         help="Also run configured parallel prompt bundles for comparison",
     )
+    parser.add_argument(
+        "--allow-test-provider",
+        action="store_true",
+        help="Allow test providers (stub/shadow) for non-fixture URLs",
+    )
 
     args = parser.parse_args()
 
@@ -146,7 +151,12 @@ def main() -> int:
         prompt_registry=prompts,
         staging_root=staging_root if mode is RuntimeMode.STAGING else None,
         live_output=output if mode is RuntimeMode.LIVE else None,
+        allow_test_provider=args.allow_test_provider,
     )
+
+    if args.allow_test_provider:
+        provider_route = str(getattr(llm, "model_route", ""))
+        print(f"WARNING: Test provider authorized ({provider_route})")
 
     print()
     print("Processing...")

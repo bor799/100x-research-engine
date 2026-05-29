@@ -1,9 +1,10 @@
 {
-  "active_bundle": "rimbo_source_scored_v3",
+  "active_bundle": "v2_stable_cn",
   "parallel_test_bundles": [
     "primary_market_v1",
     "rimbo_source_scored_v3",
-    "v2_legacy"
+    "v2_legacy",
+    "v2_stable_cn"
   ],
   "roles": [
     "scoring",
@@ -26,6 +27,15 @@
       "roles": {
         "scoring": "prompts/versions/v2_legacy/scoring.md",
         "extraction": "prompts/versions/v2_legacy/extraction.md",
+        "telegram_brief": "prompts/telegram_brief.md"
+      }
+    },
+    "v2_stable_cn": {
+      "label": "V2 Stable Chinese",
+      "description": "Production-oriented V2 stable screening/extraction style adapted to the V3 parser contract, with source scoring, content compression, and Chinese-first Telegram formatting.",
+      "roles": {
+        "scoring": "prompts/versions/v2_stable_cn/scoring.md",
+        "extraction": "prompts/versions/v2_stable_cn/extraction.md",
         "telegram_brief": "prompts/telegram_brief.md"
       }
     },

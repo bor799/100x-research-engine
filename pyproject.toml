@@ -23,6 +23,7 @@ dev = [
 
 [project.scripts]
 100x-v3-shadow-run = "knowledge_extractor_v3.shadow_runner:main"
+100x-v3-us-ai-daily = "knowledge_extractor_v3.daily_reports.runner:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

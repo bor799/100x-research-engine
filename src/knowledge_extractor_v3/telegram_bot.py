@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Protocol
 from .config_loader import ConfigLoader, V3Config
 from .models import utc_now
 from .queue_store import QueueStore
-from .runtime_guard import RuntimeGuard, RuntimeGuardError
+from .runtime_guard import RuntimeGuard, RuntimeGuardError, resolve_runtime_paths
 
 if TYPE_CHECKING:
     from .sources.models import SchedulerEvent
@@ -189,14 +189,14 @@ class TelegramInboundBot:
 
     def _parse_command(self, update: dict) -> BotCommand | None:
         """Parse Telegram update into command."""
-        message = update.get("message", {})
+        message = _message_from_update(update)
         if not message:
             return None
 
         chat = message.get("chat", {})
         chat_id = str(chat.get("id", ""))
 
-        text = message.get("text", "")
+        text = message.get("text") or message.get("caption") or ""
         if not text:
             return None
 
@@ -205,11 +205,12 @@ class TelegramInboundBot:
         if parts and parts[0].startswith("/"):
             command = parts[0][1:]  # Remove leading /
             args = parts[1] if len(parts) > 1 else ""
-        elif _looks_like_url(text):
+        elif _extract_urls(text):
             command = "url"
-            args = text.strip()
+            args = text
         else:
-            return None
+            command = "input"
+            args = text.strip()
         message_id = message.get("message_id", 0)
 
         is_allowed = (
@@ -238,6 +239,8 @@ class TelegramInboundBot:
             self._cmd_failed(cmd)
         elif cmd.command == "help":
             self._cmd_help(cmd)
+        elif cmd.command == "input":
+            self._cmd_input(cmd)
         else:
             self._send_message(
                 cmd.chat_id,
@@ -248,31 +251,68 @@ class TelegramInboundBot:
 
     def _cmd_url(self, cmd: BotCommand) -> None:
         """Enqueue URL from /url command."""
-        url = cmd.args.strip()
+        urls = _submission_urls(cmd.args)
 
-        if not url:
-            self._send_message(cmd.chat_id, "Usage: /url <URL>")
+        if not urls:
+            self._send_message(
+                cmd.chat_id,
+                "Send a URL, paste a message containing a URL, or use /url <URL>.",
+            )
             return
 
-        # Enqueue with high priority
-        try:
-            task = self._queue.enqueue(
-                url,
-                source="telegram_bot",
-                priority=10,  # High priority for manual submissions
-                reply_channel="telegram",
-                reply_chat_id=cmd.chat_id,
-            )
+        enqueued: list[tuple[int, str]] = []
+        failures: list[str] = []
 
-            self._send_message(
-                cmd.chat_id,
-                f"✓ Enqueued (ID: {task.id})\n{url[:100]}",
+        for url in urls:
+            try:
+                task = self._queue.enqueue(
+                    url,
+                    source="telegram_bot",
+                    priority=10,  # High priority for manual submissions
+                    reply_channel="telegram",
+                    reply_chat_id=cmd.chat_id,
+                )
+                enqueued.append((task.id, url))
+            except Exception as exc:
+                failures.append(f"{url[:100]} -> {exc}")
+
+        if enqueued:
+            if len(enqueued) == 1:
+                task_id, url = enqueued[0]
+                lines = [
+                    f"✓ Enqueued (ID: {task_id})",
+                    url[:100],
+                    "",
+                    "I will reply here when processing finishes or fails.",
+                    f"Use /status {task_id} to check progress.",
+                ]
+            else:
+                lines = ["✓ Enqueued URLs:"]
+                lines.extend(f"- ID {task_id}: {url[:100]}" for task_id, url in enqueued)
+                lines.extend([
+                    "",
+                    "I will reply here as each item finishes or fails.",
+                ])
+            if failures:
+                lines.extend(["", "Some URLs failed:"])
+                lines.extend(f"- {failure}" for failure in failures[:5])
+            self._send_message(cmd.chat_id, "\n".join(lines))
+            return
+
+        self._send_message(
+            cmd.chat_id,
+            "Failed to enqueue:\n" + "\n".join(f"- {failure}" for failure in failures[:5]),
+        )
+
+    def _cmd_input(self, cmd: BotCommand) -> None:
+        """Acknowledge plain text input instead of silently dropping it."""
+        self._send_message(
+            cmd.chat_id,
+            (
+                "Text input is active. For extraction, send a URL directly or paste "
+                "a message that contains one."
             )
-        except Exception as exc:
-            self._send_message(
-                cmd.chat_id,
-                f"Failed to enqueue: {exc}",
-            )
+        )
 
     def _cmd_status(self, cmd: BotCommand) -> None:
         """Show task status from /status command."""
@@ -290,14 +330,52 @@ class TelegramInboundBot:
                 f"Task {task.id}:",
                 f"URL: {task.url[:100]}",
                 f"Status: {task.status.value}",
+                f"Attempt: {task.attempt_count}/{task.max_attempts}",
+                f"Updated: {task.updated_at}",
                 f"Created: {task.created_at}",
             ]
 
-            if task.status.value in ("retry_scheduled", "failed_terminal"):
-                status_lines.append(f"Error: {task.last_error[:100]}")
+            # Show reply info
+            if task.reply_channel or task.reply_chat_id:
+                status_lines.append(
+                    f"Reply: {task.reply_channel or '-'} {task.reply_chat_id or '-'}"
+                )
 
+            # Show lease/diagnostics info
+            if task.processing_owner:
+                status_lines.append(f"Processing by: {task.processing_owner}")
+            if task.processing_started_at:
+                status_lines.append(f"Started at: {task.processing_started_at}")
+            if task.processing_heartbeat_at:
+                status_lines.append(f"Heartbeat: {task.processing_heartbeat_at}")
+            if task.provider_route:
+                status_lines.append(f"Provider: {task.provider_route}")
+            if task.last_reply_status:
+                status_lines.append(f"Last reply: {task.last_reply_status}")
+
+            # Show failure details
+            if task.status.value in ("retry_scheduled", "rejected", "failed_terminal"):
+                if task.failure_kind.value:
+                    status_lines.append(f"Failure: {task.failure_kind.value}")
+                status_lines.append(f"Error: {task.last_error[:200]}")
+                if task.next_action.value:
+                    status_lines.append(f"Next action: {task.next_action.value}")
+                if task.next_retry_at:
+                    status_lines.append(f"Retry at: {task.next_retry_at}")
+
+            # Show output path
             if task.output_path:
                 status_lines.append(f"Output: {task.output_path}")
+
+            # Check for stuck processing
+            if task.status.value == "processing":
+                from datetime import datetime, UTC, timedelta
+                try:
+                    updated = datetime.fromisoformat(task.updated_at)
+                    if datetime.now(UTC) - updated > timedelta(minutes=30):
+                        status_lines.append("⚠️ Task appears stuck (processing > 30min)")
+                except ValueError:
+                    pass
 
             self._send_message(cmd.chat_id, "\n".join(status_lines))
         except (ValueError, KeyError):
@@ -339,7 +417,7 @@ class TelegramInboundBot:
             "*V3 Knowledge Extractor Bot*\n\n"
             "Commands:\n"
             "/url <url> - Enqueue a URL for processing\n"
-            "Send a URL directly - Enqueue it for processing\n"
+            "Send or paste text containing a URL - Enqueue it for processing\n"
             "/status <id> - Check task status\n"
             "/recent - Show queue summary\n"
             "/failed - Show failed tasks count\n"
@@ -432,10 +510,9 @@ def create_bot(
         queue_store = QueueStore(queue_path)
 
     if not bot_token:
-        # Use token from env if not provided
+        # Use token from config or env if not provided
         import os
-        token_env = config.outputs.telegram_bot_token_env
-        bot_token = os.environ.get(token_env, "")
+        bot_token = config.outputs.telegram_bot_token or os.environ.get(config.outputs.telegram_bot_token_env, "")
 
     return TelegramInboundBot(
         config=config,
@@ -457,6 +534,7 @@ def main(argv: list[str] | None = None) -> int:
         python -m knowledge_extractor_v3.telegram_bot [--poll N] [--max-iter N]
     """
     import argparse
+    import os
 
     parser = argparse.ArgumentParser(description="V3 Telegram Inbound Bot")
     parser.add_argument(
@@ -484,8 +562,11 @@ def main(argv: list[str] | None = None) -> int:
         print("Telegram bot is not enabled in config", file=sys.stderr)
         return 1
 
+    # Resolve runtime paths using unified function
+    paths = resolve_runtime_paths(project_root, config, loader, env=os.environ)
+
     # Runtime guard
-    guard = RuntimeGuard.from_env(project_root=project_root)
+    guard = RuntimeGuard(paths)
     try:
         guard.validate(write_fingerprint=False)
     except RuntimeGuardError as exc:
@@ -493,7 +574,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     # Get bot token
-    import os
     token_env = config.outputs.telegram_bot_token_env
     bot_token = os.environ.get(token_env, "")
     if not bot_token:
@@ -504,9 +584,11 @@ def main(argv: list[str] | None = None) -> int:
     allowed_env = os.environ.get("TELEGRAM_ALLOWED_CHAT_IDS", "")
     allowed_chat_ids = allowed_env.split(",") if allowed_env else None
 
-    # Create bot
+    # Create bot with unified paths
+    queue_store = QueueStore(paths.queue_db_path)
     bot = create_bot(
         config,
+        queue_store=queue_store,
         bot_token=bot_token,
         allowed_chat_ids=allowed_chat_ids,
     )
@@ -520,8 +602,63 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _looks_like_url(text: str) -> bool:
-    stripped = text.strip()
-    return bool(re.match(r"^(https?://|www\.)\S+\.\S+", stripped))
+    return bool(_submission_urls(text))
+
+
+def _message_from_update(update: dict) -> dict:
+    """Return the Telegram message-like payload we can process."""
+    for key in ("message", "edited_message", "channel_post", "edited_channel_post"):
+        message = update.get(key, {})
+        if message:
+            return message
+    return {}
+
+
+_URL_RE = re.compile(r"(?i)\b((?:https?://|www\.)[^\s<>()\"']+)")
+_TRAILING_URL_PUNCTUATION = ".,;:!?)]}>\"'，。；：！？）】》"
+
+
+def _extract_urls(text: str) -> list[str]:
+    """Extract http(s)/www URLs from pasted Telegram text."""
+    urls: list[str] = []
+    seen: set[str] = set()
+    for match in _URL_RE.finditer(text):
+        url = _normalize_submission_url(match.group(1))
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+    return urls
+
+
+def _submission_urls(text: str) -> list[str]:
+    """Return URL submissions supported by the bot."""
+    urls = _extract_urls(text)
+    if urls:
+        return urls
+
+    candidate = text.strip()
+    if not candidate:
+        return []
+
+    if candidate.startswith("fixture://"):
+        return [candidate]
+
+    if re.match(r"(?i)^(?:https?://|www\.)\S+\.\S+$", candidate):
+        return [_normalize_submission_url(candidate)]
+
+    # Allow a bare domain only when it is a single token; prose with dots should
+    # be acknowledged as text input instead of becoming a broken queue item.
+    if " " not in candidate and re.match(r"(?i)^[a-z0-9.-]+\.[a-z]{2,}(?:/[^\s]*)?$", candidate):
+        return [_normalize_submission_url(candidate)]
+
+    return []
+
+
+def _normalize_submission_url(url: str) -> str:
+    normalized = url.strip().rstrip(_TRAILING_URL_PUNCTUATION)
+    if normalized.lower().startswith("www."):
+        return f"https://{normalized}"
+    return normalized
 
 
 if __name__ == "__main__":

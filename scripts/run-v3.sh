@@ -22,13 +22,15 @@ cd "$PROJECT_ROOT"
 # Python path setup
 export PYTHONPATH="${PYTHONPATH:-}:${PROJECT_ROOT}/src"
 
-# State root (can be overridden)
-STATE_ROOT="${STATE_ROOT:-${HOME}/.100x_v3}"
-export STATE_ROOT
+# State root (only export if user explicitly set it; otherwise let config/defaults resolve)
+if [ -n "${STATE_ROOT+x}" ]; then
+    export STATE_ROOT
+fi
 
 # Queue DB path
-QUEUE_DB_PATH="${QUEUE_DB_PATH:-${STATE_ROOT}/queue.db}"
-export QUEUE_DB_PATH
+if [ -n "${QUEUE_DB_PATH+x}" ]; then
+    export QUEUE_DB_PATH
+fi
 
 ENV_FILE="${PROJECT_ROOT}/.env"
 if [ -f "$ENV_FILE" ]; then
@@ -79,6 +81,7 @@ check_live_enabled() {
     if python -c "
 import sys
 sys.path.insert(0, 'src')
+from pathlib import Path
 from knowledge_extractor_v3.config_loader import ConfigLoader
 loader = ConfigLoader()
 config = loader.load()
@@ -110,38 +113,100 @@ cmd_preflight() {
 
     # Compile check
     log_info "Checking Python syntax..."
-    python -m compileall src tests
+    python -m compileall src tests || {
+        log_error "Python syntax check failed"
+        return 1
+    }
 
-    # Runtime guard check
+    # Runtime guard check - now fails hard
     log_info "Checking runtime guard..."
-    python -m knowledge_extractor_v3.runtime_guard --check || true
+    if ! python -m knowledge_extractor_v3.runtime_guard --check; then
+        log_error "Runtime guard check failed"
+        return 1
+    fi
+
+    # Path consistency check - ensure enqueue and worker use same queue
+    log_info "Checking path consistency..."
+    python -c "
+import sys
+import os
+sys.path.insert(0, 'src')
+from pathlib import Path
+from knowledge_extractor_v3.config_loader import ConfigLoader
+from knowledge_extractor_v3.runtime_guard import resolve_runtime_paths
+
+loader = ConfigLoader()
+config = loader.load()
+project_root = Path.cwd()
+paths = resolve_runtime_paths(project_root, config, loader, env=os.environ)
+
+# Verify queue is under state root
+if not str(paths.queue_db_path.resolve()).startswith(str(paths.state_root.resolve())):
+    print(f'ERROR: Queue DB not under STATE_ROOT', file=sys.stderr)
+    print(f'  STATE_ROOT: {paths.state_root}', file=sys.stderr)
+    print(f'  QUEUE_DB_PATH: {paths.queue_db_path}', file=sys.stderr)
+    sys.exit(1)
+
+print('Path consistency OK')
+print(f'  STATE_ROOT: {paths.state_root}')
+print(f'  QUEUE_DB_PATH: {paths.queue_db_path}')
+print(f'  state_root_is_explicit: {paths.state_root_is_explicit}')
+print(f'  queue_db_is_explicit: {paths.queue_db_is_explicit}')
+" || {
+        log_error "Path consistency check failed"
+        return 1
+    }
 
     # Config validation
     log_info "Validating configuration..."
     python -c "
 import sys
 sys.path.insert(0, 'src')
+from pathlib import Path
 from knowledge_extractor_v3.config_loader import ConfigLoader
+from knowledge_extractor_v3.models import sha256_text
+from knowledge_extractor_v3.prompt_registry import PromptRegistry
 loader = ConfigLoader()
 config = loader.load()
+prompts = PromptRegistry.from_config(Path.cwd(), config.prompts)
+active_bundle = prompts.active_bundle_name
+prompt_hash = sha256_text(
+    prompts.load_prompt(active_bundle, 'scoring')
+    + prompts.load_prompt(active_bundle, 'extraction')
+    + prompts.load_prompt(active_bundle, 'telegram_brief'),
+    length=16,
+)
 print('Config loaded successfully')
 print('  State root:', config.runtime.state_root)
 print('  Queue DB:', config.runtime.queue_db_path)
 print('  Live enabled:', config.live.enabled)
-"
+print('  Active prompt bundle:', active_bundle)
+print('  Active prompt hash:', prompt_hash)
+" || {
+        log_error "Config validation failed"
+        return 1
+    }
 
     # Queue schema check
     log_info "Checking queue schema..."
     python -c "
-import sys
+import sys, os
 sys.path.insert(0, 'src')
 from pathlib import Path
+from knowledge_extractor_v3.config_loader import ConfigLoader
+from knowledge_extractor_v3.runtime_guard import resolve_runtime_paths
 from knowledge_extractor_v3.queue_store import QueueStore
-queue = QueueStore(Path('${QUEUE_DB_PATH}'))
+loader = ConfigLoader()
+config = loader.load()
+paths = resolve_runtime_paths(Path.cwd(), config, loader, env=os.environ)
+queue = QueueStore(paths.queue_db_path)
 queue.initialize()
 queue.validate_schema()
 print('Queue schema OK')
-"
+" || {
+        log_error "Queue schema check failed"
+        return 1
+    }
 
     log_info "Preflight complete!"
 }
@@ -152,26 +217,57 @@ cmd_status() {
 
     # Queue status
     python -c "
-import sys
+import sys, os
 sys.path.insert(0, 'src')
 from pathlib import Path
+from knowledge_extractor_v3.config_loader import ConfigLoader
+from knowledge_extractor_v3.models import sha256_text
+from knowledge_extractor_v3.prompt_registry import PromptRegistry
+from knowledge_extractor_v3.runtime_guard import resolve_runtime_paths
 from knowledge_extractor_v3.queue_store import QueueStore
-queue = QueueStore(Path('${QUEUE_DB_PATH}'))
+loader = ConfigLoader()
+config = loader.load()
+paths = resolve_runtime_paths(Path.cwd(), config, loader, env=os.environ)
+prompts = PromptRegistry.from_config(Path.cwd(), config.prompts)
+active_bundle = prompts.active_bundle_name
+prompt_hash = sha256_text(
+    prompts.load_prompt(active_bundle, 'scoring')
+    + prompts.load_prompt(active_bundle, 'extraction')
+    + prompts.load_prompt(active_bundle, 'telegram_brief'),
+    length=16,
+)
+queue = QueueStore(paths.queue_db_path)
 queue.initialize()
 
 counts = queue.count_by_status()
 print('Queue Status:')
 for status, count in sorted(counts.items()):
     print(f'  {status}: {count}')
+print(f'  Queue path: {paths.queue_db_path}')
+print('Prompt Status:')
+print(f'  Active bundle: {active_bundle}')
+print(f'  Active hash: {prompt_hash}')
 " || echo "  (Queue not initialized)"
 
     echo ""
 
     # Role status
     log_info "Role Lock Files:"
-    if [ -d "${STATE_ROOT}/roles" ]; then
+    local effective_state_root
+    effective_state_root="$(python -c "
+import os, sys
+sys.path.insert(0, 'src')
+from pathlib import Path
+from knowledge_extractor_v3.config_loader import ConfigLoader
+from knowledge_extractor_v3.runtime_guard import resolve_runtime_paths
+loader = ConfigLoader()
+config = loader.load()
+paths = resolve_runtime_paths(Path.cwd(), config, loader, env=os.environ)
+print(paths.state_root)
+")"
+    if [ -d "${effective_state_root}/roles" ]; then
         # Use find instead of glob to avoid shell expansion issues
-        find "${STATE_ROOT}/roles" -maxdepth 1 -name "*.json" -type f 2>/dev/null | while read -r role_file; do
+        find "${effective_state_root}/roles" -maxdepth 1 -name "*.json" -type f 2>/dev/null | while read -r role_file; do
             role=$(basename "$role_file" .json)
             echo "  $role: $(cat "$role_file" 2>/dev/null || echo 'unknown')"
         done
@@ -190,15 +286,21 @@ cmd_enqueue_url() {
     log_info "Enqueueing URL: $url"
 
     python -c "
-import sys
+import sys, os
 sys.path.insert(0, 'src')
 from pathlib import Path
+from knowledge_extractor_v3.config_loader import ConfigLoader
+from knowledge_extractor_v3.runtime_guard import resolve_runtime_paths
 from knowledge_extractor_v3.queue_store import QueueStore
-queue = QueueStore(Path('${QUEUE_DB_PATH}'))
+loader = ConfigLoader()
+config = loader.load()
+paths = resolve_runtime_paths(Path.cwd(), config, loader, env=os.environ)
+queue = QueueStore(paths.queue_db_path)
 task = queue.enqueue('$url', source='manual', priority=50)
 print(f'Enqueued task ID: {task.id}')
 print(f'  URL: {task.url}')
 print(f'  Status: {task.status.value}')
+print(f'  Queue: {paths.queue_db_path}')
 "
 }
 
@@ -238,7 +340,7 @@ cmd_live_bot() {
     require_live_enabled
     log_info "Starting live Telegram bot..."
 
-    python -m knowledge_extractor_v3.telegram_bot --loop "$@"
+    python -m knowledge_extractor_v3.telegram_bot "$@"
 }
 
 cmd_stop_role() {

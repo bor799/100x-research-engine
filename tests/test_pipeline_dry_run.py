@@ -11,7 +11,7 @@ from tests.test_live_output_port import _mock_http_post
 
 def _pipeline(tmp_path: Path) -> Pipeline:
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
-    return Pipeline(store, staging_root=tmp_path / "staging")
+    return Pipeline(store, staging_root=tmp_path / "staging", allow_test_provider=True)
 
 
 def test_pipeline_dry_run_high_signal_marks_done_without_file_output(tmp_path):
@@ -38,6 +38,28 @@ def test_pipeline_dry_run_low_quality_is_rejected_without_output(tmp_path):
     assert result.next_action is NextAction.DROP
     assert result.output_path == ""
     assert result.extraction_result is None
+
+
+def test_pipeline_can_force_extract_score_reject(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    pipeline = Pipeline(
+        store,
+        staging_root=tmp_path / "staging",
+        score_gate_enabled=False,
+        allow_test_provider=True,
+    )
+
+    result = pipeline.process_url("fixture://low_quality", source="rss", mode=RuntimeMode.DRY_RUN)
+
+    assert result.final_status is QueueStatus.DONE
+    assert result.failure_kind is FailureKind.NONE
+    assert result.output_path.startswith("dry-run://")
+    assert result.score_result is not None
+    assert result.score_result.signal_tier == "Reject"
+    assert result.extraction_result is not None
+    score_gate = next(stage for stage in result.stage_results if stage.stage == "score_gate")
+    assert score_gate.detail["gate_enabled"] is False
+    assert score_gate.detail["forced_extract"] is True
 
 
 def test_pipeline_dry_run_parse_error_is_terminal(tmp_path):
@@ -101,7 +123,7 @@ class BlockedWechatFetcher:
 
 def test_pipeline_rejects_wechat_verification_page(tmp_path):
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
-    pipeline = Pipeline(store, fetcher=BlockedWechatFetcher(), staging_root=tmp_path / "staging")
+    pipeline = Pipeline(store, fetcher=BlockedWechatFetcher(), staging_root=tmp_path / "staging", allow_test_provider=True)
 
     result = pipeline.process_url("https://mp.weixin.qq.com/s/example", mode=RuntimeMode.DRY_RUN)
 
@@ -132,11 +154,11 @@ def test_pipeline_dry_run_parallel_bundles_do_not_affect_active_output(tmp_path)
     )
 
     assert result.final_status is QueueStatus.DONE
-    assert result.prompt_bundle == "primary_market_v1"
+    assert result.prompt_bundle == pipeline.prompt_registry.active_bundle_name
     parallel_bundles = [item.prompt_bundle for item in result.parallel_results]
-    assert "primary_market_v1" not in parallel_bundles
-    assert "rimbo_source_scored_v3" in parallel_bundles
-    assert "v2_legacy" in parallel_bundles
+    expected_parallel_bundles = set(pipeline.prompt_registry.parallel_test_bundle_names)
+    expected_parallel_bundles.discard(pipeline.prompt_registry.active_bundle_name)
+    assert set(parallel_bundles) == expected_parallel_bundles
     assert all(item.ok for item in result.parallel_results)
     assert all(item.prompt_hash for item in result.parallel_results)
     assert result.output_path.startswith("dry-run://")

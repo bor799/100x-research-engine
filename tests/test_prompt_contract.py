@@ -75,6 +75,21 @@ def test_rimbo_source_scored_v3_declares_source_score_and_compression_contracts(
     assert "## 信源评分" in extraction
 
 
+def test_v2_stable_cn_declares_v2_style_and_v3_contracts():
+    scoring = (PROMPTS / "versions" / "v2_stable_cn" / "scoring.md").read_text(
+        encoding="utf-8"
+    )
+    extraction = (PROMPTS / "versions" / "v2_stable_cn" / "extraction.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "商业化/变现实操" in scoring
+    assert "默认使用简体中文" in extraction
+    assert "source_score" in scoring
+    assert "content_compression" in extraction
+    assert "obsidian_brief_markdown" in extraction
+
+
 def test_telegram_prompt_requires_plain_text_and_plain_urls():
     content = (PROMPTS / "telegram_brief.md").read_text(encoding="utf-8")
 
@@ -82,3 +97,4 @@ def test_telegram_prompt_requires_plain_text_and_plain_urls():
     assert "plain URLs" in content
     assert "Do not use Markdown links" in content
     assert "Do not use Telegram Markdown or HTML formatting" in content
+    assert "默认使用简体中文" in content

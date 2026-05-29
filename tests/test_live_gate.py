@@ -28,13 +28,14 @@ def _make_config(
     live_enabled: bool = False,
     obsidian_root: str = "",
     api_key_env: str = "ZHIPU_API_KEY",
+    api_key: str = "",
     telegram_token_env: str = "TELEGRAM_BOT_TOKEN",
     telegram_chat_id_env: str = "TELEGRAM_ADMIN_CHAT_ID",
 ) -> V3Config:
     return V3Config(
         runtime=RuntimeConfig(),
         live=LiveConfig(enabled=live_enabled),
-        llm=LLMConfig(api_key_env=api_key_env),
+        llm=LLMConfig(api_key_env=api_key_env, api_key=api_key),
         outputs=OutputsConfig(
             obsidian_root=obsidian_root,
             telegram_bot_token_env=telegram_token_env,
@@ -177,6 +178,16 @@ class TestCheckEnvSecrets:
         config = _make_config()
         loader = _make_loader(env={
             "ZHIPU_API_KEY": "test-key",
+            "TELEGRAM_BOT_TOKEN": "test-token",
+            "TELEGRAM_ADMIN_CHAT_ID": "123",
+        })
+        gate = LiveGate(config, config_loader=loader, runtime_guard=_make_guard())
+        check = gate.check_env_secrets()
+        assert check.passed
+
+    def test_direct_llm_api_key_skips_llm_env_requirement(self):
+        config = _make_config(api_key="direct-key")
+        loader = _make_loader(env={
             "TELEGRAM_BOT_TOKEN": "test-token",
             "TELEGRAM_ADMIN_CHAT_ID": "123",
         })

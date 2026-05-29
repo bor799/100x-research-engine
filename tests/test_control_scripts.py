@@ -42,4 +42,4 @@ def test_control_status_reports_sources():
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert "Sources loaded: 91" in result.stdout
+    assert "Sources loaded: 95" in result.stdout

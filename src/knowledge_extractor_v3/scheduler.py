@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from .config_loader import ConfigLoader, V3Config
 from .models import utc_now
 from .queue_store import QueueStore, QueueTask
-from .runtime_guard import RuntimeGuard, RuntimeGuardError
+from .runtime_guard import RuntimeGuard, RuntimeGuardError, resolve_runtime_paths
 from .sources import (
     RSSAdapter,
     SchedulerEvent,
@@ -408,6 +408,7 @@ def main(argv: list[str] | None = None) -> int:
         python -m knowledge_extractor_v3.scheduler --loop [--interval N] [--max-iter N]
     """
     import argparse
+    import os
 
     parser = argparse.ArgumentParser(description="V3 Scheduler")
     parser.add_argument(
@@ -456,16 +457,24 @@ def main(argv: list[str] | None = None) -> int:
     loader = ConfigLoader(project_root=project_root)
     config = loader.load()
 
+    # Resolve runtime paths using unified function
+    paths = resolve_runtime_paths(project_root, config, loader, env=os.environ)
+
     # Runtime guard check
-    guard = RuntimeGuard.from_env(project_root=project_root)
+    guard = RuntimeGuard(paths)
     try:
         guard.validate(write_fingerprint=False)
     except RuntimeGuardError as exc:
         print(f"Runtime guard check failed: {exc}", file=sys.stderr)
         return 1
 
-    # Create scheduler
-    scheduler = create_scheduler(config)
+    # Create scheduler with unified paths
+    queue_store = QueueStore(paths.queue_db_path)
+    scheduler = Scheduler(
+        config=config,
+        queue_store=queue_store,
+        log_path=paths.log_path,
+    )
 
     # Run
     if args.once:

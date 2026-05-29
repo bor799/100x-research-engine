@@ -47,6 +47,10 @@ class LiveObsidianWriter:
         prompt_bundle: str,
         prompt_hash: str,
         task_id: int | None = None,
+        runtime_mode: str = "",
+        provider_route: str = "",
+        is_test_provider: bool = False,
+        runtime_fingerprint: str = "",
     ) -> str | TypedError:
         output_dir = self.root / self.subdir
         try:
@@ -85,6 +89,10 @@ class LiveObsidianWriter:
             prompt_bundle=prompt_bundle,
             prompt_hash=prompt_hash,
             processed_at=processed_at,
+            runtime_mode=runtime_mode,
+            provider_route=provider_route,
+            is_test_provider=is_test_provider,
+            runtime_fingerprint=runtime_fingerprint,
         )
 
         # Atomic write: temp file in same dir, then rename
@@ -111,7 +119,11 @@ class LiveObsidianWriter:
 
         # Optional manifest
         if self.write_manifest:
-            self._append_manifest(output_dir, filename, content, score, prompt_bundle, prompt_hash, task_id)
+            self._append_manifest(
+                output_dir, filename, content, score, prompt_bundle, prompt_hash, task_id,
+                runtime_mode=runtime_mode, provider_route=provider_route,
+                is_test_provider=is_test_provider, runtime_fingerprint=runtime_fingerprint,
+            )
 
         return str(final_path)
 
@@ -124,6 +136,11 @@ class LiveObsidianWriter:
         prompt_bundle: str,
         prompt_hash: str,
         task_id: int | None,
+        *,
+        runtime_mode: str = "",
+        provider_route: str = "",
+        is_test_provider: bool = False,
+        runtime_fingerprint: str = "",
     ) -> None:
         manifest_path = output_dir / "manifest.jsonl"
         entry = {
@@ -138,6 +155,13 @@ class LiveObsidianWriter:
             "task_id": task_id,
             "timestamp": utc_now(),
         }
+        if runtime_mode:
+            entry["runtime_mode"] = runtime_mode
+        if provider_route:
+            entry["provider_route"] = provider_route
+        entry["is_test_provider"] = is_test_provider
+        if runtime_fingerprint:
+            entry["runtime_fingerprint"] = runtime_fingerprint[:64]
         line = json.dumps(entry, ensure_ascii=False, sort_keys=True)
         try:
             with manifest_path.open("a", encoding="utf-8") as f:
@@ -175,6 +199,10 @@ class LiveOutputPort:
         prompt_bundle: str,
         prompt_hash: str,
         task_id: int | None,
+        runtime_mode: str = "",
+        provider_route: str = "",
+        is_test_provider: bool = False,
+        runtime_fingerprint: str = "",
     ) -> OutputResult:
         # Obsidian first
         output_path = self.writer.write(
@@ -184,6 +212,10 @@ class LiveOutputPort:
             prompt_bundle=prompt_bundle,
             prompt_hash=prompt_hash,
             task_id=task_id,
+            runtime_mode=runtime_mode,
+            provider_route=provider_route,
+            is_test_provider=is_test_provider,
+            runtime_fingerprint=runtime_fingerprint,
         )
         if isinstance(output_path, TypedError):
             return OutputResult(ok=False, mode=self.mode, error=output_path)

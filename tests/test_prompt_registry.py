@@ -11,11 +11,13 @@ def test_prompt_registry_validates_active_and_parallel_bundles():
 
     registry.validate()
 
-    assert registry.active_bundle_name == "primary_market_v1"
     parallel_bundle_names = [bundle.name for bundle in registry.bundles_for_parallel_test()]
+    assert registry.active_bundle_name == "v2_stable_cn"
+    assert registry.active_bundle_name in parallel_bundle_names
     assert parallel_bundle_names[0] == "primary_market_v1"
     assert "rimbo_source_scored_v3" in parallel_bundle_names
     assert "v2_legacy" in parallel_bundle_names
+    assert "v2_stable_cn" in parallel_bundle_names
 
 
 def test_prompt_registry_loads_scoring_and_extraction_roles():
@@ -26,12 +28,17 @@ def test_prompt_registry_loads_scoring_and_extraction_roles():
     rimbo_scoring = registry.load_prompt("rimbo_source_scored_v3", "scoring")
     rimbo_extraction = registry.load_prompt("rimbo_source_scored_v3", "extraction")
     legacy_scoring = registry.load_prompt("v2_legacy", "scoring")
+    stable_scoring = registry.load_prompt("v2_stable_cn", "scoring")
+    stable_extraction = registry.load_prompt("v2_stable_cn", "extraction")
 
     assert "final_score" in scoring
     assert "obsidian_brief_markdown" in extraction
     assert "source_score" in rimbo_scoring
     assert "content_compression" in rimbo_extraction
     assert "商业化/变现实操" in legacy_scoring
+    assert "商业化/变现实操" in stable_scoring
+    assert "source_score" in stable_scoring
+    assert "content_compression" in stable_extraction
 
 
 def test_prompt_registry_keeps_scoring_and_extraction_separate():

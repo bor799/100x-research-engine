@@ -72,19 +72,28 @@ write_heartbeat() {
   local role="$1"
   local status="${2:-running}"
   local detail="${3:-}"
-  "$PYTHON" - "$role" "$status" "$detail" "$(role_heartbeat_file "$role")" <<'PY'
+  local heartbeat_pid="${CONTROL_ROLE_PID:-$$}"
+  local child_pid="${CONTROL_CHILD_PID:-}"
+  "$PYTHON" - "$role" "$status" "$detail" "$(role_heartbeat_file "$role")" "$heartbeat_pid" "$child_pid" <<'PY'
 import json
-import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-role, status, detail, path = sys.argv[1:5]
+role, status, detail, path, pid, child_pid = sys.argv[1:7]
+
+def parse_pid(value):
+    try:
+        return int(value) if value else None
+    except ValueError:
+        return value or None
+
 payload = {
     "role": role,
     "status": status,
     "detail": detail,
-    "pid": os.getpid(),
+    "pid": parse_pid(pid),
+    "child_pid": parse_pid(child_pid),
     "updated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
 }
 target = Path(path)
@@ -122,11 +131,13 @@ role_command() {
 
 role_run() {
   local role="$1"
-  local log_file pid_file command
+  local log_file pid_file command child exit_code restart_delay
   log_file="$(role_log_file "$role")"
   pid_file="$(role_pid_file "$role")"
   echo "$$" > "$pid_file"
+  export CONTROL_ROLE_PID="$$"
   write_heartbeat "$role" "starting"
+  restart_delay="${ROLE_RESTART_DELAY_SECONDS:-60}"
 
   if [ "$role" = "telegram-bot-loop" ] && [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
     while true; do
@@ -136,15 +147,28 @@ role_run() {
   fi
 
   command="$(role_command "$role")"
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] starting $role: $command" >> "$log_file"
-  bash -lc "$command" >> "$log_file" 2>&1 &
-  local child=$!
-  trap 'write_heartbeat "'"$role"'" "stopping"; kill "'"$child"'" >/dev/null 2>&1 || true; wait "'"$child"'" >/dev/null 2>&1 || true; exit 0' TERM INT
-  while kill -0 "$child" >/dev/null 2>&1; do
-    write_heartbeat "$role" "running"
-    sleep 30
+  trap 'write_heartbeat "'"$role"'" "stopping"; if [ -n "${child:-}" ]; then kill "$child" >/dev/null 2>&1 || true; wait "$child" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
+
+  while true; do
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] starting $role: $command" >> "$log_file"
+    bash -lc "$command" >> "$log_file" 2>&1 &
+    child=$!
+    export CONTROL_CHILD_PID="$child"
+    while kill -0 "$child" >/dev/null 2>&1; do
+      write_heartbeat "$role" "running" "child_pid=$child"
+      sleep 30
+    done
+
+    set +e
+    wait "$child"
+    exit_code=$?
+    set -e
+
+    write_heartbeat "$role" "exited" "exit_code=$exit_code"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $role exited with code $exit_code; restarting in ${restart_delay}s" >> "$log_file"
+    write_heartbeat "$role" "restarting" "exit_code=$exit_code; delay=${restart_delay}s"
+    sleep "$restart_delay"
   done
-  wait "$child"
 }
 
 health_monitor_loop() {
@@ -152,7 +176,35 @@ health_monitor_loop() {
   while true; do
     write_heartbeat "health-monitor" "running"
     "$PYTHON" -m knowledge_extractor_v3.health --json > "$STATE_ROOT/health.json" 2>> "$log_file" || true
+    restart_stale_roles >> "$log_file" 2>&1 || true
     sleep 300
+  done
+}
+
+restart_stale_roles() {
+  local health_file="$STATE_ROOT/health.json"
+  [ -f "$health_file" ] || return 0
+  "$PYTHON" - "$health_file" <<'PY' | while read -r role; do
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+
+for check in data.get("checks", []):
+    if check.get("name") != "role_locks":
+        continue
+    for role in check.get("detail", {}).get("stale_roles", []):
+        if role != "health-monitor":
+            print(role)
+PY
+    if [ -n "$role" ]; then
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] health monitor starting stale role: $role"
+      start_role "$role"
+    fi
   done
 }
 
@@ -220,10 +272,10 @@ start_tmux() {
   fi
 
   stop_all >/dev/null 2>&1 || true
-  tmux new-session -d -s "$TMUX_SESSION" -n scheduler-loop -c "$PROJECT_ROOT" "$CONTROL_SCRIPT role-run scheduler-loop"
-  tmux new-window -t "$TMUX_SESSION" -n worker-loop -c "$PROJECT_ROOT" "$CONTROL_SCRIPT role-run worker-loop"
-  tmux new-window -t "$TMUX_SESSION" -n telegram-bot-loop -c "$PROJECT_ROOT" "$CONTROL_SCRIPT role-run telegram-bot-loop"
-  tmux new-window -t "$TMUX_SESSION" -n health-monitor -c "$PROJECT_ROOT" "$CONTROL_SCRIPT role-run health-monitor"
+  tmux new-session -d -s "$TMUX_SESSION" -n scheduler-loop -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run scheduler-loop)"
+  tmux new-window -t "$TMUX_SESSION" -n worker-loop -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run worker-loop)"
+  tmux new-window -t "$TMUX_SESSION" -n telegram-bot-loop -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run telegram-bot-loop)"
+  tmux new-window -t "$TMUX_SESSION" -n health-monitor -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run health-monitor)"
   echo "started tmux session: $TMUX_SESSION"
 }
 
@@ -245,7 +297,10 @@ tmux_status() {
 
 recover() {
   if command -v tmux >/dev/null 2>&1; then
-    start_tmux
+    if ! start_tmux; then
+      echo "tmux start failed; falling back to nohup roles" >&2
+      start_all
+    fi
   else
     start_all
   fi

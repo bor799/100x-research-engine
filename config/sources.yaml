@@ -465,3 +465,44 @@ sources:
   type: rss
   url: https://computer.rip/rss.xml
   enabled: true
+
+# ===== US AI Market Daily / 高频日报补充源 =====
+- name: AIHot
+  type: rss
+  url: https://aihot.virxact.com/feed.xml
+  enabled: true
+  category: AI进展
+  tags:
+    - aihot
+    - ai-industry
+    - daily-report
+
+- name: SEC Press Releases
+  type: rss
+  url: https://www.sec.gov/news/pressreleases.rss
+  enabled: true
+  category: 财经
+  tags:
+    - sec
+    - regulatory
+    - daily-report
+
+- name: Federal Reserve Press Releases
+  type: rss
+  url: https://www.federalreserve.gov/feeds/press_all.xml
+  enabled: true
+  category: 财经
+  tags:
+    - fed
+    - macro
+    - daily-report
+
+- name: U.S. EIA Today in Energy
+  type: rss
+  url: https://www.eia.gov/rss/todayinenergy.xml
+  enabled: true
+  category: 财经
+  tags:
+    - energy
+    - power
+    - daily-report

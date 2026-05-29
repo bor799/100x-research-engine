@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from .config_loader import ConfigLoader, V3Config
-from .models import utc_now
+from .models import sha256_text, utc_now
 from .prompt_registry import PromptRegistry
 from .queue_store import QueueStore, QueueStatus
 from .runtime_guard import RuntimeGuard, RuntimeGuardError
@@ -110,6 +110,7 @@ class HealthChecker:
         # Optional checks (only if components are enabled)
         checks.append(self._check_stale_processing())
         checks.append(self._check_role_locks())
+        checks.append(self._check_prompt_registry())
 
         if self._config.live.enabled:
             checks.append(self._check_live_requirements())
@@ -264,12 +265,29 @@ class HealthChecker:
             )
 
         stale_roles = []
+        details: dict[str, str] = {}
         now = datetime.now(UTC)
+        active_statuses = {"starting", "running", "waiting", "restarting"}
 
         for role_file in role_dir.glob("*.json"):
             try:
                 with open(role_file) as f:
                     data = json.load(f)
+
+                role = role_file.stem
+                status = str(data.get("status", ""))
+                if status == "stopped":
+                    continue
+                if status and status not in active_statuses:
+                    stale_roles.append(role)
+                    details[role] = f"status={status}"
+                    continue
+
+                pid = data.get("pid")
+                if pid and not _pid_is_alive(pid):
+                    stale_roles.append(role)
+                    details[role] = f"pid_not_alive={pid}"
+                    continue
 
                 updated_at = data.get("updated_at", "")
                 if not updated_at:
@@ -282,7 +300,8 @@ class HealthChecker:
 
                 # Role is stale if not updated in 10 minutes
                 if (now - updated).total_seconds() > 600:
-                    stale_roles.append(role_file.stem)
+                    stale_roles.append(role)
+                    details[role] = f"heartbeat_age_seconds={int((now - updated).total_seconds())}"
             except (json.JSONDecodeError, OSError):
                 pass
 
@@ -291,7 +310,7 @@ class HealthChecker:
                 name="role_locks",
                 status=HealthStatus.WARNING,
                 message=f"Stale roles: {', '.join(stale_roles)}",
-                detail={"stale_roles": stale_roles},
+                detail={"stale_roles": stale_roles, "details": details},
             )
 
         return HealthCheck(
@@ -315,8 +334,10 @@ class HealthChecker:
 
         # Check Telegram if enabled
         if self._config.outputs.telegram_enabled:
-            token_env = self._config.outputs.telegram_bot_token_env
-            if not os.environ.get(token_env):
+            # 优先检查直接配置的 token，其次检查环境变量
+            token = self._config.outputs.telegram_bot_token or os.environ.get(self._config.outputs.telegram_bot_token_env)
+            if not token:
+                token_env = self._config.outputs.telegram_bot_token_env
                 issues.append(f"Telegram token not found: {token_env}")
 
         if issues:
@@ -333,6 +354,39 @@ class HealthChecker:
             message="Live mode requirements met",
         )
 
+    def _check_prompt_registry(self) -> HealthCheck:
+        """Validate active prompt routing and report the active bundle hash."""
+        try:
+            prompts = self._prompts or PromptRegistry.from_config(
+                Path(__file__).resolve().parents[2],
+                self._config.prompts,
+            )
+            prompts.validate(required_roles=("scoring", "extraction", "telegram_brief"))
+            active_bundle = prompts.active_bundle_name
+            scoring_prompt = prompts.load_prompt(active_bundle, "scoring")
+            extraction_prompt = prompts.load_prompt(active_bundle, "extraction")
+            telegram_prompt = prompts.load_prompt(active_bundle, "telegram_brief")
+            prompt_hash = sha256_text(
+                scoring_prompt + extraction_prompt + telegram_prompt,
+                length=16,
+            )
+            return HealthCheck(
+                name="prompt_registry",
+                status=HealthStatus.HEALTHY,
+                message=f"Active prompt bundle: {active_bundle} ({prompt_hash})",
+                detail={
+                    "active_bundle": active_bundle,
+                    "prompt_hash": prompt_hash,
+                    "parallel_test_bundles": prompts.parallel_test_bundle_names,
+                },
+            )
+        except Exception as exc:
+            return HealthCheck(
+                name="prompt_registry",
+                status=HealthStatus.ERROR,
+                message=f"Prompt registry error: {exc}",
+            )
+
     @staticmethod
     def _worst_status(statuses) -> HealthStatus:
         """Return the worst (highest severity) status."""
@@ -342,6 +396,20 @@ class HealthChecker:
             if s in statuses:
                 return s
         return HealthStatus.HEALTHY
+
+
+def _pid_is_alive(pid: object) -> bool:
+    try:
+        pid_int = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid_int <= 0:
+        return False
+    try:
+        os.kill(pid_int, 0)
+    except OSError:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -386,6 +454,7 @@ def main(argv: list[str] | None = None) -> int:
         config=config,
         queue_store=queue_store,
         runtime_guard=guard,
+        prompt_registry=PromptRegistry.from_config(project_root, config.prompts),
     )
 
     report = checker.run_all()

@@ -143,11 +143,14 @@ class LiveGate:
 
     def check_env_secrets(self) -> LiveGateCheck:
         """All env vars referenced in config must exist and be non-empty."""
-        env_vars = [
-            self._config.llm.api_key_env,
-            self._config.outputs.telegram_bot_token_env,
-            self._config.outputs.telegram_admin_chat_id_env,
-        ]
+        env_vars = []
+        if not getattr(self._config.llm, "api_key", ""):
+            env_vars.append(self._config.llm.api_key_env)
+        # 只有在没有直接配置 token 时才检查环境变量
+        if not getattr(self._config.outputs, "telegram_bot_token", ""):
+            env_vars.append(self._config.outputs.telegram_bot_token_env)
+        if not getattr(self._config.outputs, "telegram_admin_chat_id", ""):
+            env_vars.append(self._config.outputs.telegram_admin_chat_id_env)
         missing = [name for name in env_vars if not self._loader.resolve_env(name)]
         if missing:
             return LiveGateCheck(

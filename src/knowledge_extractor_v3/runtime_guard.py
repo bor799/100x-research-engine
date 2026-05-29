@@ -7,6 +7,7 @@ scheduler, bot, or queue worker is introduced.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -16,7 +17,10 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import TYPE_CHECKING, Mapping, Optional
+
+if TYPE_CHECKING:
+    from .config_loader import ConfigLoader, V3Config
 
 from .queue_store import QUEUE_REQUIRED_COLUMNS
 
@@ -27,12 +31,20 @@ class RuntimeGuardError(RuntimeError):
 
 @dataclass(frozen=True)
 class RuntimePaths:
+    """Consolidated runtime paths for all V3 components.
+
+    All components (worker, scheduler, bot, health, scripts) must use the
+    effective paths from this class to ensure queue/db visibility consistency.
+    """
     project_root: Path
     state_root: Path
     queue_db_path: Path
     log_path: Path
     config_path: Path
     home: Path
+    # Track if paths came from explicit env overrides (for diagnostics)
+    state_root_is_explicit: bool = False
+    queue_db_is_explicit: bool = False
 
     @classmethod
     def from_env(
@@ -41,13 +53,20 @@ class RuntimePaths:
         project_root: Optional[Path] = None,
         env: Optional[Mapping[str, str]] = None,
     ) -> "RuntimePaths":
+        """Create RuntimePaths from environment variables with defaults."""
         effective_env = env or os.environ
         root = Path(project_root or Path(__file__).resolve().parents[2]).expanduser()
         home = Path(effective_env.get("HOME", str(Path.home()))).expanduser()
+
+        # Detect explicit overrides
+        state_root_explicit = "STATE_ROOT" in effective_env
         state_root = Path(effective_env.get("STATE_ROOT", str(home / ".100x_v3"))).expanduser()
+
+        queue_db_explicit = "QUEUE_DB_PATH" in effective_env
         queue_db_path = Path(
             effective_env.get("QUEUE_DB_PATH", str(state_root / "queue.db"))
         ).expanduser()
+
         log_path = Path(effective_env.get("LOG_PATH", str(home / "100x-v3-daemon.log"))).expanduser()
         config_path = Path(
             effective_env.get("CONFIG_PATH", str(root / "config" / "config.local.yaml"))
@@ -59,7 +78,80 @@ class RuntimePaths:
             log_path=log_path,
             config_path=config_path,
             home=home,
+            state_root_is_explicit=state_root_explicit,
+            queue_db_is_explicit=queue_db_explicit,
         )
+
+
+def resolve_runtime_paths(
+    project_root: Path,
+    config: V3Config,
+    loader: ConfigLoader,
+    env: Mapping[str, str] | None = None,
+) -> RuntimePaths:
+    """Unified runtime path resolution for all V3 components.
+
+    This is the SINGLE SOURCE OF TRUTH for effective runtime paths.
+    All scheduler/worker/bot/health/scripts must use this function.
+
+    Resolution priority (highest to lowest):
+    1. Explicit env var (STATE_ROOT, QUEUE_DB_PATH)
+    2. Config file (config.runtime.state_root, config.runtime.queue_db_path)
+    3. Default (~/.100x_v3/queue.db)
+
+    Args:
+        project_root: V3 repository root directory
+        config: Loaded V3Config
+        loader: ConfigLoader instance for path expansion
+        env: Environment mapping (defaults to os.environ)
+
+    Returns:
+        RuntimePaths with effective paths for all components
+    """
+    effective_env = env or os.environ
+    home = Path(effective_env.get("HOME", str(Path.home()))).expanduser()
+
+    # Resolve state_root: env > config > default
+    if "STATE_ROOT" in effective_env:
+        state_root = Path(effective_env["STATE_ROOT"]).expanduser()
+        state_root_explicit = True
+    elif hasattr(config, "runtime") and hasattr(config.runtime, "state_root"):
+        state_root = loader.expand_path(config.runtime.state_root)
+        state_root_explicit = False
+    else:
+        state_root = home / ".100x_v3"
+        state_root_explicit = False
+    state_root = Path(state_root).expanduser()
+
+    # Resolve queue_db_path: env > config > state_root/default
+    if "QUEUE_DB_PATH" in effective_env:
+        queue_db_path = Path(effective_env["QUEUE_DB_PATH"]).expanduser()
+        queue_db_explicit = True
+    elif hasattr(config, "runtime") and hasattr(config.runtime, "queue_db_path"):
+        queue_db_path = loader.expand_path(config.runtime.queue_db_path)
+        queue_db_explicit = False
+    else:
+        queue_db_path = state_root / "queue.db"
+        queue_db_explicit = False
+    queue_db_path = Path(queue_db_path).expanduser()
+
+    # Resolve other paths
+    log_path = Path(effective_env.get("LOG_PATH", str(home / "100x-v3-daemon.log"))).expanduser()
+    config_path = Path(effective_env.get(
+        "CONFIG_PATH",
+        str(project_root / "config" / "config.local.yaml")
+    )).expanduser()
+
+    return RuntimePaths(
+        project_root=project_root,
+        state_root=state_root,
+        queue_db_path=queue_db_path,
+        log_path=log_path,
+        config_path=config_path,
+        home=home,
+        state_root_is_explicit=state_root_explicit,
+        queue_db_is_explicit=queue_db_explicit,
+    )
 
 
 @dataclass(frozen=True)
@@ -210,3 +302,83 @@ class RuntimeGuard:
             return True
         except ValueError:
             return False
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point for runtime_guard.
+
+    Usage:
+        python -m knowledge_extractor_v3.runtime_guard --check
+        python -m knowledge_extractor_v3.runtime_guard --json
+        python -m knowledge_extractor_v3.runtime_guard --print-env
+    """
+    parser = argparse.ArgumentParser(description="V3 Runtime Guard - validate runtime isolation")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--check",
+        action="store_true",
+        help="Run runtime guard checks and exit with 0 if pass, 1 if fail",
+    )
+    group.add_argument(
+        "--json",
+        action="store_true",
+        help="Output runtime fingerprint as JSON",
+    )
+    group.add_argument(
+        "--print-env",
+        action="store_true",
+        help="Print effective runtime environment variables",
+    )
+
+    args = parser.parse_args(argv)
+
+    # Determine project root
+    project_root = Path(__file__).resolve().parents[2]
+
+    # Create guard
+    guard = RuntimeGuard.from_env(project_root=project_root)
+
+    if args.check:
+        try:
+            guard.validate(write_fingerprint=False)
+            return 0
+        except RuntimeGuardError as exc:
+            print(f"Runtime guard check failed: {exc}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        try:
+            fingerprint = guard.build_fingerprint()
+            print(fingerprint.to_json())
+            return 0
+        except RuntimeGuardError as exc:
+            print(json.dumps({"error": str(exc)}), file=sys.stderr)
+            return 1
+
+    if args.print_env:
+        paths = guard.paths
+        env_output = {
+            "PROJECT_ROOT": str(paths.project_root),
+            "STATE_ROOT": str(paths.state_root),
+            "QUEUE_DB_PATH": str(paths.queue_db_path),
+            "LOG_PATH": str(paths.log_path),
+            "CONFIG_PATH": str(paths.config_path),
+            "HOME": str(paths.home),
+            "_meta": {
+                "state_root_is_explicit": paths.state_root_is_explicit,
+                "queue_db_is_explicit": paths.queue_db_is_explicit,
+            },
+        }
+        print(json.dumps(env_output, ensure_ascii=False, indent=2))
+        return 0
+
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

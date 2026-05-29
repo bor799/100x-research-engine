@@ -17,12 +17,20 @@ live:
 llm:
   provider: "placeholder"
   api_key_env: "ZHIPU_API_KEY"
+  api_base: "https://open.bigmodel.cn/api/coding/paas/v4"
   scoring_model: "placeholder-scoring-model"
   extraction_model: "placeholder-extraction-model"
   telegram_brief_model: "placeholder-brief-model"
   request_timeout_seconds: 60
   max_retries: 3
   min_delay_seconds: 2
+  temperature: 0.1
+  # Fallback providers: tried when primary returns 429/quota errors
+  fallback_providers:
+    - provider: "openai"
+      api_key_env: "OPENAI_API_KEY"
+      scoring_model: "gpt-4o-mini"
+      extraction_model: "gpt-4o-mini"
 
 outputs:
   obsidian_root: ""
@@ -32,16 +40,31 @@ outputs:
   telegram_admin_chat_id_env: "TELEGRAM_ADMIN_CHAT_ID"
   telegram_enabled: true
 
+daily_reports:
+  us_ai_market:
+    enabled: false
+    timezone: "Asia/Shanghai"
+    schedule_time: "08:03"
+    system_dir: "~/Documents/Obsidian Vault/信息源/日报系统"
+    stock_context_root: "~/Documents/Obsidian Vault/兴趣领域/股票投资/AI周期探索/0_总览"
+    output_category: "日报"
+    lookback_hours: 72
+    non_trading_day_mode: "review"
+
 prompts:
   registry: "prompts/registry.json"
-  active_bundle: "primary_market_v1"
+  active_bundle: "v2_stable_cn"
   parallel_test_bundles:
     - "primary_market_v1"
     - "rimbo_source_scored_v3"
     - "v2_legacy"
+    - "v2_stable_cn"
   scoring: "prompts/primary_market_scoring.md"
   extraction: "prompts/primary_market_extraction.md"
   telegram_brief: "prompts/telegram_brief.md"
+
+score_gate:
+  enabled: true
 
 sources: []
 
@@ -67,3 +90,13 @@ agent_reach:
     - web
   fallback_to_jina: true
   proxy: ""
+  # WeChat-specific options
+  wechat:
+    # Try headless mode first before falling back to visible browser
+    headless_first: true
+    # When blocked by verification, launch visible browser with profile
+    interactive_on_blocked: true
+    # Directory to store browser profile for login persistence
+    profile_dir: "~/.100x_v3/browser-profiles/wechat"
+    # Timeout for interactive browser verification (seconds)
+    verification_timeout_seconds: 300

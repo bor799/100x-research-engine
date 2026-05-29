@@ -35,6 +35,9 @@ T = TypeVar("T")
 class Pipeline:
     """Run one queue task through the V3 dry-run/staging backend core."""
 
+    # Provider routes that are only allowed for testing
+    TEST_PROVIDER_ROUTES = ("stub://", "shadow-heuristic://", "test://")
+
     def __init__(
         self,
         queue_store: QueueStore,
@@ -44,7 +47,9 @@ class Pipeline:
         prompt_registry: PromptRegistry | None = None,
         staging_root: Path | None = None,
         reject_threshold: float = 0.3,
+        score_gate_enabled: bool = True,
         live_output: OutputPort | None = None,
+        allow_test_provider: bool = False,
     ) -> None:
         project_root = Path(__file__).resolve().parents[2]
         self.queue_store = queue_store
@@ -53,7 +58,9 @@ class Pipeline:
         self.prompt_registry = prompt_registry or PromptRegistry.default(project_root)
         self.staging_root = Path(staging_root or queue_store.db_path.parent / "staging")
         self.reject_threshold = reject_threshold
+        self.score_gate_enabled = score_gate_enabled
         self._live_output = live_output
+        self.allow_test_provider = allow_test_provider
         self.dry_run_output = DryRunOutputPort()
         self.staging_output = StagingOutputPort(self.staging_root)
 
@@ -66,11 +73,49 @@ class Pipeline:
         mode: RuntimeMode = RuntimeMode.DRY_RUN,
         prompt_bundle: str | None = None,
         run_parallel_tests: bool = False,
+        claim_task: bool = True,
     ) -> ProcessResult:
         mode = RuntimeMode(mode)
         active_bundle = prompt_bundle or self.prompt_registry.active_bundle_name
         stage_results: list[StageResult] = []
         parallel_results: list[PromptRunResult] = []
+
+        # Guard against using test providers with real URLs
+        provider_route = str(getattr(self.llm_provider, "model_route", ""))
+        if not self.allow_test_provider and not url.startswith("fixture://"):
+            if any(provider_route.startswith(route) for route in self.TEST_PROVIDER_ROUTES):
+                error = TypedError(
+                    failure_kind=FailureKind.RUNTIME_GUARD,
+                    message=f"Test provider ({provider_route}) not allowed for non-fixture URL",
+                    stage="runtime_guard",
+                    retryable=False,
+                    next_action=NextAction.MANUAL_REVIEW,
+                    detail=f"URL: {url[:100]}, Provider: {provider_route}",
+                )
+                _append_stage(stage_results, "runtime_guard", error=error)
+                if queue_task_id is not None:
+                    self.queue_store.mark_failed_terminal(
+                        queue_task_id,
+                        failure_kind=FailureKind.RUNTIME_GUARD,
+                        last_error=error.message,
+                        detail=error.detail,
+                        next_action=NextAction.MANUAL_REVIEW,
+                    )
+                return ProcessResult(
+                    url=url,
+                    source=source,
+                    queue_task_id=queue_task_id,
+                    current_stage="runtime_guard",
+                    final_status=QueueStatus.FAILED_TERMINAL,
+                    retryable=False,
+                    failure_kind=error.failure_kind,
+                    next_action=error.next_action,
+                    output_path="",
+                    telegram_status="",
+                    prompt_bundle=active_bundle,
+                    stage_results=stage_results,
+                    error=error,
+                )
 
         if mode is RuntimeMode.LIVE and self._live_output is None:
             error = TypedError(
@@ -99,8 +144,9 @@ class Pipeline:
 
         task = self._resolve_task(url, source=source, queue_task_id=queue_task_id)
         task_url = task.url
-        self.queue_store.mark_processing(task.id)
-        _append_stage(stage_results, "queue_processing", detail={"task_id": task.id})
+        if claim_task:
+            self.queue_store.mark_processing(task.id)
+        _append_stage(stage_results, "queue_processing", detail={"task_id": task.id, "claimed": claim_task})
 
         fetched = _run_stage(stage_results, "fetch", lambda: self.fetcher.fetch(task_url))
         if isinstance(fetched, TypedError):
@@ -156,7 +202,8 @@ class Pipeline:
                 parallel_results=parallel_results,
             )
 
-        if _should_reject(score_result, self.reject_threshold):
+        score_rejected = _should_reject(score_result, self.reject_threshold)
+        if score_rejected and self.score_gate_enabled:
             error = TypedError(
                 failure_kind=FailureKind.VALIDATION_FAILED,
                 message="Scoring rejected content",
@@ -182,7 +229,13 @@ class Pipeline:
                 parallel_results=parallel_results,
                 error=error,
             )
-        _append_stage(stage_results, "score_gate", detail={"accepted": True})
+        _append_stage(stage_results, "score_gate", detail={
+            "accepted": True,
+            "gate_enabled": self.score_gate_enabled,
+            "forced_extract": score_rejected and not self.score_gate_enabled,
+            "final_score": score_result.final_score,
+            "signal_tier": score_result.signal_tier,
+        })
 
         extraction_result = self._extract_and_parse(
             fetched,
@@ -243,6 +296,11 @@ class Pipeline:
                 parallel_results=parallel_results,
             )
 
+        # Compute observability fields for output
+        _provider_route = str(getattr(self.llm_provider, "model_route", ""))
+        _is_test_provider = any(_provider_route.startswith(r) for r in self.TEST_PROVIDER_ROUTES)
+        _runtime_fingerprint = str(getattr(self.queue_store, "runtime_fingerprint", ""))[:64]
+
         output = _run_stage(
             stage_results,
             "output",
@@ -254,6 +312,10 @@ class Pipeline:
                 prompt_bundle=active_bundle,
                 prompt_hash=prompt_hash,
                 task_id=task.id,
+                runtime_mode=mode.value,
+                provider_route=_provider_route,
+                is_test_provider=_is_test_provider,
+                runtime_fingerprint=_runtime_fingerprint,
             ),
             error_selector=lambda result: result.error if not result.ok else None,
         )

@@ -105,19 +105,54 @@ class LiveLLMConfig:
         *,
         provider: str = "zhipu",
         api_key_env: str = "ZHIPU_API_KEY",
+        api_key: str = "",  # 直接配置的 API key（优先于环境变量）
+        api_base: str = "",
         scoring_model: str = "",
         extraction_model: str = "",
+        telegram_model: str = "",
         request_timeout_seconds: int = 90,
         max_retries: int = 2,
         min_delay_seconds: float = 2.0,
+        temperature: float = 0.1,
+        fallback_providers: list[dict] | None = None,
     ) -> None:
         self.provider = provider
         self.api_key_env = api_key_env
+        self.api_key = api_key
+        self.api_base = api_base
         self.scoring_model = scoring_model
         self.extraction_model = extraction_model
+        self.telegram_model = telegram_model
         self.request_timeout_seconds = request_timeout_seconds
         self.max_retries = max_retries
         self.min_delay_seconds = min_delay_seconds
+        self.temperature = temperature
+        self.fallback_providers = fallback_providers or []
+
+    def all_provider_configs(self) -> list[dict]:
+        """Return list of all provider configs in order: primary, then fallbacks."""
+        configs = [{
+            "provider": self.provider,
+            "api_key_env": self.api_key_env,
+            "api_key": self.api_key,
+            "api_base": self.api_base,
+            "scoring_model": self.scoring_model,
+            "extraction_model": self.extraction_model,
+            "telegram_model": self.telegram_model,
+            "temperature": self.temperature,
+        }]
+        for fb in self.fallback_providers:
+            configs.append({
+                "provider": fb.get("provider", "openai"),
+                "api_key_env": fb.get("api_key_env", "OPENAI_API_KEY"),
+                "api_key": fb.get("api_key", ""),
+                "api_base": fb.get("api_base", ""),
+                "scoring_model": fb.get("scoring_model", ""),
+                "extraction_model": fb.get("extraction_model", ""),
+                "telegram_model": fb.get("telegram_model", fb.get("telegram_brief_model", "")),
+                "temperature": fb.get("temperature", self.temperature),
+            })
+        return configs
 
 
 # ---------------------------------------------------------------------------
@@ -125,18 +160,46 @@ class LiveLLMConfig:
 # ---------------------------------------------------------------------------
 
 
+_DEFAULT_API_BASES = {
+    "zhipu": "https://open.bigmodel.cn/api/coding/paas/v4",
+    "anthropic": "https://api.anthropic.com/v1",
+    "openai": "https://api.openai.com/v1",
+}
+
+
+def _endpoint_url(
+    api_base: str,
+    *,
+    provider: str,
+    endpoint: str,
+    configured_url_is_endpoint: bool = False,
+) -> str:
+    base = (api_base or _DEFAULT_API_BASES[provider]).rstrip("/")
+    if configured_url_is_endpoint:
+        return base
+    if base.endswith(f"/{endpoint}"):
+        return base
+    return f"{base}/{endpoint}"
+
+
 def _build_zhipu_request(
     content: str,
     prompt: str,
     model: str,
     api_key: str,
+    api_base: str = "",
+    temperature: float = 0.1,
 ) -> tuple[str, dict[str, str], bytes]:
     """Build Zhipu API request.
 
     Zhipu uses JWT token generation, but for simplicity we use
     the API key directly in the Authorization header.
     """
-    url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    url = _endpoint_url(
+        api_base,
+        provider="zhipu",
+        endpoint="chat/completions",
+    )
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -148,7 +211,7 @@ def _build_zhipu_request(
         "messages": [
             {"role": "user", "content": prompt + "\n\n" + content},
         ],
-        "temperature": 0.3,
+        "temperature": temperature,
     }
 
     return url, headers, json.dumps(payload).encode("utf-8")
@@ -159,9 +222,11 @@ def _build_anthropic_request(
     prompt: str,
     model: str,
     api_key: str,
+    api_base: str = "",
+    temperature: float = 0.1,
 ) -> tuple[str, dict[str, str], bytes]:
     """Build Anthropic Claude API request."""
-    url = "https://api.anthropic.com/v1/messages"
+    url = _endpoint_url(api_base, provider="anthropic", endpoint="messages")
 
     headers = {
         "x-api-key": api_key,
@@ -175,7 +240,7 @@ def _build_anthropic_request(
         "messages": [
             {"role": "user", "content": prompt + "\n\n" + content},
         ],
-        "temperature": 0.3,
+        "temperature": temperature,
     }
 
     return url, headers, json.dumps(payload).encode("utf-8")
@@ -186,9 +251,11 @@ def _build_openai_request(
     prompt: str,
     model: str,
     api_key: str,
+    api_base: str = "",
+    temperature: float = 0.1,
 ) -> tuple[str, dict[str, str], bytes]:
     """Build OpenAI API request."""
-    url = "https://api.openai.com/v1/chat/completions"
+    url = _endpoint_url(api_base, provider="openai", endpoint="chat/completions")
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -200,7 +267,7 @@ def _build_openai_request(
         "messages": [
             {"role": "user", "content": prompt + "\n\n" + content},
         ],
-        "temperature": 0.3,
+        "temperature": temperature,
     }
 
     return url, headers, json.dumps(payload).encode("utf-8")
@@ -235,6 +302,17 @@ def _map_http_error(
     Returns (failure_kind, next_action, retryable).
     """
     body_lower = body.lower()
+
+    # Quota exhausted / balance insufficient - should trigger fallback
+    if (
+        "quota" in body_lower
+        or "balance" in body_lower
+        or "insufficient" in body_lower
+        or "402" in body_lower
+        or "余额不足" in body_lower
+        or "配额" in body_lower
+    ):
+        return FailureKind.LLM_QUOTA_EXHAUSTED, NextAction.RETRY_LATER, True
 
     # Rate limiting
     if (
@@ -331,6 +409,32 @@ def _evidence_lines(value: object) -> list[str]:
     return lines
 
 
+def _content_metadata(content: FetchedContent) -> dict[str, object]:
+    return {
+        "url": content.url,
+        "source": content.source,
+        "source_type": content.source_type,
+        "title": content.title,
+        "author": content.author,
+        "published_at": content.published_at,
+        "fetched_at": content.fetched_at,
+        "content_hash": content.content_hash,
+        "metadata": content.metadata,
+    }
+
+
+def _build_scoring_input(content: FetchedContent) -> str:
+    """Give scoring prompts source/title/url context, matching the V2 prompt shape."""
+    return "\n\n".join(
+        [
+            "CONTENT_METADATA_JSON:",
+            json.dumps(_content_metadata(content), ensure_ascii=False, sort_keys=True),
+            "SOURCE_TEXT:",
+            content.text,
+        ]
+    )
+
+
 def _build_extraction_input(content: FetchedContent, score: ScoreResult) -> str:
     """Give extraction prompts the scoring context they are expected to honor."""
     score_payload = getattr(score, "parsed", None)
@@ -346,28 +450,151 @@ def _build_extraction_input(content: FetchedContent, score: ScoreResult) -> str:
             "attribution_chain": getattr(score, "attribution_chain", ""),
         }
 
-    content_payload = {
-        "url": content.url,
-        "source": content.source,
-        "source_type": content.source_type,
-        "title": content.title,
-        "author": content.author,
-        "published_at": content.published_at,
-        "fetched_at": content.fetched_at,
-        "content_hash": content.content_hash,
-        "metadata": content.metadata,
-    }
-
     return "\n\n".join(
         [
             "SCORING_CONTEXT_JSON:",
             json.dumps(score_payload, ensure_ascii=False, sort_keys=True),
             "CONTENT_METADATA_JSON:",
-            json.dumps(content_payload, ensure_ascii=False, sort_keys=True),
+            json.dumps(_content_metadata(content), ensure_ascii=False, sort_keys=True),
             "SOURCE_TEXT:",
             content.text,
         ]
     )
+
+
+def _build_telegram_input(
+    score: ScoreResult,
+    extraction: ExtractionResult,
+    content: FetchedContent | None,
+) -> str:
+    score_payload = getattr(score, "parsed", None)
+    if not isinstance(score_payload, dict):
+        score_payload = {
+            "score": getattr(score, "score", ""),
+            "final_score": getattr(score, "final_score", ""),
+            "signal_tier": getattr(score, "signal_tier", ""),
+            "decision_window_status": getattr(score, "decision_window_status", ""),
+            "source_type": getattr(score, "source_type", ""),
+            "source_tier": getattr(score, "source_tier", ""),
+            "interest_flag": getattr(score, "interest_flag", ""),
+            "attribution_chain": getattr(score, "attribution_chain", ""),
+        }
+    extraction_payload = getattr(extraction, "parsed", None)
+    if not isinstance(extraction_payload, dict):
+        extraction_payload = {
+            "title": getattr(extraction, "title", ""),
+            "one_line_signal": getattr(extraction, "one_line_signal", ""),
+        }
+    payload = {
+        "score": score_payload,
+        "extraction": extraction_payload,
+        "content": _content_metadata(content) if content is not None else {},
+    }
+    return "TELEGRAM_INPUT_JSON:\n" + json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+
+def _as_dict(value: object) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _compact_items(value: object, *, limit: int = 2) -> list[str]:
+    items = value if isinstance(value, list) else [value] if isinstance(value, str) and value else []
+    lines: list[str] = []
+    for item in items:
+        if isinstance(item, dict):
+            text = (
+                item.get("claim")
+                or item.get("inference")
+                or item.get("action")
+                or item.get("trigger")
+                or item.get("summary")
+                or _stringify(item)
+            )
+        else:
+            text = _stringify(item)
+        text = " ".join(str(text).split())
+        if text:
+            lines.append(text)
+        if len(lines) >= limit:
+            break
+    return lines
+
+
+def _format_telegram_v2_cn(
+    score: ScoreResult,
+    extraction: ExtractionResult,
+    content: FetchedContent | None,
+) -> str:
+    """Local fallback that mirrors the V2 stable Chinese Telegram shape."""
+    parsed = _as_dict(getattr(extraction, "parsed", {}))
+    score_parsed = _as_dict(getattr(score, "parsed", {}))
+    source_score = _as_dict(parsed.get("source_score") or score_parsed.get("source_score"))
+    compression = _as_dict(parsed.get("content_compression") or score_parsed.get("content_compression"))
+
+    title = str(parsed.get("refactored_title") or extraction.title or "未命名内容")
+    category = str(parsed.get("category") or getattr(score, "signal_tier", "") or "未分类")
+    summary = str(parsed.get("one_line_summary") or extraction.one_line_signal or "暂无摘要")
+    link = (
+        content.url if content is not None else
+        str(parsed.get("original_url") or parsed.get("url") or score_parsed.get("url") or "")
+    )
+
+    source_type = str(parsed.get("source_type") or getattr(score, "source_type", "") or "Unknown")
+    source_tier = str(parsed.get("source_tier") or getattr(score, "source_tier", "") or "Unknown")
+    interest_flag = str(parsed.get("interest_flag") or getattr(score, "interest_flag", "") or "Unknown")
+    source_line = f"信源: {source_type}/{source_tier}，{interest_flag}"
+    if source_score.get("L1_score") not in (None, ""):
+        source_line += f"，L1={_format_score(source_score.get('L1_score'))}"
+
+    compressed_signal = str(compression.get("compressed_signal") or extraction.one_line_signal or "")
+    dropped_noise = _compact_items(compression.get("dropped_noise"), limit=1)
+    compression_line = compressed_signal or "暂无压缩信号"
+    if dropped_noise:
+        compression_line += f"；已丢弃: {dropped_noise[0]}"
+
+    experience = _compact_items(parsed.get("why_it_matters"), limit=2)
+    signals = _compact_items(parsed.get("inferences"), limit=1)
+    signals.insert(0, str(extraction.one_line_signal or summary))
+    signals = [item for item in signals if item][:2]
+    quotes = _compact_items(parsed.get("evidence"), limit=2)
+    actions = _compact_items(parsed.get("recommended_actions") or parsed.get("monitoring_triggers"), limit=1)
+
+    lines = [
+        f"🎯 {title}",
+        f"🏷 {category}",
+        "",
+        f"💡 {summary[:120]}",
+    ]
+
+    if experience:
+        lines.extend(["", "🗣 1. 经验萃取"])
+        lines.extend(f"▪️ {item}" for item in experience)
+
+    if signals:
+        lines.extend(["", "📡 2. 信号萃取"])
+        lines.extend(f"▪️ {item}" for item in signals)
+
+    lines.extend(
+        [
+            "",
+            "🧭 3. 信源与压缩",
+            f"▪️ {source_line}",
+            f"▪️ 压缩: {compression_line}",
+        ]
+    )
+
+    if quotes:
+        lines.extend(["", "💬 4. 核心金句"])
+        lines.extend(f"\"{item[:160]}\"" for item in quotes)
+
+    if actions:
+        lines.extend(["", "🛠 5. 下一步"])
+        lines.extend(f"▪️ {item}" for item in actions)
+
+    if link:
+        lines.extend(["", f"🔗 阅读原文: {link}"])
+
+    return "\n".join(lines).strip()
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +607,9 @@ class LiveLLMProvider:
 
     Provider selection and API keys come from config and environment.
     HTTP errors are mapped to queue FailureKind for proper retry logic.
+
+    Supports fallback providers: when the primary provider returns 429 or
+    quota exhaustion, automatically tries the next provider in the chain.
     """
 
     model_route = "live://provider"
@@ -394,18 +624,76 @@ class LiveLLMProvider:
         self._config = config
         self._env = env or os.environ
         self._http_post = http_post or _default_http_post
-        self._circuit_open_until = 0.0
+        self._circuit_open_until: dict[str, float] = {}  # Per-provider circuit breaker
+        self._all_providers = config.all_provider_configs()
 
     @property
     def model_route(self) -> str:
-        return f"live://{self._config.provider}"
+        """Generate stable route key including all provider configurations."""
+        parts = []
+        for idx, p in enumerate(self._all_providers):
+            provider = p.get("provider", "unknown")
+            api_key_env = p.get("api_key_env", "")
+            model = p.get("scoring_model") or p.get("extraction_model") or p.get("telegram_model") or ""
+            api_base = p.get("api_base", "")
+            parts.append(f"{idx}:{provider}:{api_key_env}:{model}:{api_base}")
+        return f"live://{'|'.join(parts)}"
+
+    def _is_provider_available(self, provider_config: dict) -> bool:
+        """Check if provider circuit breaker is open using stable route key."""
+        route_key = self._provider_route_key(provider_config)
+        open_until = self._circuit_open_until.get(route_key, 0.0)
+        return time.time() >= open_until
+
+    def _mark_provider_unavailable(self, provider_config: dict, minutes: int = 5) -> None:
+        """Open circuit breaker for a provider using stable route key."""
+        route_key = self._provider_route_key(provider_config)
+        self._circuit_open_until[route_key] = time.time() + (minutes * 60)
+
+    @staticmethod
+    def _provider_route_key(provider_config: dict) -> str:
+        """Generate stable route key for a provider config."""
+        provider = provider_config.get("provider", "unknown")
+        api_key_env = provider_config.get("api_key_env", "")
+        model = (
+            provider_config.get("scoring_model")
+            or provider_config.get("extraction_model")
+            or provider_config.get("telegram_model")
+            or ""
+        )
+        api_base = provider_config.get("api_base", "")
+        return f"{provider}:{api_key_env}:{model}:{api_base}"
 
     def score(self, content: FetchedContent, prompt: str) -> str | TypedError:
-        """Run scoring prompt against configured LLM."""
-        model = self._config.scoring_model or _DEFAULT_MODELS.get(self._config.provider, "gpt-4o-mini")
-        raw = self._call_llm(content.text, prompt, model, stage="score")
+        """Run scoring prompt against configured LLM with fallback."""
+        for provider_config in self._all_providers:
+            if not self._is_provider_available(provider_config):
+                continue
+            model = provider_config.get("scoring_model") or _DEFAULT_MODELS.get(
+                provider_config.get("provider", ""), "gpt-4o-mini"
+            )
+            result = self._call_llm(
+                _build_scoring_input(content),
+                prompt,
+                model,
+                stage="score",
+                provider_config=provider_config,
+            )
+            if not isinstance(result, TypedError):
+                return result
+            # If error is not rate limit/quota, don't try fallback
+            if result.failure_kind not in (FailureKind.LLM_RATE_LIMIT, FailureKind.LLM_QUOTA_EXHAUSTED):
+                return result
 
-        return raw
+        # All providers failed
+        return TypedError(
+            failure_kind=FailureKind.LLM_QUOTA_EXHAUSTED,
+            message="All LLM providers are rate-limited or quota exhausted",
+            stage="score",
+            retryable=True,
+            next_action=NextAction.RETRY_LATER,
+            next_retry_at=retry_at(15),
+        )
 
     def extract(
         self,
@@ -413,11 +701,33 @@ class LiveLLMProvider:
         score: ScoreResult,
         prompt: str,
     ) -> str | TypedError:
-        """Run extraction prompt against configured LLM."""
-        model = self._config.extraction_model or _DEFAULT_MODELS.get(self._config.provider, "gpt-4o-mini")
-        raw = self._call_llm(_build_extraction_input(content, score), prompt, model, stage="extract")
+        """Run extraction prompt against configured LLM with fallback."""
+        for provider_config in self._all_providers:
+            if not self._is_provider_available(provider_config):
+                continue
+            model = provider_config.get("extraction_model") or _DEFAULT_MODELS.get(
+                provider_config.get("provider", ""), "gpt-4o-mini"
+            )
+            result = self._call_llm(
+                _build_extraction_input(content, score),
+                prompt,
+                model,
+                stage="extract",
+                provider_config=provider_config,
+            )
+            if not isinstance(result, TypedError):
+                return result
+            if result.failure_kind not in (FailureKind.LLM_RATE_LIMIT, FailureKind.LLM_QUOTA_EXHAUSTED):
+                return result
 
-        return raw
+        return TypedError(
+            failure_kind=FailureKind.LLM_QUOTA_EXHAUSTED,
+            message="All LLM providers are rate-limited or quota exhausted",
+            stage="extract",
+            retryable=True,
+            next_action=NextAction.RETRY_LATER,
+            next_retry_at=retry_at(15),
+        )
 
     def format_telegram(
         self,
@@ -427,49 +737,32 @@ class LiveLLMProvider:
         *,
         content: FetchedContent | None = None,
     ) -> str | TypedError:
-        """Format telegram brief from the V3 primary-market extraction schema."""
-        title = extraction.title or "Untitled"
-        one_liner = extraction.one_line_signal or ""
-        parsed = extraction.parsed
-        link = (
-            content.url if content is not None else
-            str(parsed.get("original_url") or parsed.get("url") or score.parsed.get("url") or "")
-        )
-        final_score = getattr(score, "final_score", "")
-        score_value = getattr(score, "score", "")
-        decision_window = getattr(score, "decision_window_status", "")
-        source_type = getattr(score, "source_type", "")
-        source_tier = getattr(score, "source_tier", "")
-        interest_flag = getattr(score, "interest_flag", "")
-        attribution_chain = getattr(score, "attribution_chain", "")
+        """Format Telegram with the V2 stable prompt when configured, else local Chinese fallback."""
+        telegram_input = _build_telegram_input(score, extraction, content)
 
-        lines = [
-            f"[{score.signal_tier}] {title}",
-            "",
-            f"Score: {_format_score(final_score)} / {_format_score(score_value)}",
-            f"Window: {parsed.get('decision_window_status') or decision_window}",
-            f"Source: {parsed.get('source_type') or source_type} / {parsed.get('source_tier') or source_tier}",
-            f"Interest: {parsed.get('interest_flag') or interest_flag}",
-            "",
-            "Signal:",
-            one_liner,
-            "",
-            "Why it matters:",
-            *_numbered_lines(parsed.get("why_it_matters")),
-            "",
-            "Evidence:",
-            *_evidence_lines(parsed.get("evidence")),
-            "",
-            "Action:",
-            *_bullet_lines(parsed.get("recommended_actions")),
-            "",
-            "Attribution:",
-            _stringify(parsed.get("attribution_chain") or attribution_chain),
-            "",
-            "Link:",
-            link,
-        ]
-        return "\n".join(line for line in lines if line is not None).strip()
+        for provider_config in self._all_providers:
+            if not self._is_provider_available(provider_config):
+                continue
+            model = str(provider_config.get("telegram_model") or "")
+            if not model:
+                continue
+            result = self._call_llm(
+                telegram_input,
+                prompt,
+                model,
+                stage="telegram_format",
+                provider_config=provider_config,
+            )
+            if not isinstance(result, TypedError) and result.strip():
+                return result.strip()
+            if isinstance(result, TypedError) and result.failure_kind in (
+                FailureKind.LLM_RATE_LIMIT,
+                FailureKind.LLM_QUOTA_EXHAUSTED,
+            ):
+                continue
+            break
+
+        return _format_telegram_v2_cn(score, extraction, content)
 
     def _call_llm(
         self,
@@ -478,37 +771,56 @@ class LiveLLMProvider:
         model: str,
         *,
         stage: str = "llm_call",
+        provider_config: dict | None = None,
     ) -> str | TypedError:
-        """Make LLM API call with error mapping."""
-        api_key = self._env.get(self._config.api_key_env, "")
+        """Make LLM API call with error mapping and fallback logic.
+
+        For 429/quota errors: immediately switch to next provider (no retry).
+        For timeout/5xx errors: retry up to max_retries on same provider.
+        """
+        if provider_config is None:
+            provider_config = {
+                "provider": self._config.provider,
+                "api_key_env": self._config.api_key_env,
+                "api_key": self._config.api_key,
+                "api_base": self._config.api_base,
+                "temperature": self._config.temperature,
+            }
+
+        provider_name = provider_config.get("provider", "unknown")
+        api_key_env = provider_config.get("api_key_env", "")
+        api_base = str(provider_config.get("api_base", ""))
+        temperature = float(provider_config.get("temperature", self._config.temperature))
+
+        # 优先使用直接配置的 api_key，然后从环境变量读取
+        api_key = provider_config.get("api_key", "") or self._env.get(api_key_env, "")
         if not api_key:
             return TypedError(
                 failure_kind=FailureKind.AUTH_INVALID,
-                message=f"API key not found in environment: {self._config.api_key_env}",
+                message=f"API key not found: checked config.api_key and environment {api_key_env}",
                 stage=stage,
                 retryable=False,
                 next_action=NextAction.MANUAL_REVIEW,
-                detail="Configure the API key in environment or config.local.yaml",
+                detail=f"Provider: {provider_name}. Configure the API key in config.local.yaml (llm.api_key) or environment variable ({api_key_env})",
             )
 
-        builder = _REQUEST_BUILDERS.get(self._config.provider, _build_openai_request)
-        url, headers, data = builder(content, prompt, model, api_key)
-
-        if time.time() < self._circuit_open_until:
+        if not self._is_provider_available(provider_config):
             return TypedError(
                 failure_kind=FailureKind.LLM_RATE_LIMIT,
-                message="LLM circuit breaker is open",
+                message=f"LLM circuit breaker is open for {self._provider_route_key(provider_config)}",
                 stage=stage,
                 retryable=True,
                 next_action=NextAction.RETRY_LATER,
                 next_retry_at=retry_at(5),
             )
 
-        attempts = max(1, self._config.max_retries + 1)
+        builder = _REQUEST_BUILDERS.get(provider_name, _build_openai_request)
+        url, headers, data = builder(content, prompt, model, api_key, api_base, temperature)
+
         last_error: TypedError | None = None
         response: _HTTPResponse | None = None
 
-        for attempt in range(attempts):
+        for attempt in range(max(1, self._config.max_retries + 1)):
             if attempt > 0:
                 time.sleep(self._retry_delay(attempt, last_error))
 
@@ -537,31 +849,22 @@ class LiveLLMProvider:
                 detail=response.body[:500],
                 next_retry_at=retry_at(_retry_after_minutes(response.body)),
             )
-            if failure_kind is FailureKind.LLM_RATE_LIMIT:
-                self._circuit_open_until = time.time() + (_retry_after_minutes(response.body) * 60)
+
+            # For 429/quota errors, open circuit and return immediately (no retry)
+            if failure_kind in (FailureKind.LLM_RATE_LIMIT, FailureKind.LLM_QUOTA_EXHAUSTED):
+                self._mark_provider_unavailable(provider_config, _retry_after_minutes(response.body))
+                return last_error
+
+            # For non-retryable errors, return immediately
             if not retryable:
                 return last_error
+
+            # For timeout/5xx, continue retry loop
 
         if last_error is not None:
             return last_error
 
         assert response is not None
-
-        # Handle HTTP errors
-        if response.status_code != 200:
-            failure_kind, next_action, retryable = _map_http_error(
-                response.status_code,
-                response.body,
-                stage,
-            )
-            return TypedError(
-                failure_kind=failure_kind,
-                message=f"LLM API returned HTTP {response.status_code}",
-                stage=stage,
-                retryable=retryable,
-                next_action=next_action,
-                detail=response.body[:500],
-            )
 
         # Extract response text based on provider
         text = self._extract_response_text(response.body)
@@ -628,14 +931,25 @@ def create_live_provider(
     env: dict[str, str] | None = None,
     http_post: _HTTPPost | None = None,
 ) -> LiveLLMProvider:
-    """Create LiveLLMProvider from V3Config.llm section."""
+    """Create LiveLLMProvider from V3Config.llm section.
+
+    The llm_config must have fallback_providers already loaded from YAML.
+    """
+    # Extract fallback_providers from LLMConfig (already loaded from YAML)
+    fallback_providers = getattr(llm_config, "fallback_providers", []) or []
+
     config = LiveLLMConfig(
         provider=llm_config.provider,
         api_key_env=llm_config.api_key_env,
+        api_key=getattr(llm_config, "api_key", ""),
+        api_base=getattr(llm_config, "api_base", ""),
         scoring_model=llm_config.scoring_model,
         extraction_model=llm_config.extraction_model,
+        telegram_model=getattr(llm_config, "telegram_brief_model", ""),
         request_timeout_seconds=llm_config.request_timeout_seconds,
         max_retries=llm_config.max_retries,
         min_delay_seconds=llm_config.min_delay_seconds,
+        temperature=getattr(llm_config, "temperature", 0.1),
+        fallback_providers=fallback_providers,
     )
     return LiveLLMProvider(config, env=env, http_post=http_post)
