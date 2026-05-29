@@ -41,6 +41,14 @@ def test_runtime_guard_accepts_temporary_v3_state_root(tmp_path):
     assert fingerprint.state_root == str(paths.state_root)
 
 
+def test_runtime_guard_accepts_public_repo_checkout_name(tmp_path):
+    paths = _paths(tmp_path, project_root=tmp_path / "information-tracking-agent")
+
+    fingerprint = RuntimeGuard(paths).validate()
+
+    assert fingerprint.project_root.endswith("/information-tracking-agent")
+
+
 def test_runtime_guard_rejects_v2_queue_path(tmp_path):
     home = tmp_path / "home"
     state_root = home / ".100x_v2"

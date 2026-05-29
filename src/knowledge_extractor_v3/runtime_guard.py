@@ -244,8 +244,8 @@ class RuntimeGuard:
                 f"{self.paths.queue_db_path} not under {self.paths.state_root}"
             )
 
-        if self.paths.project_root.name != "v3":
-            raise RuntimeGuardError(f"Project root must be the V3 repository root: {self.paths.project_root}")
+        # The public repository is not necessarily checked out in a directory
+        # named "v3"; V2 isolation is enforced by the marker checks above.
 
     def _validate_existing_queue_schema(self) -> None:
         if not self.paths.queue_db_path.exists():
