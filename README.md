@@ -4,6 +4,12 @@ V3 is a clean sibling repository for the primary-market version of the 100X know
 
 ## Features
 
+### Production Control Surface
+
+- `scripts/control.sh` starts, stops, recovers, diagnoses, and tails the V3 roles.
+- `scripts/run-v3.sh` exposes lower-level preflight, enqueue, scheduler, worker, live role, and log commands.
+- Runtime state is isolated under `~/.100x_v3` by default and guarded before live roles touch the queue.
+
 ### Multi-Channel Content Fetching
 
 V3 supports fetching content from multiple platforms:
@@ -29,8 +35,14 @@ V3 supports fetching content from multiple platforms:
 ### Source Discovery
 
 - **URL List**: Manual URL input
-- **RSS Feeds**: Periodic feed polling
+- **RSS Feeds**: `config/sources.yaml` is auto-loaded by `ConfigLoader` and currently carries 95 RSS sources after dedupe
 - **Web Search**: Query-based content discovery
+
+### Daily Reports
+
+- US AI market daily report runner: `100x-v3-us-ai-daily`
+- Python entrypoint: `python -m knowledge_extractor_v3.daily_reports.runner`
+- Report output is routed by trading week and category, with system ledgers under the configured daily-report system directory.
 
 ## Safety Defaults
 
@@ -43,12 +55,17 @@ V3 supports fetching content from multiple platforms:
 ## Development
 
 ```bash
-python -m pytest
-python -m compileall src tests
+python -m compileall -q src tests scripts/v2_compare.py scripts/test_rss_fetch.py
+bash -n scripts/*.sh
+python -m pytest -q
 ```
+
+Latest local verification on 2026-05-30: `259 passed`.
 
 ## Documentation
 
 - [Search Capabilities](docs/SEARCH_CAPABILITIES.md) - Using the search feature
 - [Architecture](docs/architecture.md) - System architecture
 - [Error Architecture](docs/error-architecture.md) - Error handling design
+- [V3 Autorun Operations](docs/V3_AUTORUN_OPERATIONS.md) - Production control and validation
+- [V3 Release Handoff](docs/MIGRATION_COMPLETE.md) - Current V3 publish and remaining gates

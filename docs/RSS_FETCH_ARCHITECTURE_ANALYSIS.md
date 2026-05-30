@@ -2,6 +2,7 @@
 
 > 分析时间：2026-04-29
 > 触发原因：39 个 RSS 源中 17 个失败（44%），主要返回 HTTP 403
+> 状态更新：2026-05-30，V3 已有统一 `HttpClient`、`FetcherRouter`、RSS channel fetcher、Agent Reach multi-channel fetcher，以及自动加载 `config/sources.yaml` 的 `ConfigLoader`。剩余 gate 是重新跑 RSS live fetch 并达到 95% 目标成功率。
 
 ---
 
@@ -332,9 +333,10 @@ v3/src/knowledge_extractor_v3/channels/
 
 ## 7. 下一步行动
 
-1. ✅ 架构分析完成
-2. ⏳ 创建 HttpClient 实现
-3. ⏳ 改造 RSSAdapter
-4. ⏳ 更新迁移文档
-5. ⏳ 实现 Fetcher Router
-6. ⏳ V3 native Agent Reach
+1. ✅ 架构分析完成。
+2. ✅ 创建统一 `HttpClient`。
+3. ✅ 实现 `FetcherRouter` 和 RSS channel fetcher。
+4. ✅ 更新迁移/发布交接文档。
+5. ✅ 接入 V3 Agent Reach multi-channel fetcher。
+6. ⏳ 在稳定网络下重跑 `python scripts/test_rss_fetch.py --all --timeout 8 --target-rate 95`。
+7. ⏳ 对失败源做 source-health 分级，区分永久失效、403/anti-bot、timeout 和内容格式问题。

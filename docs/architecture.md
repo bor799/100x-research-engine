@@ -24,26 +24,19 @@ score = final_score * 10
 
 `final_score` is always `0-1`; `score` is always `0-10` for compatibility with threshold-style routing.
 
-## Phase 1 Scope
+## Current Implementation
 
-Phase 1 includes only:
+As of 2026-05-30, V3 is no longer only a Phase 1 skeleton. The current codebase includes:
 
-- repository skeleton
-- docs and prompt contracts
-- `RuntimeGuard` interface
-- `QueueStore` interface and minimal SQLite contract
-- tests for runtime isolation, queue semantics, and prompt contract
+- `RuntimeGuard` and `QueueStore` with typed status/failure semantics.
+- `ConfigLoader` with V3 config, V2-compatible config normalization, external `config/sources.yaml` loading, and daily-report config.
+- Fetcher router plus web, RSS, search, social, fixture, and Agent Reach multi-channel adapters.
+- Pipeline, prompt registry, prompt parser, live/stub/shadow LLM providers, staging/live Obsidian output, Telegram formatting, and live Telegram delivery.
+- Scheduler, worker, health checks, Telegram inbound bot, operator scripts, and tmux/LaunchAgent control surface.
+- US AI market daily report modules with weekly output routing, watchlist/system files, context loading, and idempotent ledger writes.
+- `259` passing tests in the local verification run on 2026-05-30.
 
-Phase 1 explicitly excludes:
-
-- live daemon
-- scheduler
-- Telegram bot polling
-- RSS ingestion
-- fetcher implementation
-- LLM provider implementation
-- Obsidian or Telegram live output
-- reading or migrating V2 queue data
+Remaining gates are operational rather than skeletal: the RSS live fetch test still needs a non-hanging network/source-health run, and old V2/Horizon processes should only be retired after the operator checklist passes in the live environment.
 
 ## Runtime Isolation
 
@@ -63,6 +56,8 @@ Runtime Guard must run before any future daemon, scheduler, bot, or queue worker
 - `QUEUE_DB_PATH` is outside `STATE_ROOT`
 - an existing queue database lacks required V3 schema columns
 
+The guard intentionally does not require the repository directory itself to be named `v3`. Public checkouts such as `information-tracking-agent` are valid as long as the path is not a V2 path and runtime state remains isolated.
+
 The guard can build a runtime fingerprint containing project root, Python executable, config path, queue DB path, state root, log path, prompt hashes, and source hash. Future live roles must write this fingerprint before processing work.
 
 ## Data Flow
@@ -70,24 +65,33 @@ The guard can build a runtime fingerprint containing project root, Python execut
 The intended full V3 flow is:
 
 ```text
-URL/RSS/IM input
-  -> QueueStore
+URL/RSS/search/Telegram input
   -> RuntimeGuard
-  -> Fetch
+  -> QueueStore
+  -> Scheduler/Worker
+  -> FetcherRouter
   -> Validate
   -> Score
   -> Analyze
-  -> Write Obsidian
-  -> Push Telegram
+  -> Write Obsidian or daily report output
+  -> Push Telegram when enabled
   -> Mark Queue
 ```
 
-In Phase 1 only `QueueStore` and `RuntimeGuard` exist. Pipeline, fetchers, LLM providers, and outputs are deferred.
+Scheduler roles discover and enqueue. Worker roles own fetch, score, extract, output, and queue finalization. The Telegram bot only accepts commands/URLs and enqueues work; it does not inline-process tasks.
 
 ## Module Boundaries
 
 - `runtime_guard.py`: validates path isolation, queue schema compatibility, and runtime fingerprint data.
 - `queue_store.py`: owns queue schema, statuses, typed failures, retry scheduling, and terminal state semantics.
+- `config_loader.py`: loads V3 config, V2-compatible legacy config, external source files, Agent Reach config, and daily-report config.
+- `scheduler.py`: discovers source items and enqueues them without running pipeline work.
+- `worker.py`: processes ready queue tasks through the pipeline in staging or live mode.
+- `pipeline.py`: fetches, validates, scores, extracts, formats, writes output, and finalizes queue status.
+- `fetchers/router.py`: routes fixture URLs, special platforms, and normal web URLs to the configured fetcher stack.
+- `daily_reports/`: renders and writes US AI market reports from recent V3 notes, watchlist files, and stock context.
+- `telegram_bot.py`: handles inbound Telegram commands, URL enqueueing, and queue status queries.
+- `health.py`: reports role, runtime, queue, config, and output health.
 - `prompts/primary_market_scoring.md`: produces the scoring JSON contract.
 - `prompts/primary_market_extraction.md`: produces the investor brief JSON contract.
 - `prompts/telegram_brief.md`: produces plain-text Telegram brief content from structured extraction output.
@@ -110,7 +114,7 @@ failed_terminal
 Core rules:
 
 - Fetch, LLM, parse, or output failure cannot become `done`.
-- `done` requires evidence that the output loop closed, represented in Phase 1 by `output_path`.
+- `done` requires evidence that the output loop closed, represented by `output_path`.
 - Rate limits and timeouts use `retry_scheduled` with `next_retry_at`.
 - Bad fit or safety rejection uses `rejected`.
 - Exhausted attempts or manual-only failures use `failed_terminal`.
@@ -159,3 +163,12 @@ Missing required fields must become `parse_error` in the future parser and must 
 Tracked config files are examples only. Live secrets belong in untracked local files or environment variables.
 
 Never copy V2 `config/config.yaml`, `.env`, queue databases, logs, or `.venv` into V3.
+
+`ConfigLoader` resolution order:
+
+1. Explicit config path.
+2. `config/config.local.yaml` merged over `config/config.example.yaml`.
+3. Legacy `config/config.yaml` normalized into the V3 shape.
+4. `config/config.example.yaml`.
+
+If no `sources_files` are configured and `config/sources.yaml` exists, the loader auto-loads it and deduplicates by URL first, then source name. The 2026-05-30 local config check resolves 95 RSS sources.

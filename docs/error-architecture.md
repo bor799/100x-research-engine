@@ -1,6 +1,6 @@
 # V3 Error Architecture
 
-This document maps V2 historical errors O1-O9 to V3 structural defenses and Phase 1 test entry points.
+This document maps V2 historical errors O1-O9 to V3 structural defenses and current test entry points.
 
 ## O1. Daemon Stopped Silently
 
@@ -13,7 +13,7 @@ V3 defense:
 - Supervisor must restart only the failed role.
 - Start, exit, and restart events must notify admins once live Telegram exists.
 
-Phase 1 test entry:
+Test entry:
 
 - `tests/test_runtime_guard.py` validates runtime fingerprint generation and isolation before live roles exist.
 
@@ -27,7 +27,7 @@ V3 defense:
 - `done` is only valid after the output loop closes.
 - Failure rows carry `failure_kind`, `last_error`, and `next_action`.
 
-Phase 1 test entry:
+Test entry:
 
 - `tests/test_queue_store_contract.py` checks distinct done, rejected, retry, and terminal failure states.
 
@@ -41,7 +41,7 @@ V3 defense:
 - Auth failures must route to `manual_review` or `auth_refresh_required`.
 - X/Twitter health checks must be independent from content tasks in future phases.
 
-Phase 1 test entry:
+Test entry:
 
 - Queue contract includes `FailureKind.AUTH_INVALID` and `NextAction.AUTH_REFRESH_REQUIRED`.
 
@@ -55,9 +55,9 @@ V3 defense:
 - Parser warnings must be source-level events.
 - Bad timestamps must not silently pass as fresh.
 
-Phase 1 test entry:
+Test entry:
 
-- Deferred until RSS parser exists; this document keeps the invariant visible.
+- RSS parser and source tests now cover the parser path; the live source-health gate remains `python scripts/test_rss_fetch.py --all --timeout 8 --target-rate 95`.
 
 ## O5. Generic Web Fetch Timeout Was Opaque
 
@@ -69,7 +69,7 @@ V3 defense:
 - Proxy and fallback attempts must be recorded.
 - Final failure must include last error and attempted path.
 
-Phase 1 test entry:
+Test entry:
 
 - Queue contract includes `FailureKind.FETCH_TIMEOUT` and `FailureKind.FETCH_FAILED`.
 
@@ -83,9 +83,9 @@ V3 defense:
 - First RSS run must enforce a maximum history window, such as 7-30 days.
 - Full backfill requires explicit operator intent.
 
-Phase 1 test entry:
+Test entry:
 
-- Deferred until RSS parser exists; future tests must cover missing, bad, RFC822, and ISO 8601 dates.
+- RSS/source tests cover missing, bad, RFC822, and ISO 8601 date handling. Live source-health still depends on network/source availability.
 
 ## O7. LLM Rate Limits Caused Batch Failure
 
@@ -98,7 +98,7 @@ V3 defense:
 - Affected tasks use `retry_scheduled` with `next_retry_at`.
 - Manual Telegram submissions get higher priority than batch RSS.
 
-Phase 1 test entry:
+Test entry:
 
 - Queue contract includes `FailureKind.LLM_RATE_LIMIT`, `NextAction.RETRY_LATER`, and `retry_scheduled`.
 
@@ -113,9 +113,9 @@ V3 defense:
 - Runtime Guard rejects existing queue DBs missing required V3 columns.
 - Future live roles must emit and compare runtime fingerprints.
 
-Phase 1 test entry:
+Test entry:
 
-- `tests/test_runtime_guard.py` covers V2 queue path, V2 project root, shadow HOME, missing schema, and clean V3 paths.
+- `tests/test_runtime_guard.py` covers V2 queue path, V2 project root, shadow HOME, missing schema, clean V3 paths, and public checkout names such as `information-tracking-agent`.
 
 ## O9. LLM Extraction Timeout Broke Single-Link Closure
 
@@ -128,7 +128,7 @@ V3 defense:
 - Exhausted retries may produce degraded briefs in future phases.
 - User-facing failure notices must include retry count and next action once Telegram output exists.
 
-Phase 1 test entry:
+Test entry:
 
 - Queue contract includes `FailureKind.LLM_TIMEOUT` and retry scheduling semantics.
 
