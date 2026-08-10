@@ -6,44 +6,9 @@ import json
 from typing import Any
 
 from .models import ExtractionResult, ScoreResult, TypedError
+from .prompt_contract import EXTRACTION_REQUIRED_FIELDS, SCORING_REQUIRED_FIELDS
 from .queue_store import FailureKind, NextAction
-
-
-SCORING_REQUIRED_FIELDS = (
-    "score",
-    "final_score",
-    "signal_tier",
-    "L1",
-    "L2",
-    "L3",
-    "L4",
-    "objective_quality",
-    "decision_window_status",
-    "source_type",
-    "source_tier",
-    "interest_flag",
-    "attribution_chain",
-    "rationale",
-    "key_claims",
-    "watch_items",
-)
-
-EXTRACTION_REQUIRED_FIELDS = (
-    "title",
-    "one_line_signal",
-    "decision_window_status",
-    "source_type",
-    "source_tier",
-    "interest_flag",
-    "attribution_chain",
-    "why_it_matters",
-    "evidence",
-    "inferences",
-    "risks_and_conflicts",
-    "recommended_actions",
-    "monitoring_triggers",
-    "obsidian_brief_markdown",
-)
+from .routing import compute_business_story_fit
 
 
 def parse_score_result(
@@ -78,6 +43,23 @@ def parse_score_result(
     if isinstance(final_score, TypedError):
         return final_score
 
+    # Parse the five business-story dimensions leniently. They are required of
+    # the active bundle's prompt schema but the parser must not crash when a
+    # legacy parallel bundle (or a model that dropped a field) omits them: a
+    # missing dimension defaults to 0, which safely routes the item away from
+    # business_push and back onto the final_score-based path.
+    actor_scene = _dim(parsed, "actor_scene")
+    operating_detail = _dim(parsed, "operating_detail")
+    causal_arc = _dim(parsed, "causal_arc")
+    transferability = _dim(parsed, "transferability")
+    evidence_strength = _dim(parsed, "evidence_strength")
+
+    business_story_fit = compute_business_story_fit(
+        actor_scene, operating_detail, causal_arc, transferability, evidence_strength,
+    )
+    interest_flag = str(parsed["interest_flag"])
+    is_promotional = interest_flag.lower() == "promotional"
+
     return ScoreResult(
         prompt_bundle=prompt_bundle,
         prompt_hash=prompt_hash,
@@ -90,8 +72,15 @@ def parse_score_result(
         decision_window_status=str(parsed["decision_window_status"]),
         source_type=str(parsed["source_type"]),
         source_tier=str(parsed["source_tier"]),
-        interest_flag=str(parsed["interest_flag"]),
+        interest_flag=interest_flag,
         attribution_chain=parsed["attribution_chain"],
+        actor_scene=actor_scene,
+        operating_detail=operating_detail,
+        causal_arc=causal_arc,
+        transferability=transferability,
+        evidence_strength=evidence_strength,
+        business_story_fit=business_story_fit,
+        is_promotional=is_promotional,
     )
 
 
@@ -175,6 +164,24 @@ def _number(
     if not minimum <= numeric_value <= maximum:
         return _parse_error(f"{field} must be between {minimum:g} and {maximum:g}", stage=stage)
     return numeric_value
+
+
+def _dim(parsed: dict[str, Any], field: str) -> float:
+    """Read a 0-1 business-story dimension, defaulting to 0.0 when absent/invalid.
+
+    Lenient on purpose: legacy bundles and occasionally-flaky model output must
+    not crash scoring. A 0 dimension pushes the item off the business_push path,
+    which is the safe fallback.
+    """
+    value = parsed.get(field, 0.0)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0.0
+    v = float(value)
+    if v < 0.0:
+        return 0.0
+    if v > 1.0:
+        return 1.0
+    return v
 
 
 def _parse_error(message: str, *, stage: str, detail: str = "") -> TypedError:

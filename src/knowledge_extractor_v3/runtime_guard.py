@@ -167,6 +167,12 @@ class RuntimeFingerprint:
     prompt_hashes: dict[str, str]
     source_hash: str
     created_at: str
+    # Loaded-at-startup identity of the active prompt bundle. Health compares
+    # these against the current on-disk registry so that "running worker still
+    # has the old bundle while health shows the new one" becomes a visible
+    # ERROR instead of a silent false-green.
+    active_bundle: str = ""
+    active_prompt_hash: str = ""
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -201,6 +207,7 @@ class RuntimeGuard:
         return fingerprint
 
     def build_fingerprint(self) -> RuntimeFingerprint:
+        active_bundle, active_prompt_hash = self._active_bundle_identity()
         return RuntimeFingerprint(
             project_root=str(self.paths.project_root),
             python_executable=sys.executable,
@@ -213,7 +220,29 @@ class RuntimeGuard:
             prompt_hashes=self._hash_prompt_files(),
             source_hash=self._hash_source_files(),
             created_at=datetime.now(UTC).replace(microsecond=0).isoformat(),
+            active_bundle=active_bundle,
+            active_prompt_hash=active_prompt_hash,
         )
+
+    def _active_bundle_identity(self) -> tuple[str, str]:
+        """Return (active_bundle_name, prompt_hash) for the current registry.
+
+        Defensive: a malformed registry during a guard check must not crash the
+        whole daemon. Returns empty strings if the bundle cannot be resolved.
+        """
+        try:
+            from .prompt_registry import PromptRegistry  # local import avoids cycle
+            from .models import sha256_text
+
+            registry = PromptRegistry.default(self.paths.project_root)
+            bundle_name = registry.active_bundle_name
+            scoring = registry.load_prompt(bundle_name, "scoring")
+            extraction = registry.load_prompt(bundle_name, "extraction")
+            brief = registry.load_prompt(bundle_name, "telegram_brief")
+            digest = sha256_text(scoring + extraction + brief, length=16)
+            return bundle_name, digest
+        except Exception:
+            return "", ""
 
     def write_fingerprint(self, fingerprint: RuntimeFingerprint) -> Path:
         self.paths.state_root.mkdir(parents=True, exist_ok=True)

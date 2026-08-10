@@ -35,6 +35,7 @@ class OutputPort(Protocol):
         provider_route: str = "",
         is_test_provider: bool = False,
         runtime_fingerprint: str = "",
+        wechat_lane: str | None = None,
     ) -> OutputResult:
         ...
 
@@ -61,6 +62,7 @@ class DryRunOutputPort:
         provider_route: str = "",
         is_test_provider: bool = False,
         runtime_fingerprint: str = "",
+        wechat_lane: str | None = None,
     ) -> OutputResult:
         delivery = self.telegram.deliver(content, telegram_text)
         if isinstance(delivery, TypedError):
@@ -152,6 +154,7 @@ class StagingOutputPort:
         provider_route: str = "",
         is_test_provider: bool = False,
         runtime_fingerprint: str = "",
+        wechat_lane: str | None = None,
     ) -> OutputResult:
         output_path = self.writer.write(
             content,
@@ -205,6 +208,13 @@ def _render_markdown(
         "source_type": content.source_type,
         "processed_at": processed_at,
         "url": content.url,
+        "business_story_fit": round(getattr(score, "business_story_fit", 0.0), 4),
+        "actor_scene": getattr(score, "actor_scene", 0.0),
+        "operating_detail": getattr(score, "operating_detail", 0.0),
+        "causal_arc": getattr(score, "causal_arc", 0.0),
+        "transferability": getattr(score, "transferability", 0.0),
+        "evidence_strength": getattr(score, "evidence_strength", 0.0),
+        "is_promotional": getattr(score, "is_promotional", False),
     }
     if runtime_mode:
         frontmatter["runtime_mode"] = runtime_mode

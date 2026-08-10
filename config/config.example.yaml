@@ -36,6 +36,8 @@ outputs:
   obsidian_root: ""
   obsidian_subdir: "inbox"
   write_manifest: true
+  channel: "telegram"           # wechat | telegram | both
+  wechat_queue_dir: "~/.100x_v3/wechat_queue"
   telegram_bot_token_env: "TELEGRAM_BOT_TOKEN"
   telegram_admin_chat_id_env: "TELEGRAM_ADMIN_CHAT_ID"
   telegram_enabled: true
@@ -53,18 +55,21 @@ daily_reports:
 
 prompts:
   registry: "prompts/registry.json"
-  active_bundle: "v2_stable_cn"
+  active_bundle: "v3_business_stories"
   parallel_test_bundles:
     - "primary_market_v1"
     - "rimbo_source_scored_v3"
     - "v2_legacy"
     - "v2_stable_cn"
+    - "v3_business_stories"
   scoring: "prompts/primary_market_scoring.md"
   extraction: "prompts/primary_market_extraction.md"
   telegram_brief: "prompts/telegram_brief.md"
 
 score_gate:
   enabled: true
+  # Only score >= 7/10 enters extraction; lower values are dropped.
+  reject_threshold: 0.7
 
 sources: []
 

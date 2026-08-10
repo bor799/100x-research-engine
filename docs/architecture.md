@@ -24,6 +24,11 @@ score = final_score * 10
 
 `final_score` is always `0-1`; `score` is always `0-10` for compatibility with threshold-style routing.
 
+The extraction gate is intentionally strict: content must reach at least
+`final_score >= 0.70` and `score >= 7.0` before extraction runs. Lower-scoring
+or `Reject`-tier content is dropped at `score_gate`, even if an operator disables
+the optional configurable score gate for debugging.
+
 ## Current Implementation
 
 As of 2026-05-30, V3 is no longer only a Phase 1 skeleton. The current codebase includes:

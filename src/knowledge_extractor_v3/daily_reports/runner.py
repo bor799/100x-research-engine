@@ -341,6 +341,10 @@ def main(argv: list[str] | None = None) -> int:
     loader = ConfigLoader(explicit_path=Path(args.config) if args.config else None)
     config = loader.load()
     daily_config = config.daily_reports.us_ai_market
+    if not daily_config.enabled:
+        print("US AI market daily report disabled by daily_reports.us_ai_market.enabled=false")
+        return 0
+
     report_date = args.report_date or datetime.now(ZoneInfo(daily_config.timezone)).date().isoformat()
     output_root = Path(args.output_root) if args.output_root else loader.expand_path(config.outputs.obsidian_root)
     system_dir = Path(args.system_dir) if args.system_dir else loader.expand_path(daily_config.system_dir)

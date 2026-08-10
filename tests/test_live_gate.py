@@ -12,6 +12,7 @@ from knowledge_extractor_v3.config_loader import (
     LiveConfig,
     LLMConfig,
     OutputsConfig,
+    PromptsConfig,
     RuntimeConfig,
     V3Config,
 )
@@ -31,13 +32,19 @@ def _make_config(
     api_key: str = "",
     telegram_token_env: str = "TELEGRAM_BOT_TOKEN",
     telegram_chat_id_env: str = "TELEGRAM_ADMIN_CHAT_ID",
+    active_bundle: str = "v3_business_stories",
+    output_channel: str = "telegram",
+    telegram_enabled: bool = True,
 ) -> V3Config:
     return V3Config(
         runtime=RuntimeConfig(),
         live=LiveConfig(enabled=live_enabled),
         llm=LLMConfig(api_key_env=api_key_env, api_key=api_key),
+        prompts=PromptsConfig(active_bundle=active_bundle),
         outputs=OutputsConfig(
             obsidian_root=obsidian_root,
+            channel=output_channel,
+            telegram_enabled=telegram_enabled,
             telegram_bot_token_env=telegram_token_env,
             telegram_admin_chat_id_env=telegram_chat_id_env,
         ),
@@ -50,15 +57,16 @@ def _make_loader(
     env: dict[str, str] | None = None,
     project_root: Path | None = None,
 ) -> ConfigLoader:
+    root = project_root or Path(__file__).resolve().parents[1]
     loader = ConfigLoader(
-        project_root=project_root or Path("/fake/project"),
+        project_root=root,
         env=env or {},
     )
     # Simulate having loaded from local config
     loader._config_path_used = (
-        Path("/fake/project/config/config.local.yaml")
+        root / "config/config.local.yaml"
         if using_local
-        else Path("/fake/project/config/config.example.yaml")
+        else root / "config/config.example.yaml"
     )
     return loader
 
@@ -124,6 +132,25 @@ class TestCheckRuntimeGuard:
         guard = _make_guard(should_fail=False)
         gate = LiveGate(config, config_loader=_make_loader(), runtime_guard=guard)
         check = gate.check_runtime_guard()
+        assert check.passed
+
+
+class TestCheckActivePromptContract:
+    def test_v2_legacy_fails(self):
+        config = _make_config(active_bundle="v2_legacy")
+        gate = LiveGate(config, config_loader=_make_loader(), runtime_guard=_make_guard())
+
+        check = gate.check_active_prompt_contract()
+
+        assert not check.passed
+        assert "incompatible with the V3 parser contract" in check.message
+
+    def test_v2_stable_cn_passes(self):
+        config = _make_config(active_bundle="v2_stable_cn")
+        gate = LiveGate(config, config_loader=_make_loader(), runtime_guard=_make_guard())
+
+        check = gate.check_active_prompt_contract()
+
         assert check.passed
 
 
@@ -195,6 +222,22 @@ class TestCheckEnvSecrets:
         check = gate.check_env_secrets()
         assert check.passed
 
+    def test_wechat_only_does_not_require_telegram_env_vars(self):
+        config = _make_config(
+            api_key="direct-key",
+            output_channel="wechat",
+            telegram_enabled=False,
+        )
+        gate = LiveGate(
+            config,
+            config_loader=_make_loader(env={}),
+            runtime_guard=_make_guard(),
+        )
+
+        check = gate.check_env_secrets()
+
+        assert check.passed
+
 
 # ---------------------------------------------------------------------------
 # Aggregate check tests
@@ -221,7 +264,7 @@ class TestCheckAggregate:
 
         assert not result.passed
         assert len(result.rejection_reasons) >= 2
-        assert len(result.checks) == 6
+        assert len(result.checks) == 7
 
     def test_all_pass(self, tmp_path):
         config = _make_config(live_enabled=True, obsidian_root=str(tmp_path))

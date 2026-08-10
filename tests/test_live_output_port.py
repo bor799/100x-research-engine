@@ -16,6 +16,7 @@ from knowledge_extractor_v3.models import (
 )
 from knowledge_extractor_v3.outputs.live_obsidian import LiveObsidianWriter, LiveOutputPort
 from knowledge_extractor_v3.outputs.telegram_live import LiveTelegramClient, _HTTPResponse
+from knowledge_extractor_v3.outputs.wechat_queue import WechatQueue
 from knowledge_extractor_v3.queue_store import FailureKind
 
 
@@ -299,6 +300,75 @@ class TestLiveTelegramClient:
 
 
 class TestLiveOutputPort:
+    def test_wechat_only_queues_score_and_brief(self, tmp_path):
+        writer = LiveObsidianWriter(tmp_path, subdir="inbox", write_manifest=False)
+        queue_dir = tmp_path / "wechat"
+        port = LiveOutputPort(
+            obsidian_writer=writer,
+            wechat_queue=WechatQueue(queue_dir),
+        )
+
+        result = port.write(
+            _fetched(),
+            _score(),
+            _extraction(),
+            "微信简报",
+            prompt_bundle="test",
+            prompt_hash="hash",
+            task_id=1,
+            wechat_lane="business",
+        )
+
+        assert result.ok is True
+        assert result.telegram_status == "not_configured"
+        assert result.wechat_status == "queued"
+        payload = json.loads(next((queue_dir / "pending").glob("*.json")).read_text(encoding="utf-8"))
+        assert payload["text"] == "微信简报"
+        assert payload["lane"] == "business"
+        assert "final_score" in payload  # plan schema: final_score + business_story_fit
+
+    def test_both_channels_deliver(self, tmp_path):
+        writer = LiveObsidianWriter(tmp_path, subdir="inbox", write_manifest=False)
+        telegram = LiveTelegramClient(
+            bot_token="test-token",
+            chat_id="123",
+            http_post=_mock_http_post(200),
+        )
+        port = LiveOutputPort(
+            obsidian_writer=writer,
+            telegram_client=telegram,
+            wechat_queue=WechatQueue(tmp_path / "wechat"),
+        )
+
+        result = port.write(
+            _fetched(), _score(), _extraction(), "brief",
+            prompt_bundle="test", prompt_hash="hash", task_id=1,
+            wechat_lane="business",
+        )
+
+        assert result.ok is True
+        assert result.telegram_status == "sent"
+        assert result.wechat_status == "queued"
+
+    def test_wechat_queue_failure_prevents_done(self, tmp_path):
+        queue_path = tmp_path / "queue-file"
+        queue_path.write_text("occupied", encoding="utf-8")
+        writer = LiveObsidianWriter(tmp_path, subdir="inbox", write_manifest=False)
+        port = LiveOutputPort(
+            obsidian_writer=writer,
+            wechat_queue=WechatQueue(queue_path),
+        )
+
+        result = port.write(
+            _fetched(), _score(), _extraction(), "brief",
+            prompt_bundle="test", prompt_hash="hash", task_id=1,
+            wechat_lane="business",
+        )
+
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.stage == "output.wechat_queue"
+
     def test_full_flow_success(self, tmp_path):
         writer = LiveObsidianWriter(tmp_path, subdir="inbox", write_manifest=False)
         telegram = LiveTelegramClient(

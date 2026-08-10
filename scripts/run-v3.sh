@@ -169,6 +169,7 @@ from knowledge_extractor_v3.prompt_registry import PromptRegistry
 loader = ConfigLoader()
 config = loader.load()
 prompts = PromptRegistry.from_config(Path.cwd(), config.prompts)
+prompts.validate_active_contract()
 active_bundle = prompts.active_bundle_name
 prompt_hash = sha256_text(
     prompts.load_prompt(active_bundle, 'scoring')

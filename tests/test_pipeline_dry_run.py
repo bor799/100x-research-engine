@@ -1,7 +1,9 @@
+import json
 from pathlib import Path
 
+from knowledge_extractor_v3.llm.provider import StubLLMProvider
 from knowledge_extractor_v3.llm.shadow import ShadowHeuristicLLMProvider
-from knowledge_extractor_v3.models import FetchedContent, RuntimeMode, sha256_text
+from knowledge_extractor_v3.models import FetchedContent, RuntimeMode, ScoreResult, sha256_text
 from knowledge_extractor_v3.outputs.live_obsidian import LiveObsidianWriter, LiveOutputPort
 from knowledge_extractor_v3.outputs.telegram_live import LiveTelegramClient
 from knowledge_extractor_v3.pipeline import Pipeline
@@ -40,7 +42,7 @@ def test_pipeline_dry_run_low_quality_is_rejected_without_output(tmp_path):
     assert result.extraction_result is None
 
 
-def test_pipeline_can_force_extract_score_reject(tmp_path):
+def test_pipeline_hard_reject_even_with_gate_disabled(tmp_path):
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
     pipeline = Pipeline(
         store,
@@ -51,15 +53,90 @@ def test_pipeline_can_force_extract_score_reject(tmp_path):
 
     result = pipeline.process_url("fixture://low_quality", source="rss", mode=RuntimeMode.DRY_RUN)
 
-    assert result.final_status is QueueStatus.DONE
-    assert result.failure_kind is FailureKind.NONE
-    assert result.output_path.startswith("dry-run://")
+    assert result.final_status is QueueStatus.REJECTED
+    assert result.failure_kind is FailureKind.VALIDATION_FAILED
+    assert result.next_action is NextAction.DROP
+    assert result.extraction_result is None
     assert result.score_result is not None
     assert result.score_result.signal_tier == "Reject"
+    route_stage = next(stage for stage in result.stage_results if stage.stage == "routing")
+    assert route_stage.detail.get("route") == "reject"
+
+
+class FixedScoreLLMProvider(StubLLMProvider):
+    model_route = "test://fixed-score"
+
+    def __init__(self, *, score: float, final_score: float, signal_tier: str = "B") -> None:
+        self._score = score
+        self._final_score = final_score
+        self._signal_tier = signal_tier
+        self.extract_calls = 0
+
+    def score(self, content: FetchedContent, prompt: str) -> str:
+        return json.dumps(
+            {
+                "score": self._score,
+                "final_score": self._final_score,
+                "signal_tier": self._signal_tier,
+                "L1": 0.7,
+                "L2": 0.7,
+                "L3": 0.7,
+                "L4": self._final_score,
+                "objective_quality": 0.343,
+                "decision_window_status": "open",
+                "source_type": content.source_type,
+                "source_tier": "primary",
+                "interest_flag": "track",
+                "attribution_chain": [content.source, content.url],
+                "rationale": "Fixed score for extraction gate regression tests.",
+                "key_claims": ["claim"],
+                "watch_items": ["watch"],
+            }
+        )
+
+    def extract(self, content: FetchedContent, score: ScoreResult, prompt: str) -> str:
+        self.extract_calls += 1
+        return super().extract(content, score, prompt)
+
+
+def test_pipeline_rejects_scores_below_seven_before_extraction_even_with_gate_disabled(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    llm = FixedScoreLLMProvider(score=6.9, final_score=0.69, signal_tier="B")
+    pipeline = Pipeline(
+        store,
+        llm_provider=llm,
+        staging_root=tmp_path / "staging",
+        score_gate_enabled=False,
+        allow_test_provider=True,
+    )
+
+    result = pipeline.process_url("fixture://high_signal", source="rss", mode=RuntimeMode.DRY_RUN)
+
+    assert result.final_status is QueueStatus.REJECTED
+    assert result.failure_kind is FailureKind.VALIDATION_FAILED
+    assert result.next_action is NextAction.DROP
+    assert result.extraction_result is None
+    assert llm.extract_calls == 0
+    route_stage = next(stage for stage in result.stage_results if stage.stage == "routing")
+    assert route_stage.detail.get("route") == "reject"
+
+
+def test_pipeline_allows_score_equal_to_seven(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    llm = FixedScoreLLMProvider(score=7.0, final_score=0.7, signal_tier="A")
+    pipeline = Pipeline(
+        store,
+        llm_provider=llm,
+        staging_root=tmp_path / "staging",
+        allow_test_provider=True,
+    )
+
+    result = pipeline.process_url("fixture://high_signal", source="rss", mode=RuntimeMode.DRY_RUN)
+
+    assert result.final_status is QueueStatus.DONE
+    assert result.failure_kind is FailureKind.NONE
     assert result.extraction_result is not None
-    score_gate = next(stage for stage in result.stage_results if stage.stage == "score_gate")
-    assert score_gate.detail["gate_enabled"] is False
-    assert score_gate.detail["forced_extract"] is True
+    assert llm.extract_calls == 1
 
 
 def test_pipeline_dry_run_parse_error_is_terminal(tmp_path):
@@ -72,6 +149,21 @@ def test_pipeline_dry_run_parse_error_is_terminal(tmp_path):
     assert result.next_action is NextAction.INVESTIGATE
     assert result.output_path == ""
     assert result.current_stage == "score_parse"
+
+
+def test_pipeline_rejects_incompatible_prompt_before_llm_call(tmp_path):
+    pipeline = _pipeline(tmp_path)
+
+    result = pipeline.process_url(
+        "fixture://high_signal",
+        mode=RuntimeMode.DRY_RUN,
+        prompt_bundle="v2_legacy",
+    )
+
+    assert result.final_status is QueueStatus.FAILED_TERMINAL
+    assert result.failure_kind is FailureKind.PROMPT_CONTRACT
+    assert result.current_stage == "resolve_prompt_bundle"
+    assert "incompatible with the V3 parser contract" in result.error.detail
 
 
 def test_pipeline_dry_run_rate_limit_schedules_retry(tmp_path):
@@ -159,17 +251,48 @@ def test_pipeline_dry_run_parallel_bundles_do_not_affect_active_output(tmp_path)
     expected_parallel_bundles = set(pipeline.prompt_registry.parallel_test_bundle_names)
     expected_parallel_bundles.discard(pipeline.prompt_registry.active_bundle_name)
     assert set(parallel_bundles) == expected_parallel_bundles
-    assert all(item.ok for item in result.parallel_results)
-    assert all(item.prompt_hash for item in result.parallel_results)
+    by_bundle = {item.prompt_bundle: item for item in result.parallel_results}
+    legacy = by_bundle.pop("v2_legacy")
+    assert not legacy.ok
+    assert legacy.error is not None
+    assert legacy.error.failure_kind is FailureKind.PROMPT_CONTRACT
+    assert all(item.ok for item in by_bundle.values())
+    assert all(item.prompt_hash for item in by_bundle.values())
     assert result.output_path.startswith("dry-run://")
+
+
+class FundingSignalFetcher:
+    def fetch(self, url: str) -> FetchedContent:
+        text = (
+            "Frontier Payments raised a $24 million Series A led by named investors, "
+            "with a disclosed valuation range and three customer deployment examples. "
+            "The company says the new capital will expand fraud-risk infrastructure for "
+            "AI-native merchants, and the article names two pilot customers, the payment "
+            "volume baseline, hiring plans, and the specific market wedge. Independent "
+            "investor comments explain why the round is happening now, citing chargeback "
+            "growth, compliance pressure, and a distribution partnership already live in "
+            "North America. The source includes enough concrete financing, customer, and "
+            "operating evidence to update a primary-market watchlist immediately."
+        )
+        return FetchedContent(
+            url=url,
+            source="fixture",
+            source_type="web_article",
+            title="Frontier Payments raises Series A for AI merchant fraud infrastructure",
+            text=text,
+            fetched_at="2026-05-31T00:00:00+00:00",
+            content_hash=sha256_text(text),
+        )
 
 
 def test_pipeline_can_run_explicit_rimbo_prompt_bundle(tmp_path):
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
     pipeline = Pipeline(
         store,
+        fetcher=FundingSignalFetcher(),
         llm_provider=ShadowHeuristicLLMProvider(),
         staging_root=tmp_path / "staging",
+        allow_test_provider=True,
     )
 
     result = pipeline.process_url(
@@ -216,3 +339,79 @@ def test_pipeline_live_mode_with_live_output_processes(tmp_path):
     assert result.output_path
     assert Path(result.output_path).exists()
     assert str(result.output_path).startswith(str(obsidian_root))
+
+
+class PaywallShellFetcher:
+    def fetch(self, url: str) -> FetchedContent:
+        text = "Subscribe to continue reading this article. Already a subscriber? Sign in to access the full story."
+        return FetchedContent(
+            url=url,
+            source="agent-reach-web",
+            source_type="web_article",
+            title="The Economist: Major AI Breakthrough",
+            text=text,
+            fetched_at="2026-05-31T00:00:00+00:00",
+            content_hash=sha256_text(text),
+        )
+
+
+def test_pipeline_rejects_paywall_shell_at_validate(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    pipeline = Pipeline(store, fetcher=PaywallShellFetcher(), staging_root=tmp_path / "staging", allow_test_provider=True)
+
+    result = pipeline.process_url("https://www.economist.com/example", mode=RuntimeMode.DRY_RUN)
+
+    assert result.final_status is QueueStatus.FAILED_TERMINAL
+    assert result.failure_kind is FailureKind.CONTENT_BLOCKED
+    assert result.current_stage == "validate"
+    assert result.extraction_result is None
+
+
+class TitleOnlyFetcher:
+    def fetch(self, url: str) -> FetchedContent:
+        text = "Breaking: Major AI Breakthrough"
+        return FetchedContent(
+            url=url,
+            source="rss",
+            source_type="rss_feed",
+            title="Breaking: Major AI Breakthrough",
+            text=text,
+            fetched_at="2026-05-31T00:00:00+00:00",
+            content_hash=sha256_text(text),
+        )
+
+
+def test_pipeline_rejects_title_only_article(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    pipeline = Pipeline(store, fetcher=TitleOnlyFetcher(), staging_root=tmp_path / "staging", allow_test_provider=True)
+
+    result = pipeline.process_url("https://example.com/article", mode=RuntimeMode.DRY_RUN)
+
+    assert result.final_status is QueueStatus.FAILED_TERMINAL
+    assert result.failure_kind is FailureKind.CONTENT_BLOCKED
+    assert result.current_stage == "validate"
+    assert result.extraction_result is None
+
+
+class ShortTweetFetcher:
+    def fetch(self, url: str) -> FetchedContent:
+        text = "Great insight on AI agents! Building autonomous systems is the future."
+        return FetchedContent(
+            url=url,
+            source="agent-reach-twitter",
+            source_type="twitter_thread",
+            title="Tweet",
+            text=text,
+            fetched_at="2026-05-31T00:00:00+00:00",
+            content_hash=sha256_text(text),
+        )
+
+
+def test_pipeline_allows_short_non_article_content(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
+    pipeline = Pipeline(store, fetcher=ShortTweetFetcher(), staging_root=tmp_path / "staging", allow_test_provider=True)
+
+    result = pipeline.process_url("https://x.com/user/status/123", mode=RuntimeMode.DRY_RUN)
+
+    assert result.current_stage == "done"
+    assert result.extraction_result is not None

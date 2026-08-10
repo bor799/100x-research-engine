@@ -111,6 +111,7 @@ class HealthChecker:
         checks.append(self._check_stale_processing())
         checks.append(self._check_role_locks())
         checks.append(self._check_prompt_registry())
+        checks.append(self._check_config_drift())
 
         if self._config.live.enabled:
             checks.append(self._check_live_requirements())
@@ -178,7 +179,12 @@ class HealthChecker:
             )
 
     def _check_queue_status(self) -> HealthCheck:
-        """Check queue status counts."""
+        """Check queue status counts.
+
+        The warning threshold is based on a 24h rolling window so that a batch
+        of historical failures does not pin the system to ``warning`` forever.
+        Cumulative counts are still surfaced as detail for operators.
+        """
         if not self._queue:
             return HealthCheck(
                 name="queue_status",
@@ -189,22 +195,37 @@ class HealthChecker:
         try:
             counts = self._queue.count_by_status()
             total = sum(counts.values())
+            recent = self._queue.count_recent_status(window_hours=24)
 
-            # Check for excessive failures
-            failed = counts.get("failed_terminal", 0)
-            if failed > 10:
+            # Recent failure rate drives the alarm, not the lifetime total.
+            recent_failed = recent.get("failed_terminal", 0)
+            recent_rejected = recent.get("rejected", 0)
+            recent_total = sum(recent.values()) or 1
+            recent_failure_rate = (recent_failed + recent_rejected) / recent_total
+
+            detail = {
+                **counts,
+                "recent_24h": recent,
+                "recent_failure_rate_24h": round(recent_failure_rate, 3),
+            }
+
+            if recent_failed > 10 or recent_failure_rate > 0.5:
                 return HealthCheck(
                     name="queue_status",
                     status=HealthStatus.WARNING,
-                    message=f"High failure count: {failed}",
-                    detail=counts,
+                    message=(
+                        f"High recent failure rate: {recent_failure_rate:.0%} "
+                        f"({recent_failed} failed, {recent_rejected} rejected "
+                        f"in last 24h)"
+                    ),
+                    detail=detail,
                 )
 
             return HealthCheck(
                 name="queue_status",
                 status=HealthStatus.HEALTHY,
-                message=f"Queue OK: {total} tasks",
-                detail=counts,
+                message=f"Queue OK: {total} tasks (recent failure rate {recent_failure_rate:.0%})",
+                detail=detail,
             )
         except Exception as exc:
             return HealthCheck(
@@ -333,7 +354,10 @@ class HealthChecker:
                 issues.append(f"obsidian_root does not exist: {obsidian_path}")
 
         # Check Telegram if enabled
-        if self._config.outputs.telegram_enabled:
+        if (
+            self._config.outputs.channel in {"telegram", "both"}
+            and self._config.outputs.telegram_enabled
+        ):
             # 优先检查直接配置的 token，其次检查环境变量
             token = self._config.outputs.telegram_bot_token or os.environ.get(self._config.outputs.telegram_bot_token_env)
             if not token:
@@ -354,6 +378,87 @@ class HealthChecker:
             message="Live mode requirements met",
         )
 
+    def _check_config_drift(self) -> HealthCheck:
+        """Detect when running processes loaded a different config than disk.
+
+        Compares the on-disk ``runtime_fingerprint.json`` (written when a live
+        role last passed its gate) against the current source/prompt hashes.
+        A mismatch means the running worker or scheduler is still on old code
+        or an old prompt bundle while health reads the new one — the exact
+        "false green" condition this check exists to surface.
+        """
+        state_root = Path(self._config.runtime.state_root).expanduser()
+        fingerprint_path = state_root / "runtime_fingerprint.json"
+
+        if not fingerprint_path.exists():
+            return HealthCheck(
+                name="config_drift",
+                status=HealthStatus.HEALTHY,
+                message="No runtime fingerprint yet (no live task since last deploy)",
+            )
+
+        try:
+            stored = json.loads(fingerprint_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return HealthCheck(
+                name="config_drift",
+                status=HealthStatus.WARNING,
+                message=f"Could not read runtime fingerprint: {exc}",
+            )
+
+        # Compute current disk-side identity.
+        current_bundle = ""
+        current_prompt_hash = ""
+        current_source_hash = ""
+        if self._guard is not None:
+            try:
+                live = self._guard.build_fingerprint()
+                current_bundle = live.active_bundle
+                current_prompt_hash = live.active_prompt_hash
+                current_source_hash = live.source_hash
+            except Exception:
+                pass
+
+        drifts: list[str] = []
+        detail: dict[str, Any] = {
+            "fingerprint_created_at": stored.get("created_at", ""),
+        }
+
+        stored_source = stored.get("source_hash", "")
+        if current_source_hash and stored_source and current_source_hash != stored_source:
+            drifts.append(
+                f"source code changed on disk since the running process started "
+                f"(stored={stored_source[:12]}, current={current_source_hash[:12]})"
+            )
+            detail["source_hash_drift"] = True
+
+        stored_bundle = stored.get("active_bundle", "")
+        stored_prompt = stored.get("active_prompt_hash", "")
+        if current_prompt_hash and stored_prompt and current_prompt_hash != stored_prompt:
+            drifts.append(
+                f"active prompt bundle drifted: running='{stored_bundle}' "
+                f"({stored_prompt[:12]}), disk='{current_bundle}' "
+                f"({current_prompt_hash[:12]})"
+            )
+            detail["prompt_hash_drift"] = True
+            detail["running_bundle"] = stored_bundle
+            detail["disk_bundle"] = current_bundle
+
+        if drifts:
+            return HealthCheck(
+                name="config_drift",
+                status=HealthStatus.ERROR,
+                message="; ".join(drifts) + " — restart the role to reload",
+                detail=detail,
+            )
+
+        return HealthCheck(
+            name="config_drift",
+            status=HealthStatus.HEALTHY,
+            message=f"No drift (bundle={current_bundle or stored_bundle or 'unknown'})",
+            detail=detail,
+        )
+
     def _check_prompt_registry(self) -> HealthCheck:
         """Validate active prompt routing and report the active bundle hash."""
         try:
@@ -362,6 +467,7 @@ class HealthChecker:
                 self._config.prompts,
             )
             prompts.validate(required_roles=("scoring", "extraction", "telegram_brief"))
+            prompts.validate_active_contract()
             active_bundle = prompts.active_bundle_name
             scoring_prompt = prompts.load_prompt(active_bundle, "scoring")
             extraction_prompt = prompts.load_prompt(active_bundle, "extraction")

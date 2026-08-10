@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from knowledge_extractor_v3.prompt_registry import PromptRegistry
+import pytest
+
+from knowledge_extractor_v3.prompt_registry import PromptRegistry, PromptRegistryError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,12 +14,13 @@ def test_prompt_registry_validates_active_and_parallel_bundles():
     registry.validate()
 
     parallel_bundle_names = [bundle.name for bundle in registry.bundles_for_parallel_test()]
-    assert registry.active_bundle_name == "v2_stable_cn"
+    assert registry.active_bundle_name == "v3_business_stories"
     assert registry.active_bundle_name in parallel_bundle_names
     assert parallel_bundle_names[0] == "primary_market_v1"
     assert "rimbo_source_scored_v3" in parallel_bundle_names
     assert "v2_legacy" in parallel_bundle_names
     assert "v2_stable_cn" in parallel_bundle_names
+    assert "v3_business_stories" in parallel_bundle_names
 
 
 def test_prompt_registry_loads_scoring_and_extraction_roles():
@@ -30,6 +33,9 @@ def test_prompt_registry_loads_scoring_and_extraction_roles():
     legacy_scoring = registry.load_prompt("v2_legacy", "scoring")
     stable_scoring = registry.load_prompt("v2_stable_cn", "scoring")
     stable_extraction = registry.load_prompt("v2_stable_cn", "extraction")
+    business_scoring = registry.load_prompt("v3_business_stories", "scoring")
+    business_extraction = registry.load_prompt("v3_business_stories", "extraction")
+    wechat_brief = registry.load_prompt("v3_business_stories", "telegram_brief")
 
     assert "final_score" in scoring
     assert "obsidian_brief_markdown" in extraction
@@ -39,6 +45,25 @@ def test_prompt_registry_loads_scoring_and_extraction_roles():
     assert "商业化/变现实操" in stable_scoring
     assert "source_score" in stable_scoring
     assert "content_compression" in stable_extraction
+    assert "| 可转述商业故事 | 2.0 |" in business_scoring
+    assert "| 小生意/一线经营 | 1.8 |" in business_scoring
+    # The five computable dimensions replace the non-computable prose weights.
+    assert "actor_scene" in business_scoring
+    assert "operating_detail" in business_scoring
+    assert "causal_arc" in business_scoring
+    assert "transferability" in business_scoring
+    assert "evidence_strength" in business_scoring
+    # The macro-narrative veto was removed: high-value strategic analysis must
+    # stay reachable via strategic_digest / archive_only even without a small
+    # business story.
+    assert "只有宏大叙事和行业概述" not in business_scoring
+    assert "必须是一句可被转述的话" in business_scoring
+    assert "## 遣词风格" in business_extraction
+    assert "一句话判断，最多 50 字" in wechat_brief
+    assert "100-200 字，最多 300 字" in wechat_brief
+    assert "🏷" not in wechat_brief
+    assert "🧭" not in wechat_brief
+    assert "🛠" not in wechat_brief
 
 
 def test_prompt_registry_keeps_scoring_and_extraction_separate():
@@ -64,3 +89,19 @@ def test_prompt_registry_can_override_active_and_parallel_from_config():
     assert [bundle.name for bundle in registry.bundles_for_parallel_test()] == [
         "rimbo_source_scored_v3",
     ]
+
+
+def test_v3_business_stories_satisfies_active_parser_contract():
+    registry = PromptRegistry.default(ROOT)
+
+    registry.validate_active_contract()
+
+
+def test_v2_legacy_cannot_become_active_parser_bundle():
+    registry = PromptRegistry(
+        ROOT / "prompts" / "registry.json",
+        active_bundle="v2_legacy",
+    )
+
+    with pytest.raises(PromptRegistryError, match="incompatible with the V3 parser contract"):
+        registry.validate_active_contract()

@@ -59,6 +59,7 @@ class LiveGate:
             self.check_live_enabled(),
             self.check_local_config_exists(),
             self.check_runtime_guard(),
+            self.check_active_prompt_contract(),
             self.check_obsidian_root(),
             self.check_obsidian_not_v2(),
             self.check_env_secrets(),
@@ -108,6 +109,24 @@ class LiveGate:
             )
         return LiveGateCheck(name="runtime_guard", passed=True, message="ok")
 
+    def check_active_prompt_contract(self) -> LiveGateCheck:
+        """The active prompt bundle must declare the V3 parser schema."""
+        from .prompt_registry import PromptRegistry, PromptRegistryError
+
+        try:
+            prompts = PromptRegistry.from_config(
+                self._loader.project_root,
+                self._config.prompts,
+            )
+            prompts.validate_active_contract()
+        except (PromptRegistryError, OSError) as exc:
+            return LiveGateCheck(
+                name="active_prompt_contract",
+                passed=False,
+                message=str(exc),
+            )
+        return LiveGateCheck(name="active_prompt_contract", passed=True, message="ok")
+
     def check_obsidian_root(self) -> LiveGateCheck:
         """outputs.obsidian_root must be set and exist on disk."""
         raw = self._config.outputs.obsidian_root
@@ -146,11 +165,15 @@ class LiveGate:
         env_vars = []
         if not getattr(self._config.llm, "api_key", ""):
             env_vars.append(self._config.llm.api_key_env)
-        # 只有在没有直接配置 token 时才检查环境变量
-        if not getattr(self._config.outputs, "telegram_bot_token", ""):
-            env_vars.append(self._config.outputs.telegram_bot_token_env)
-        if not getattr(self._config.outputs, "telegram_admin_chat_id", ""):
-            env_vars.append(self._config.outputs.telegram_admin_chat_id_env)
+        telegram_delivery = (
+            self._config.outputs.channel in {"telegram", "both"}
+            and self._config.outputs.telegram_enabled
+        )
+        if telegram_delivery:
+            if not getattr(self._config.outputs, "telegram_bot_token", ""):
+                env_vars.append(self._config.outputs.telegram_bot_token_env)
+            if not getattr(self._config.outputs, "telegram_admin_chat_id", ""):
+                env_vars.append(self._config.outputs.telegram_admin_chat_id_env)
         missing = [name for name in env_vars if not self._loader.resolve_env(name)]
         if missing:
             return LiveGateCheck(

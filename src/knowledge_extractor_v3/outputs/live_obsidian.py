@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from dataclasses import replace
 from pathlib import Path
 
 from ..models import (
@@ -171,7 +172,7 @@ class LiveObsidianWriter:
 
 
 class LiveOutputPort:
-    """Live output: atomic Obsidian write + Telegram delivery.
+    """Live output: atomic Obsidian write plus configured message delivery.
 
     Obsidian is written first, then Telegram. If Telegram is enabled
     and fails, the output is considered failed (not done). If Telegram
@@ -185,9 +186,11 @@ class LiveOutputPort:
         *,
         obsidian_writer: LiveObsidianWriter,
         telegram_client: "LiveTelegramClient | None" = None,
+        wechat_queue: "WechatQueue | None" = None,
     ) -> None:
         self.writer = obsidian_writer
         self.telegram = telegram_client
+        self.wechat_queue = wechat_queue
 
     def write(
         self,
@@ -203,6 +206,7 @@ class LiveOutputPort:
         provider_route: str = "",
         is_test_provider: bool = False,
         runtime_fingerprint: str = "",
+        wechat_lane: str | None = None,
     ) -> OutputResult:
         # Obsidian first
         output_path = self.writer.write(
@@ -220,35 +224,63 @@ class LiveOutputPort:
         if isinstance(output_path, TypedError):
             return OutputResult(ok=False, mode=self.mode, error=output_path)
 
-        # Telegram
+        telegram_status = "not_configured"
+        telegram_preview = ""
         if self.telegram is None:
-            # No telegram client configured — Obsidian alone suffices
-            return OutputResult(
-                ok=True,
-                mode=self.mode,
-                obsidian_path=output_path,
-                telegram_status="not_configured",
+            pass
+        else:
+            reply_chat_id = content.metadata.get("reply_chat_id")
+            delivery = self.telegram.deliver(
+                content,
+                telegram_text,
+                chat_id=str(reply_chat_id) if reply_chat_id else None,
             )
+            if isinstance(delivery, TypedError):
+                return OutputResult(
+                    ok=False,
+                    mode=self.mode,
+                    obsidian_path=output_path,
+                    error=delivery,
+                )
+            telegram_status, telegram_preview = delivery
 
-        reply_chat_id = content.metadata.get("reply_chat_id")
-        delivery = self.telegram.deliver(
-            content,
-            telegram_text,
-            chat_id=str(reply_chat_id) if reply_chat_id else None,
-        )
-        if isinstance(delivery, TypedError):
-            return OutputResult(
-                ok=False,
-                mode=self.mode,
-                obsidian_path=output_path,
-                error=delivery,
+        wechat_status = ""
+        wechat_preview = ""
+        # Only push routes (business / strategic lane) reach the WeChat outbox.
+        # archive_only content is archived to Obsidian above and intentionally
+        # kept out of the user's inbox.
+        if self.wechat_queue is not None and wechat_lane:
+            queue_content = replace(
+                content,
+                metadata={
+                    **content.metadata,
+                    "score": score.score,
+                    "final_score": score.final_score,
+                    "business_story_fit": getattr(score, "business_story_fit", 0.0),
+                    "lane": wechat_lane,
+                    "prompt_hash": prompt_hash,
+                },
             )
+            delivery = self.wechat_queue.deliver(
+                queue_content, telegram_text, lane=wechat_lane,
+            )
+            if isinstance(delivery, TypedError):
+                return OutputResult(
+                    ok=False,
+                    mode=self.mode,
+                    obsidian_path=output_path,
+                    telegram_status=telegram_status,
+                    telegram_preview=telegram_preview,
+                    error=delivery,
+                )
+            wechat_status, wechat_preview = delivery
 
-        telegram_status, telegram_preview = delivery
         return OutputResult(
             ok=True,
             mode=self.mode,
             obsidian_path=output_path,
             telegram_status=telegram_status,
             telegram_preview=telegram_preview,
+            wechat_status=wechat_status,
+            wechat_preview=wechat_preview,
         )

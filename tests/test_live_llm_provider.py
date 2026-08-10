@@ -163,7 +163,7 @@ def test_live_provider_extract_success():
 
 
 def test_live_provider_format_telegram():
-    """Telegram formatting uses local Chinese fallback when no telegram model is configured."""
+    """Message formatting uses the compact WeChat fallback without a brief model."""
     http = FakeHTTPPost()
 
     config = LiveLLMConfig(provider="openai")
@@ -200,9 +200,12 @@ def test_live_provider_format_telegram():
 
     assert isinstance(result, str)
     assert "🎯 Test Article" in result
-    assert "📡 2. 信号萃取" in result
     assert "A test signal" in result
     assert "A concrete claim" in result
+    assert "🏷" not in result
+    assert "🧭" not in result
+    assert "🛠" not in result
+    assert len(result) <= 300
     # No HTTP call should be made
     assert len(http.calls) == 0
 

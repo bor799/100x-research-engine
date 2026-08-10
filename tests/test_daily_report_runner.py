@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from knowledge_extractor_v3.daily_reports.runner import run_us_ai_market_daily
+from knowledge_extractor_v3.daily_reports.runner import main, run_us_ai_market_daily
 from knowledge_extractor_v3.daily_reports.system_files import write_default_system_files
 
 
@@ -185,3 +185,29 @@ def test_runner_rejects_ai_notes_that_only_mention_no_investment_value(tmp_path)
     )
 
     assert "数学验证" not in result.markdown
+
+
+def test_main_skips_when_daily_report_is_disabled(tmp_path, capsys):
+    config_path = tmp_path / "config.local.yaml"
+    output_root = tmp_path / "信息源"
+    config_path.write_text(
+        "\n".join(
+            [
+                "runtime:",
+                "  state_root: /tmp/state",
+                "outputs:",
+                f"  obsidian_root: {output_root}",
+                "daily_reports:",
+                "  us_ai_market:",
+                "    enabled: false",
+                f"    system_dir: {tmp_path / '日报系统'}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(["--config", str(config_path), "--date", "2026-05-25"])
+
+    assert exit_code == 0
+    assert "disabled by daily_reports.us_ai_market.enabled=false" in capsys.readouterr().out
+    assert not output_root.exists()

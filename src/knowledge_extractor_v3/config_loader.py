@@ -18,6 +18,8 @@ class ConfigLoaderError(RuntimeError):
 
 
 DEFAULT_ZHIPU_API_BASE = "https://open.bigmodel.cn/api/coding/paas/v4"
+DEFAULT_SCORE_REJECT_THRESHOLD = 0.7
+OUTPUT_CHANNELS = frozenset({"wechat", "telegram", "both"})
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +64,8 @@ class OutputsConfig:
     obsidian_root: str = ""
     obsidian_subdir: str = "inbox"
     write_manifest: bool = True
+    channel: str = "telegram"
+    wechat_queue_dir: str = "~/.100x_v3/wechat_queue"
     telegram_bot_token_env: str = "TELEGRAM_BOT_TOKEN"
     telegram_admin_chat_id_env: str = "TELEGRAM_ADMIN_CHAT_ID"
     telegram_bot_token: str = ""  # 直接配置 token（优先于环境变量，兼容 V2）
@@ -72,7 +76,7 @@ class OutputsConfig:
 @dataclass(frozen=True)
 class PromptsConfig:
     registry: str = "prompts/registry.json"
-    active_bundle: str = "v2_stable_cn"
+    active_bundle: str = "v3_business_stories"
     parallel_test_bundles: list[str] = field(default_factory=list)
     scoring: str = "prompts/primary_market_scoring.md"
     extraction: str = "prompts/primary_market_extraction.md"
@@ -82,7 +86,7 @@ class PromptsConfig:
 @dataclass(frozen=True)
 class ScoreGateConfig:
     enabled: bool = True
-    reject_threshold: float = 0.3
+    reject_threshold: float = DEFAULT_SCORE_REJECT_THRESHOLD
 
 
 @dataclass(frozen=True)
@@ -513,10 +517,16 @@ def _build_llm(raw: dict[str, object]) -> LLMConfig:
 
 
 def _build_outputs(raw: dict[str, object]) -> OutputsConfig:
+    channel = str(raw.get("channel", "telegram")).strip().lower()
+    if channel not in OUTPUT_CHANNELS:
+        choices = ", ".join(sorted(OUTPUT_CHANNELS))
+        raise ConfigLoaderError(f"outputs.channel must be one of: {choices}")
     return OutputsConfig(
         obsidian_root=str(raw.get("obsidian_root", "")),
         obsidian_subdir=str(raw.get("obsidian_subdir", "inbox")),
         write_manifest=bool(raw.get("write_manifest", True)),
+        channel=channel,
+        wechat_queue_dir=str(raw.get("wechat_queue_dir", "~/.100x_v3/wechat_queue")),
         telegram_bot_token_env=str(raw.get("telegram_bot_token_env", "TELEGRAM_BOT_TOKEN")),
         telegram_admin_chat_id_env=str(raw.get("telegram_admin_chat_id_env", "TELEGRAM_ADMIN_CHAT_ID")),
         telegram_bot_token=str(raw.get("telegram_bot_token", "")),
@@ -529,7 +539,7 @@ def _build_prompts(raw: dict[str, object]) -> PromptsConfig:
     ptb = raw.get("parallel_test_bundles", [])
     return PromptsConfig(
         registry=str(raw.get("registry", "prompts/registry.json")),
-        active_bundle=str(raw.get("active_bundle", "v2_stable_cn")),
+        active_bundle=str(raw.get("active_bundle", "v3_business_stories")),
         parallel_test_bundles=[str(x) for x in ptb] if isinstance(ptb, list) else [],
         scoring=str(raw.get("scoring", "prompts/primary_market_scoring.md")),
         extraction=str(raw.get("extraction", "prompts/primary_market_extraction.md")),
@@ -537,20 +547,25 @@ def _build_prompts(raw: dict[str, object]) -> PromptsConfig:
     )
 
 
-def _normalize_reject_threshold(value: object, *, default: float = 0.3) -> float:
+def _normalize_reject_threshold(value: object, *, default: float = DEFAULT_SCORE_REJECT_THRESHOLD) -> float:
     try:
         threshold = float(value)
     except (TypeError, ValueError):
         return default
     if threshold > 1:
         threshold = threshold / 10
-    return max(0.0, min(1.0, threshold))
+    return max(DEFAULT_SCORE_REJECT_THRESHOLD, min(1.0, threshold))
 
 
 def _build_score_gate(raw: dict[str, object], legacy_score_threshold: object = None) -> ScoreGateConfig:
     threshold_raw = raw.get(
         "reject_threshold",
-        raw.get("threshold", legacy_score_threshold if legacy_score_threshold is not None else 0.3),
+        raw.get(
+            "threshold",
+            legacy_score_threshold
+            if legacy_score_threshold is not None
+            else DEFAULT_SCORE_REJECT_THRESHOLD,
+        ),
     )
     return ScoreGateConfig(
         enabled=bool(raw.get("enabled", True)),

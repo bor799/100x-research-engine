@@ -7,6 +7,7 @@ from knowledge_extractor_v3.queue_store import (
     NextAction,
     QueueStatus,
     QueueStore,
+    QueueStoreError,
 )
 
 
@@ -117,6 +118,49 @@ def test_enqueue_revives_existing_terminal_task_for_manual_reprocess(tmp_path):
     assert revived.attempt_count == 0
     assert revived.failure_kind is FailureKind.NONE
     assert revived.last_error == ""
+
+
+def test_requeue_terminal_resets_only_expected_failure(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="new-fp")
+    task = store.enqueue("https://example.com/prompt-contract", source="rss")
+    store.mark_processing(task.id, owner="worker-1", provider_route="live://old")
+    failed = store.mark_failed_terminal(
+        task.id,
+        failure_kind=FailureKind.PARSE_ERROR,
+        last_error="missing fields",
+        detail="final_score, signal_tier",
+    )
+
+    requeued = store.requeue_terminal(
+        failed.id,
+        expected_failure_kind=FailureKind.PARSE_ERROR,
+    )
+
+    assert requeued.status is QueueStatus.PENDING
+    assert requeued.attempt_count == 0
+    assert requeued.failure_kind is FailureKind.NONE
+    assert requeued.last_error == ""
+    assert requeued.last_status_detail == ""
+    assert requeued.processed_at == ""
+    assert requeued.processing_owner == ""
+    assert requeued.provider_route == ""
+    assert requeued.runtime_fingerprint == "new-fp"
+
+
+def test_requeue_terminal_rejects_failure_kind_mismatch(tmp_path):
+    store = QueueStore(tmp_path / ".100x_v3" / "queue.db")
+    task = store.enqueue("https://example.com/not-a-parse-error")
+    failed = store.mark_failed_terminal(
+        task.id,
+        failure_kind=FailureKind.FETCH_FAILED,
+        last_error="fetch failed",
+    )
+
+    with pytest.raises(QueueStoreError, match="failure kind"):
+        store.requeue_terminal(
+            failed.id,
+            expected_failure_kind=FailureKind.PARSE_ERROR,
+        )
 
 
 def test_mark_processing_counts_attempts_and_retry_caps_at_max_attempts(tmp_path):

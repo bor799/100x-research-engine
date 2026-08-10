@@ -25,11 +25,15 @@ from .models import (
 )
 from .outputs.obsidian import DryRunOutputPort, OutputPort, StagingOutputPort
 from .prompt_parser import parse_extraction_result, parse_score_result
-from .prompt_registry import PromptRegistry
+from .prompt_registry import PromptRegistry, PromptRegistryError
 from .queue_store import FailureKind, NextAction, QueueStatus, QueueStore, QueueTask
+from .routing import Route, route_from_score
+from .brief_contract import validate_brief
 
 
 T = TypeVar("T")
+
+MIN_EXTRACT_FINAL_SCORE = 0.7
 
 
 class Pipeline:
@@ -46,7 +50,7 @@ class Pipeline:
         llm_provider: LLMProvider | None = None,
         prompt_registry: PromptRegistry | None = None,
         staging_root: Path | None = None,
-        reject_threshold: float = 0.3,
+        reject_threshold: float = MIN_EXTRACT_FINAL_SCORE,
         score_gate_enabled: bool = True,
         live_output: OutputPort | None = None,
         allow_test_provider: bool = False,
@@ -202,17 +206,30 @@ class Pipeline:
                 parallel_results=parallel_results,
             )
 
-        score_rejected = _should_reject(score_result, self.reject_threshold)
-        if score_rejected and self.score_gate_enabled:
+        # Four-way routing replaces the old non-bypassable 0.7 final_score floor.
+        # business_push bypasses the archive floor entirely so a first-hand
+        # operating story is not killed by a low source tier; the only thing
+        # that drops to reject now is content below the archive band that is
+        # also not a qualifying business story.
+        route_decision = route_from_score(score_result)
+        _append_stage(stage_results, "routing", detail={
+            "route": route_decision.route.value,
+            "business_story_fit": round(route_decision.business_story_fit, 4),
+            "final_score": score_result.final_score,
+            "is_promotional": score_result.is_promotional,
+            "interest_flag": score_result.interest_flag,
+            "reason": route_decision.reason,
+        })
+
+        if route_decision.route is Route.REJECT:
             error = TypedError(
                 failure_kind=FailureKind.VALIDATION_FAILED,
-                message="Scoring rejected content",
-                stage="score_gate",
+                message="Content rejected by routing (reject)",
+                stage="routing",
                 retryable=False,
                 next_action=NextAction.DROP,
-                detail=f"final_score={score_result.final_score:g}, signal_tier={score_result.signal_tier}",
+                detail=route_decision.reason,
             )
-            _append_stage(stage_results, "score_gate", error=error)
             rejected = self.queue_store.mark_rejected(
                 task.id,
                 reason=error.message,
@@ -223,19 +240,12 @@ class Pipeline:
                 rejected,
                 source=source,
                 prompt_bundle=active_bundle,
-                current_stage="score_gate",
+                current_stage="routing",
                 stage_results=stage_results,
                 score_result=score_result,
                 parallel_results=parallel_results,
                 error=error,
             )
-        _append_stage(stage_results, "score_gate", detail={
-            "accepted": True,
-            "gate_enabled": self.score_gate_enabled,
-            "forced_extract": score_rejected and not self.score_gate_enabled,
-            "final_score": score_result.final_score,
-            "signal_tier": score_result.signal_tier,
-        })
 
         extraction_result = self._extract_and_parse(
             fetched,
@@ -301,6 +311,48 @@ class Pipeline:
         _is_test_provider = any(_provider_route.startswith(r) for r in self.TEST_PROVIDER_ROUTES)
         _runtime_fingerprint = str(getattr(self.queue_store, "runtime_fingerprint", ""))[:64]
 
+        # Only push routes reach the WeChat outbox. archive_only keeps Obsidian
+        # but stays out of the user's inbox; the lane tells the consumer which
+        # digest schedule (morning/evening vs weekly) to attach it to.
+        _wechat_lane = {
+            Route.BUSINESS_PUSH: "business",
+            Route.STRATEGIC_DIGEST: "strategic",
+        }.get(route_decision.route)
+
+        # Hard brief contract. The model gets one attempt. If the brief a push
+        # route would send violates the contract, we keep the Obsidian archive
+        # (still mark_done) but withhold the item from the WeChat outbox and
+        # record the failure — no auto-rewrite, so a bad brief can't spiral cost.
+        _brief_contract_failed = False
+        if _wechat_lane:
+            brief_errors = validate_brief(telegram_text, fetched.text)
+            if brief_errors:
+                _brief_contract_failed = True
+                _wechat_lane = None
+                contract_error = TypedError(
+                    failure_kind=FailureKind.VALIDATION_FAILED,
+                    message="WeChat brief failed the hard contract; withheld from outbox",
+                    stage="brief_contract",
+                    retryable=False,
+                    next_action=NextAction.NONE,
+                    detail="; ".join(brief_errors[:3]),
+                )
+                _append_stage(
+                    stage_results,
+                    "brief_contract",
+                    error=contract_error,
+                    detail={
+                        "brief_contract_failed": True,
+                        "errors": brief_errors,
+                        "withheld_lane": {
+                            Route.BUSINESS_PUSH: "business",
+                            Route.STRATEGIC_DIGEST: "strategic",
+                        }.get(route_decision.route),
+                    },
+                )
+            else:
+                _append_stage(stage_results, "brief_contract", detail={"passed": True})
+
         output = _run_stage(
             stage_results,
             "output",
@@ -316,6 +368,7 @@ class Pipeline:
                 provider_route=_provider_route,
                 is_test_provider=_is_test_provider,
                 runtime_fingerprint=_runtime_fingerprint,
+                wechat_lane=_wechat_lane,
             ),
             error_selector=lambda result: result.error if not result.ok else None,
         )
@@ -354,6 +407,9 @@ class Pipeline:
             extraction_result=extraction_result,
             parallel_results=parallel_results,
             telegram_status=output.telegram_status,
+            wechat_status=output.wechat_status,
+            route=route_decision.route.value,
+            brief_contract_failed=_brief_contract_failed,
         )
 
     def _resolve_task(self, url: str, *, source: str, queue_task_id: int | None) -> QueueTask:
@@ -363,9 +419,19 @@ class Pipeline:
 
     def _load_prompts(self, bundle_name: str) -> tuple[str, str, str, str] | TypedError:
         try:
+            self.prompt_registry.validate_bundle_contract(bundle_name)
             scoring_prompt = self.prompt_registry.load_prompt(bundle_name, "scoring")
             extraction_prompt = self.prompt_registry.load_prompt(bundle_name, "extraction")
             telegram_prompt = self.prompt_registry.load_prompt(bundle_name, "telegram_brief")
+        except PromptRegistryError as exc:
+            return TypedError(
+                failure_kind=FailureKind.PROMPT_CONTRACT,
+                message=f"Prompt bundle violates the V3 parser contract: {bundle_name}",
+                stage="resolve_prompt_bundle",
+                retryable=False,
+                next_action=NextAction.INVESTIGATE,
+                detail=str(exc),
+            )
         except Exception as exc:
             return TypedError(
                 failure_kind=FailureKind.UNKNOWN,
@@ -674,6 +740,9 @@ class Pipeline:
         extraction_result: ExtractionResult | None = None,
         parallel_results: list[PromptRunResult] | None = None,
         telegram_status: str = "",
+        wechat_status: str = "",
+        route: str = "",
+        brief_contract_failed: bool = False,
         error: TypedError | None = None,
     ) -> ProcessResult:
         return ProcessResult(
@@ -688,6 +757,9 @@ class Pipeline:
             output_path=task.output_path,
             telegram_status=telegram_status,
             prompt_bundle=prompt_bundle,
+            wechat_status=wechat_status,
+            route=route,
+            brief_contract_failed=brief_contract_failed,
             stage_results=stage_results,
             score_result=score_result,
             extraction_result=extraction_result,
@@ -715,6 +787,15 @@ def _validate_content(content: FetchedContent) -> bool | TypedError:
             next_action=NextAction.MANUAL_REVIEW,
             detail=content.url,
         )
+    if _is_article_type(content.source_type) and _looks_like_shell_content(content):
+        return TypedError(
+            failure_kind=FailureKind.CONTENT_BLOCKED,
+            message="Article content appears to be a paywall shell, title-only, or insufficient body text",
+            stage="validate",
+            retryable=False,
+            next_action=NextAction.DROP,
+            detail=content.url,
+        )
     return True
 
 
@@ -734,6 +815,60 @@ def _looks_content_blocked(content: FetchedContent) -> bool:
     return content.source_type == "wechat_article" and len(text) < 200
 
 
+_ARTICLE_TYPES = frozenset({"web_article", "rss_feed", "wechat_article"})
+
+_SHELL_INDICATORS = (
+    "javascript is required",
+    "please enable javascript",
+    "requires javascript",
+    "please enable cookies",
+    "enable cookies to continue",
+)
+
+_LOGIN_INDICATORS = (
+    "sign in to continue reading",
+    "log in to continue",
+    "register to continue",
+    "create an account to continue",
+    "subscribe to continue reading",
+    "to continue reading, please",
+    "this article is exclusive to subscribers",
+)
+
+
+def _is_article_type(source_type: str) -> bool:
+    return source_type in _ARTICLE_TYPES
+
+
+def _looks_like_shell_content(content: FetchedContent) -> bool:
+    text = content.text.strip()
+    title = content.title.strip()
+    lower = text.lower()
+    word_count = len(text.split())
+
+    if word_count < 80:
+        return True
+
+    if title and _is_text_mostly_title(text, title):
+        return True
+
+    if any(indicator in lower for indicator in _SHELL_INDICATORS):
+        return True
+    if any(indicator in lower for indicator in _LOGIN_INDICATORS):
+        return True
+
+    from .fetchers.web import PAYWALL_MARKERS
+    if any(marker in lower for marker in PAYWALL_MARKERS) and word_count < 450:
+        return True
+
+    return False
+
+
+def _is_text_mostly_title(text: str, title: str) -> bool:
+    remainder = text.replace(title, "").strip()
+    return len(remainder.split()) < 30
+
+
 def _with_queue_reply_metadata(content: FetchedContent, task: QueueTask) -> FetchedContent:
     if not task.reply_channel and not task.reply_chat_id:
         return content
@@ -746,7 +881,25 @@ def _with_queue_reply_metadata(content: FetchedContent, task: QueueTask) -> Fetc
 
 
 def _should_reject(score: ScoreResult, threshold: float) -> bool:
-    return score.signal_tier.lower() == "reject" or score.final_score < threshold
+    effective_threshold = max(threshold, MIN_EXTRACT_FINAL_SCORE)
+    return score.signal_tier.lower() == "reject" or _below_score_floor(
+        score,
+        final_score_threshold=effective_threshold,
+    )
+
+
+def _is_hard_reject(score: ScoreResult) -> bool:
+    return score.signal_tier.lower() == "reject" or _below_score_floor(
+        score,
+        final_score_threshold=MIN_EXTRACT_FINAL_SCORE,
+    )
+
+
+def _below_score_floor(score: ScoreResult, *, final_score_threshold: float) -> bool:
+    return (
+        score.final_score < final_score_threshold
+        or score.score < final_score_threshold * 10
+    )
 
 
 def _run_stage(

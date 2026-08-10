@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from .prompt_contract import ROLE_REQUIRED_FIELDS, missing_prompt_contract_fields
+
 
 class PromptRegistryError(RuntimeError):
     """Raised when prompt registry configuration is invalid."""
@@ -130,6 +132,28 @@ class PromptRegistry:
                     raise PromptRegistryError(f"Missing prompt file for {bundle_name}.{role}: {path}")
                 if not path.read_text(encoding="utf-8").strip():
                     raise PromptRegistryError(f"Empty prompt file for {bundle_name}.{role}: {path}")
+
+    def validate_active_contract(self) -> None:
+        """Require the active bundle to declare the fields consumed by V3 parsers."""
+        self.validate_bundle_contract(self.active_bundle_name)
+
+    def validate_bundle_contract(self, bundle_name: str) -> None:
+        """Reject a bundle before an LLM call when its prompt schema is incompatible."""
+        bundle = self.bundle(bundle_name)
+        for role in ROLE_REQUIRED_FIELDS:
+            path = bundle.prompt_path(role)
+            try:
+                prompt_text = path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise PromptRegistryError(
+                    f"Could not read prompt for {bundle_name}.{role}: {path}"
+                ) from exc
+            missing = missing_prompt_contract_fields(prompt_text, role)
+            if missing:
+                raise PromptRegistryError(
+                    f"Bundle {bundle_name!r} {role} prompt is incompatible with the V3 "
+                    f"parser contract; missing JSON keys: {', '.join(missing)}"
+                )
 
     def _load(self) -> dict:
         if not self.registry_path.exists():

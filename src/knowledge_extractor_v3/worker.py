@@ -353,6 +353,7 @@ class QueueWorker:
             from .llm.live_provider import create_live_provider
             from .outputs.live_obsidian import LiveOutputPort, LiveObsidianWriter
             from .outputs.telegram_live import LiveTelegramClient
+            from .outputs.wechat_queue import WechatQueue
             from .config_loader import ConfigLoader
 
             loader = ConfigLoader(project_root=Path.cwd())
@@ -365,7 +366,8 @@ class QueueWorker:
             )
 
             telegram = None
-            if self._config.outputs.telegram_enabled:
+            channel = self._config.outputs.channel
+            if channel in {"telegram", "both"} and self._config.outputs.telegram_enabled:
                 # 优先使用直接配置的 token/chat_id，其次使用环境变量
                 token = self._config.outputs.telegram_bot_token or loader.resolve_env(self._config.outputs.telegram_bot_token_env)
                 chat_id = self._config.outputs.telegram_admin_chat_id or loader.resolve_env(self._config.outputs.telegram_admin_chat_id_env)
@@ -376,7 +378,16 @@ class QueueWorker:
                         enabled=True,
                     )
 
-            live_output = LiveOutputPort(obsidian_writer=writer, telegram_client=telegram)
+            wechat_queue = None
+            if channel in {"wechat", "both"}:
+                queue_dir = loader.expand_path(self._config.outputs.wechat_queue_dir)
+                wechat_queue = WechatQueue(queue_dir)
+
+            live_output = LiveOutputPort(
+                obsidian_writer=writer,
+                telegram_client=telegram,
+                wechat_queue=wechat_queue,
+            )
 
             # Replace the pipeline's live output
             pipeline._live_output = live_output
@@ -520,12 +531,20 @@ class QueueWorker:
             "next_action": result.next_action.value,
             "output_path": result.output_path,
             "telegram_status": result.telegram_status,
+            "wechat_status": result.wechat_status,
             "prompt_bundle": result.prompt_bundle,
             "current_stage": result.current_stage,
             "score": result.score_result.score if result.score_result else None,
             "final_score": result.score_result.final_score if result.score_result else None,
             "signal_tier": result.score_result.signal_tier if result.score_result else None,
+            "business_story_fit": result.score_result.business_story_fit if result.score_result else None,
+            "route": result.route,
+            "brief_contract_failed": result.brief_contract_failed,
             "stage_count": len(result.stage_results),
+            # Per-stage timing for cost/latency accounting.
+            "stage_timings_ms": {
+                s.stage: s.duration_ms for s in result.stage_results
+            },
             # Observability fields
             "runtime_mode": self._worker_cfg.mode.value,
             "provider_route": provider_route,

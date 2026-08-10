@@ -116,10 +116,12 @@ class TestConfigLoader:
 
         assert isinstance(config, V3Config)
         assert config.runtime.state_root == "~/.100x_v3"
-        assert config.prompts.active_bundle == "v2_stable_cn"
+        assert config.prompts.active_bundle == "v3_business_stories"
+        assert config.outputs.channel == "telegram"
+        assert config.outputs.wechat_queue_dir == "~/.100x_v3/wechat_queue"
         assert loader.config_path_used.name == "config.example.yaml"
 
-    def test_prompts_default_to_v2_stable_cn_without_config_section(self, tmp_path):
+    def test_prompts_default_to_v3_business_stories_without_config_section(self, tmp_path):
         config_file = tmp_path / "minimal.yaml"
         config_file.write_text(
             "\n".join([
@@ -133,7 +135,30 @@ class TestConfigLoader:
         loader = ConfigLoader(explicit_path=config_file)
         config = loader.load()
 
-        assert config.prompts.active_bundle == "v2_stable_cn"
+        assert config.prompts.active_bundle == "v3_business_stories"
+
+    def test_wechat_output_channel_is_loaded(self, tmp_path):
+        project = _make_local_config(tmp_path, "\n".join([
+            "outputs:",
+            "  channel: wechat",
+            "  wechat_queue_dir: /tmp/wechat-queue",
+            "  telegram_enabled: false",
+        ]))
+
+        config = ConfigLoader(project_root=project).load()
+
+        assert config.outputs.channel == "wechat"
+        assert config.outputs.wechat_queue_dir == "/tmp/wechat-queue"
+        assert config.outputs.telegram_enabled is False
+
+    def test_invalid_output_channel_is_rejected(self, tmp_path):
+        project = _make_local_config(tmp_path, "\n".join([
+            "outputs:",
+            "  channel: email",
+        ]))
+
+        with pytest.raises(ConfigLoaderError, match="outputs.channel"):
+            ConfigLoader(project_root=project).load()
 
     def test_load_from_local_overrides_example(self, tmp_path):
         project = _make_local_config(tmp_path, "\n".join([
@@ -221,7 +246,7 @@ class TestConfigLoader:
         assert config.telegram_bot.enabled is False
         assert isinstance(config.score_gate, ScoreGateConfig)
         assert config.score_gate.enabled is True
-        assert config.score_gate.reject_threshold == 0.3
+        assert config.score_gate.reject_threshold == 0.7
         assert isinstance(config.sources, list)
 
     def test_config_path_used_raises_before_load(self):
@@ -339,7 +364,7 @@ class TestConfigLoader:
         assert config.agent_reach.fallback_to_jina is False
         assert config.agent_reach.proxy == "http://127.0.0.1:7890"
 
-    def test_score_gate_section_loaded(self, tmp_path):
+    def test_score_gate_section_below_floor_is_raised(self, tmp_path):
         project = _make_local_config(tmp_path, "\n".join([
             "runtime:",
             "  state_root: \"/tmp/state\"",
@@ -351,9 +376,21 @@ class TestConfigLoader:
         config = ConfigLoader(project_root=project).load()
 
         assert config.score_gate.enabled is False
-        assert config.score_gate.reject_threshold == 0.6
+        assert config.score_gate.reject_threshold == 0.7
 
-    def test_legacy_score_threshold_is_normalized_to_final_score_scale(self, tmp_path):
+    def test_score_gate_section_can_raise_threshold(self, tmp_path):
+        project = _make_local_config(tmp_path, "\n".join([
+            "runtime:",
+            "  state_root: \"/tmp/state\"",
+            "score_gate:",
+            "  reject_threshold: 8.0",
+        ]))
+
+        config = ConfigLoader(project_root=project).load()
+
+        assert config.score_gate.reject_threshold == 0.8
+
+    def test_legacy_score_threshold_below_minimum_uses_default_floor(self, tmp_path):
         project = _make_local_config(tmp_path, "\n".join([
             "runtime:",
             "  state_root: \"/tmp/state\"",
@@ -362,7 +399,7 @@ class TestConfigLoader:
 
         config = ConfigLoader(project_root=project).load()
 
-        assert config.score_gate.reject_threshold == 0.6
+        assert config.score_gate.reject_threshold == 0.7
 
     def test_external_sources_file_is_loaded_and_deduped(self, tmp_path):
         project = _make_local_config(tmp_path, "\n".join([

@@ -68,5 +68,18 @@ def test_prompt_registry_health_reports_active_bundle_and_hash():
     check = checker._check_prompt_registry()
 
     assert check.status is HealthStatus.HEALTHY
-    assert check.detail["active_bundle"] == "v2_stable_cn"
+    assert check.detail["active_bundle"] == "v3_business_stories"
     assert check.detail["prompt_hash"]
+
+
+def test_prompt_registry_health_rejects_incompatible_active_bundle():
+    registry = PromptRegistry(
+        PROJECT_ROOT / "prompts" / "registry.json",
+        active_bundle="v2_legacy",
+    )
+    checker = HealthChecker(V3Config(), prompt_registry=registry)
+
+    check = checker._check_prompt_registry()
+
+    assert check.status is HealthStatus.ERROR
+    assert "incompatible with the V3 parser contract" in check.message

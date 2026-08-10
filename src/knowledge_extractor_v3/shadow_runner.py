@@ -149,7 +149,7 @@ def run_shadow_candidates(
     ids: Sequence[str] | None = None,
     limit: int | None = None,
     run_parallel_tests: bool = True,
-    reject_threshold: float = 0.3,
+    reject_threshold: float = 0.7,
     fetcher: Fetcher | None = None,
     llm_provider: LLMProvider | None = None,
 ) -> ShadowRunSummary:
@@ -682,7 +682,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ids", default="")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--no-parallel-tests", action="store_true")
-    parser.add_argument("--reject-threshold", type=float, default=0.3)
+    parser.add_argument("--reject-threshold", type=float, default=0.7)
     args = parser.parse_args(argv)
 
     summary = run_shadow_candidates(

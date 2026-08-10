@@ -4,6 +4,7 @@ from .models import SourceConfig, SchedulerEvent, SourceItem
 from .registry import SourceAdapter, SourceRegistry
 from .rss import RSSAdapter
 from .url_list import URLListAdapter
+from .web_discovery import WebDiscoveryAdapter
 from .search import SearchAdapter, create_search_source
 from .dedupe import URLDeduper, normalize_url
 
@@ -16,6 +17,7 @@ __all__ = [
     "SourceRegistry",
     "RSSAdapter",
     "URLListAdapter",
+    "WebDiscoveryAdapter",
     "SearchAdapter",
     "create_search_source",
     "URLDeduper",

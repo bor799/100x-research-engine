@@ -52,8 +52,8 @@
 
 ## 决策逻辑
 
-- **总分 ≥ 7.5**: `passed: true`, `decision: "通过"`
-- **6.0 ≤ 总分 < 7.5**: `passed: false`, `decision: "边缘"`
+- **总分 ≥ 7.0**: `passed: true`, `decision: "通过"`
+- **6.0 ≤ 总分 < 7.0**: `passed: false`, `decision: "边缘"`
 - **总分 < 6.0**: `passed: false`, `decision: "拒绝"`
 
 ## 特别过滤指令（一票否决）

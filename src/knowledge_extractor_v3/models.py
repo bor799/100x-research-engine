@@ -83,6 +83,16 @@ class ScoreResult:
     source_tier: str
     interest_flag: str
     attribution_chain: object
+    # V3 business-story dimensions (each 0-1) plus the code-computed blend.
+    # Replaces the non-computable "2.0/1.8" prompt weights: the model emits the
+    # five dimensions and the routing module combines them into business_story_fit.
+    actor_scene: float = 0.0
+    operating_detail: float = 0.0
+    causal_arc: float = 0.0
+    transferability: float = 0.0
+    evidence_strength: float = 0.0
+    business_story_fit: float = 0.0
+    is_promotional: bool = False
 
 
 @dataclass(frozen=True)
@@ -104,6 +114,8 @@ class OutputResult:
     obsidian_path: str = ""
     telegram_status: str = ""
     telegram_preview: str = ""
+    wechat_status: str = ""
+    wechat_preview: str = ""
     error: TypedError | None = None
 
 
@@ -130,6 +142,14 @@ class ProcessResult:
     output_path: str
     telegram_status: str
     prompt_bundle: str
+    wechat_status: str = ""
+    # Final routing decision (business_push | strategic_digest | archive_only |
+    # reject). Populated by the pipeline so the worker log and health can tell
+    # push content apart from archive-only content.
+    route: str = ""
+    # True when a push route's brief failed the hard contract. The Obsidian
+    # archive still succeeded; the item was withheld from the WeChat outbox.
+    brief_contract_failed: bool = False
     stage_results: list[StageResult] = field(default_factory=list)
     score_result: ScoreResult | None = None
     extraction_result: ExtractionResult | None = None

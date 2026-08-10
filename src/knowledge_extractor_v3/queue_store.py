@@ -46,6 +46,7 @@ class FailureKind(str, Enum):
     LLM_QUOTA_EXHAUSTED = "llm_quota_exhausted"
     LLM_TIMEOUT = "llm_timeout"
     OUTPUT_FAILED = "output_failed"
+    PROMPT_CONTRACT = "prompt_contract"
     RUNTIME_GUARD = "runtime_guard"
     UNKNOWN = "unknown"
 
@@ -447,6 +448,62 @@ class QueueStore:
             provider_route=provider_route,
         )
 
+    def requeue_terminal(
+        self,
+        task_id: int,
+        *,
+        expected_failure_kind: FailureKind | None = None,
+    ) -> QueueTask:
+        """Safely reset one terminal failure for operator-approved reprocessing."""
+        current = self.get_task(task_id)
+        if current.status is not QueueStatus.FAILED_TERMINAL:
+            raise QueueStoreError(
+                f"Only failed_terminal tasks can be requeued; task {task_id} is {current.status.value}"
+            )
+        if expected_failure_kind is not None and current.failure_kind is not expected_failure_kind:
+            raise QueueStoreError(
+                f"Task {task_id} failure kind is {current.failure_kind.value!r}, "
+                f"expected {expected_failure_kind.value!r}"
+            )
+
+        now = _utc_now()
+        runtime_fingerprint = self.runtime_fingerprint or current.runtime_fingerprint
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE queue
+                SET status=?,
+                    attempt_count=0,
+                    next_retry_at='',
+                    failure_kind='',
+                    last_error='',
+                    last_status_detail='',
+                    next_action='',
+                    result_title='',
+                    output_path='',
+                    runtime_fingerprint=?,
+                    processed_at='',
+                    processing_owner='',
+                    processing_started_at='',
+                    processing_heartbeat_at='',
+                    provider_route='',
+                    last_reply_status='',
+                    updated_at=?
+                WHERE id=? AND status=?
+                """,
+                (
+                    QueueStatus.PENDING.value,
+                    runtime_fingerprint,
+                    now,
+                    task_id,
+                    QueueStatus.FAILED_TERMINAL.value,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise QueueStoreError(f"Task {task_id} changed state while being requeued")
+            conn.commit()
+        return self.get_task(task_id)
+
     def _update_status(
         self,
         task_id: int,
@@ -653,6 +710,24 @@ class QueueStore:
                 "SELECT status, COUNT(*) FROM queue GROUP BY status"
             ).fetchall()
 
+        return {row[0]: row[1] for row in rows}
+
+    def count_recent_status(self, window_hours: int = 24) -> dict[str, int]:
+        """Count tasks by status whose ``updated_at`` falls inside the window.
+
+        Used by health to surface a rolling failure rate instead of a permanent
+        cumulative count. A task that terminally failed days ago no longer holds
+        the system in a warning state forever.
+        """
+        self.initialize()
+        from datetime import timedelta
+        since = (datetime.now(UTC) - timedelta(hours=window_hours)).isoformat()
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                "SELECT status, COUNT(*) FROM queue "
+                "WHERE updated_at >= ? GROUP BY status",
+                (since,),
+            ).fetchall()
         return {row[0]: row[1] for row in rows}
 
     def find_by_url(self, url: str) -> QueueTask | None:

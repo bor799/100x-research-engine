@@ -32,6 +32,7 @@ from .sources import (
     SourceRegistry,
     URLListAdapter,
     URLDeduper,
+    WebDiscoveryAdapter,
 )
 
 if TYPE_CHECKING:
@@ -105,12 +106,16 @@ class Scheduler:
         # Sort by priority (lower first)
         all_items.sort(key=lambda i: i.priority)
 
-        for item in all_items:
+        for idx, item in enumerate(all_items):
             if self._shutdown_requested:
                 break
 
             if enqueued >= max_total_items:
-                skipped_limit += len(all_items) - enqueued
+                # Only the items we never reached (current item onward) were
+                # skipped because of the limit. Previously this subtracted
+                # `enqueued`, which double-counted items already passed over as
+                # duplicates and inflated the skip number.
+                skipped_limit += len(all_items) - idx
                 break
 
             # Check for duplicates
@@ -198,9 +203,12 @@ class Scheduler:
             if result.should_stop:
                 break
 
-            if result.items_enqueued == 0:
-                # No items, wait before next tick
-                self._wait(interval_seconds)
+            # Always wait the full interval between ticks, even when items were
+            # enqueued this round. Re-scanning immediately after a successful
+            # enqueue burns model/IO budget re-fetching 90+ RSS feeds whose new
+            # items are already in the queue (the deduper catches them). The
+            # interval is the minimum spacing between full source scans.
+            self._wait(interval_seconds)
 
         return totals
 
@@ -242,6 +250,7 @@ class Scheduler:
         # Register built-in adapters
         registry.register_adapter(RSSAdapter())
         registry.register_adapter(URLListAdapter())
+        registry.register_adapter(WebDiscoveryAdapter())
 
         return registry
 
@@ -262,10 +271,32 @@ class Scheduler:
         for source in self._registry.all_enabled_sources():
             source_lookback = getattr(source, "lookback_days", lookback_days) or lookback_days
             adapter = self._registry.get_adapter(source.type)
-            items = self._registry.discover_items(
-                source,
-                lookback_days=source_lookback,
-            )
+
+            # Isolate per-source failures: one broken RSS feed must not abort
+            # the tick for the other ~90 sources. discover_items already maps
+            # most failures onto adapter.last_error; this guard catches anything
+            # it lets propagate (parser crashes, network explosions, etc.).
+            try:
+                items = self._registry.discover_items(
+                    source,
+                    lookback_days=source_lookback,
+                )
+            except Exception as exc:  # noqa: BLE001 — isolate one bad source
+                items = []
+                events.append(SchedulerEvent(
+                    timestamp=utc_now(),
+                    source_id=source.id,
+                    event_type="error",
+                    count=0,
+                    message=f"Source discovery raised: {exc}",
+                    detail={
+                        "failure_kind": "source_exception",
+                        "next_action": "retry_later",
+                        "error_type": type(exc).__name__,
+                    },
+                ))
+                continue
+
             adapter_error = getattr(adapter, "last_error", None) if adapter is not None else None
 
             # Apply per-source limit from config

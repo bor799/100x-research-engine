@@ -195,8 +195,8 @@ def test_worker_run_once_successful_task():
         assert updated.output_path != ""
 
 
-def test_worker_force_extracts_score_reject_when_score_gate_disabled():
-    """Worker must pass score_gate.enabled=false through to Pipeline."""
+def test_worker_hard_rejects_even_when_score_gate_disabled():
+    """Hard rejection floor blocks Reject-tier content regardless of score_gate.enabled."""
     with tempfile.TemporaryDirectory() as tmpdir:
         state_root = Path(tmpdir)
         config = make_test_config(state_root)
@@ -222,9 +222,7 @@ def test_worker_force_extracts_score_reject_when_score_gate_disabled():
         assert result.tasks_processed == 1
         assert result.tasks_succeeded == 1
         updated = queue_store.get_task(task.id)
-        assert updated.status == QueueStatus.DONE
-        assert updated.output_path
-        assert Path(updated.output_path).exists()
+        assert updated.status == QueueStatus.REJECTED
 
 
 def test_worker_notifies_telegram_reply_chat_on_terminal_failure():

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from knowledge_extractor_v3.fetchers.fixture import FixtureFetcher
+from knowledge_extractor_v3.llm.provider import StubLLMProvider
 from knowledge_extractor_v3.shadow_runner import (
     load_shadow_config,
     run_shadow_candidates,
@@ -62,6 +63,7 @@ candidates:
         shadow_root=shadow_root,
         run_set="smoke",
         fetcher=FixtureFetcher(),
+        llm_provider=StubLLMProvider(),
         run_parallel_tests=False,
     )
 

@@ -1,5 +1,9 @@
 # V3 RSS 信息源配置 - 从 V2 迁移并扩展
-# ConfigLoader 自动加载本文件；2026-05-30 验证后去重为 95 个 RSS 源。
+# ConfigLoader 自动加载本文件；当前 96 个源。
+#
+# 添加新源前先跑: ./scripts/find-feed.sh <site-url>
+# 很多站点有 RSS 但不在 <head> 声明（如 elsewhere.news 的 /feed.xml）。
+# 先用脚本探测，确认没有 RSS 再考虑 web_discovery adapter。
 
 sources:
 # ===== AI 进展 =====
@@ -506,3 +510,15 @@ sources:
     - energy
     - power
     - daily-report
+
+# ===== 中文创投 =====
+- name: Elsewhere (别处发生)
+  type: rss
+  url: https://elsewhere.news/feed.xml
+  enabled: true
+  category: 中文创投
+  tags:
+    - china-vc
+    - startup
+    - business-stories
+    - ai-ecosystem
