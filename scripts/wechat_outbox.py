@@ -136,7 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     def add_lane(p):
-        p.add_argument("--lane", default=None, choices=["business", "strategic"])
+        p.add_argument("--lane", default=None, choices=["business", "requested", "strategic"])
 
     def add_receipt(p, *, success: bool):
         p.add_argument("--agent-kind", required=True)
@@ -181,7 +181,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("status", help="Print counts for all outbox states")
     p.set_defaults(func=cmd_status)
 
-    p = sub.add_parser("recover", help="Nack stale processing claims")
+    p = sub.add_parser(
+        "recover",
+        help="Quarantine stale claims with unknown delivery outcome (never auto-resend)",
+    )
     p.add_argument("--stale-seconds", type=int, default=600)
     p.set_defaults(func=cmd_recover)
 
