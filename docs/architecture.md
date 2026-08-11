@@ -95,7 +95,8 @@ Scheduler roles discover and enqueue. Worker roles own fetch, score, extract, ou
 - `pipeline.py`: fetches, validates, scores, extracts, formats, writes output, and finalizes queue status.
 - `fetchers/router.py`: routes fixture URLs, special platforms, and normal web URLs to the configured fetcher stack.
 - `daily_reports/`: renders and writes US AI market reports from recent V3 notes, watchlist files, and stock context.
-- `telegram_bot.py`: handles inbound Telegram commands, URL enqueueing, and queue status queries.
+- `cindy_control.py`: handles deterministic URL enqueueing and status queries for a Cindy/WeChat-origin session.
+- `telegram_bot.py`: optional rollback adapter for inbound Telegram commands; disabled in the default WeChat production route.
 - `health.py`: reports role, runtime, queue, config, and output health.
 - `prompts/primary_market_scoring.md`: produces the scoring JSON contract.
 - `prompts/primary_market_extraction.md`: produces the investor brief JSON contract.

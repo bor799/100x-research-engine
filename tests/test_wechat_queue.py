@@ -48,9 +48,11 @@ def test_deliver_dedupes_by_event_id(tmp_path):
     content twice keeps a single pending item."""
     queue = WechatQueue(tmp_path / "wechat")
 
-    queue.deliver(_content(), "first")
-    queue.deliver(_content(), "second")
+    first = queue.deliver(_content(), "first")
+    second = queue.deliver(_content(), "second")
 
+    assert first[0] == "queued"
+    assert second[0] == "duplicate"
     assert len(list((tmp_path / "wechat" / "pending").glob("*.json"))) == 1
 
 
