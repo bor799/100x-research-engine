@@ -3,6 +3,10 @@
 > **用途**：直接交给 Codex / Claude Code 执行。
 > 项目根目录：`knowledge-extractor/v3/`
 > 日期：2026-08-10
+>
+> **2026-08-11 内容契约修正**：微信只替代 Telegram 的传输通道，
+> 不替代已经验证的内容产品。活动 bundle 继续使用
+> `prompts/telegram_brief.md`；下文 Brief 方案已按该决定更新。
 
 ---
 
@@ -74,11 +78,11 @@ elsewhere.news 有标准 RSS feed（`https://elsewhere.news/feed.xml`），在 H
 ```json
 "v3_business_stories": {
   "label": "V3 Business Stories",
-  "description": "偏好可转述的小商业故事，信息密度优先的遣词风格，微信分发格式。",
+  "description": "偏好可转述的小商业故事，信息密度优先的遣词风格，沿用已验证的结构化分发格式。",
   "roles": {
     "scoring": "prompts/versions/v3_business_stories/scoring.md",
     "extraction": "prompts/versions/v3_business_stories/extraction.md",
-    "telegram_brief": "prompts/wechat_brief.md"
+    "telegram_brief": "prompts/telegram_brief.md"
   }
 }
 ```
@@ -104,9 +108,9 @@ scripts/run-v3.sh worker-once --limit 1 --mode live
 
 ### 文件改动
 
-#### 3a. 新建 `prompts/wechat_brief.md`
+#### 3a. 复用 `prompts/telegram_brief.md`
 
-基于 `prompts/telegram_brief.md` 改造：
+不再为微信建立第二套内容模板。微信与 Telegram 共用同一份结构化 Brief：
 
 **头部新增风格总纲**：
 ```markdown
@@ -125,25 +129,35 @@ scripts/run-v3.sh worker-once --limit 1 --mode live
 - ✅ 「3个人，200万ARR，秘诀是砍功能。」（判断，可记忆，可转述）
 ```
 
-**输出模板精简为**：
+**输出模板保持为**：
 ```text
 🎯 <标题>
+🏷 <分类或 Signal Tier>
 
-💡 <一句话判断，最多 50 字。必须是能转述给他人的话>
+💡 <一句话归纳，最多 80 字>
 
-▪️ <1-2 条最核心的经验或信号。每条一句话，有具体的人/公司/数字>
+🗣 1. 经验萃取
+▪️ <具体经验、方法论或踩坑>
 
-💬 "<原文中最值得留下的句子>"
+📡 2. 信号萃取
+▪️ <行业趋势、产品/商业信号或反常识洞察>
 
-🔗 <plain URL>
+🧭 3. 信源与压缩
+▪️ 信源: <source_type/source_tier，利益关系>
+▪️ 压缩: <保留的核心事实与丢弃的噪声>
+
+💬 4. 核心金句
+"<原文中最值得留下的句子>"
+
+🛠 5. 下一步
+▪️ <具体行动或监控触发器>
+
+🔗 阅读原文: <plain URL>
 ```
 
-**删除的栏目**（对读者核心判断贡献不足）：
-- ~~🏷 分类~~
-- ~~🧭 信源与压缩~~
-- ~~🛠 下一步~~
-
-**字数硬限**：手机微信 10 秒内读完，100-200 字，最多 300。
+经验、信号、信源压缩和下一步是该内容产品的核心价值，不因传输通道
+从 Telegram 改为微信而删除。表达仍保持高密度，字数目标恢复为
+手机 20 秒内读完、300-500 字，最多 500 字（URL 不计入）。
 
 #### 3b. 修改 `prompts/versions/v3_business_stories/extraction.md`
 
@@ -236,5 +250,5 @@ python -m compileall -q src tests
 python -m pytest -q
 scripts/run-v3.sh enqueue-url "https://elsewhere.news/zh/elsewhere/agi"
 scripts/run-v3.sh worker-once --limit 1 --mode live
-# 确认：评分体现商业故事偏好、Brief 在 100-300 字、投递队列有文件
+# 确认：评分体现商业故事偏好、Brief 保留结构化栏目且不超过 500 字、投递队列有文件
 ```

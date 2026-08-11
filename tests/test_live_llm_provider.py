@@ -163,7 +163,7 @@ def test_live_provider_extract_success():
 
 
 def test_live_provider_format_telegram():
-    """Message formatting uses the compact WeChat fallback without a brief model."""
+    """Local fallback preserves the accepted structured brief template."""
     http = FakeHTTPPost()
 
     config = LiveLLMConfig(provider="openai")
@@ -191,6 +191,7 @@ def test_live_provider_format_telegram():
             "interest_flag": "Independent",
             "why_it_matters": ["Useful for sourcing"],
             "evidence": [{"id": "E1", "claim": "A concrete claim", "provenance": "tweet"}],
+            "inferences": [{"inference": "A reusable market signal"}],
             "recommended_actions": ["Follow up"],
             "attribution_chain": "tweet -> E1 -> signal",
         },
@@ -202,10 +203,12 @@ def test_live_provider_format_telegram():
     assert "🎯 Test Article" in result
     assert "A test signal" in result
     assert "A concrete claim" in result
-    assert "🏷" not in result
-    assert "🧭" not in result
-    assert "🛠" not in result
-    assert len(result) <= 300
+    assert "🗣 1. 经验萃取" in result
+    assert "📡 2. 信号萃取" in result
+    assert "🧭 3. 信源与压缩" in result
+    assert "🛠 5. 下一步" in result
+    assert "🔗 阅读原文: https://example.com/article" in result
+    assert len(result) <= 500
     # No HTTP call should be made
     assert len(http.calls) == 0
 

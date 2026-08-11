@@ -1,16 +1,18 @@
-"""Hard contract for WeChat briefs.
+"""Hard contract for channel-neutral delivery briefs.
 
-The brief is the only thing the user sees, so it gets a non-negotiable format
-check that runs after the model produces it. On failure the Obsidian archive
-still succeeds (it is valuable to keep), but the item is kept out of the WeChat
-outbox and the failure is recorded — the model does not get a second attempt,
-because auto-rewriting on failure was the cost spiral the efficiency plan kills.
+Telegram established the accepted content product; WeChat is only a transport.
+The brief therefore keeps one channel-neutral structure and gets a
+non-negotiable format check after the model produces it. On failure the
+Obsidian archive still succeeds, but the item is kept out of the delivery
+outbox and the failure is recorded.
 
-Rules (from the V3 efficiency-first plan):
-  - 100–200 字 target, 300 字 hard max; shorter than 100 is allowed when the
-    source genuinely has little to say (padding is forbidden, not brevity).
+Rules:
+  - 300–500 字 target, 500 字 hard max; shorter is allowed when the source
+    genuinely has little to say (padding is forbidden, not brevity).
   - Must contain a complete plain URL.
-  - No forbidden boilerplate sections (分类 / 信源说明 / 下一步 / 背景套话).
+  - Must preserve the title, judgement, signal, and source/compression anchors
+    of the accepted Telegram template. The experience section remains optional
+    when the source contains no reusable experience.
   - An original quote, when present, must be locatable verbatim in the source.
 """
 
@@ -18,17 +20,11 @@ from __future__ import annotations
 
 import re
 
-# Sections the efficiency plan explicitly removed from the brief template.
-FORBIDDEN_SECTION_MARKERS = (
-    "🏷",       # 分类
-    "🧭",       # 信源与压缩
-    "🛠",       # 下一步
-    "🏷️分类",
-    "分类：",
-    "分类:",
-    "信源说明",
-    "下一步",
-    "背景套话",
+REQUIRED_SECTION_MARKERS = (
+    "🎯",
+    "💡",
+    "📡 2. 信号萃取",
+    "🧭 3. 信源与压缩",
 )
 
 # Forbidden filler phrases that add no decision-relevant signal.
@@ -43,14 +39,14 @@ FORBIDDEN_FILLER = (
 )
 
 URL_PATTERN = re.compile(r"https?://\S+")
-MAX_BRIEF_CHARS = 300
+MAX_BRIEF_CHARS = 500
 
 
 def validate_brief(brief_text: str, source_text: str = "") -> list[str]:
     """Return a list of contract violations. Empty list means the brief passes.
 
     Args:
-        brief_text: the formatted WeChat brief.
+        brief_text: the formatted channel-neutral delivery brief.
         source_text: the original fetched article text, used to verify quotes.
     """
     errors: list[str] = []
@@ -60,23 +56,23 @@ def validate_brief(brief_text: str, source_text: str = "") -> list[str]:
 
     text = brief_text.strip()
 
-    # 1. Hard length cap (300 字). The URL line does not count toward the cap.
+    # 1. Hard length cap (500 字). The URL line does not count toward the cap.
     body_for_length = URL_PATTERN.sub("", text)
     body_chars = len(body_for_length.replace("\n", "").replace(" ", ""))
     if body_chars > MAX_BRIEF_CHARS:
         errors.append(
-            f"brief exceeds {MAX_BRIEF_CHARS} chars (got {body_chars}); trim to 100-200"
+            f"brief exceeds {MAX_BRIEF_CHARS} chars (got {body_chars}); trim to 300-500"
         )
 
     # 2. Must contain a complete plain URL.
     if not URL_PATTERN.search(text):
         errors.append("brief is missing a complete plain URL")
 
-    # 3. No forbidden boilerplate sections.
-    for marker in FORBIDDEN_SECTION_MARKERS:
-        if marker in text:
-            errors.append(f"brief contains forbidden section marker: {marker!r}")
-            break
+    # 3. Preserve the accepted structured brief. Experience, quote, and next
+    # action may be omitted when the source genuinely has no such information.
+    for marker in REQUIRED_SECTION_MARKERS:
+        if marker not in text:
+            errors.append(f"brief is missing required section marker: {marker!r}")
 
     # 4. No forbidden filler phrases.
     lowered = text.lower()

@@ -42,11 +42,11 @@
     },
     "v3_business_stories": {
       "label": "V3 Business Stories",
-      "description": "偏好可转述的小商业故事，信息密度优先的遣词风格，微信分发格式。",
+      "description": "偏好可转述的小商业故事，信息密度优先的遣词风格，沿用已验证的结构化分发格式。",
       "roles": {
         "scoring": "prompts/versions/v3_business_stories/scoring.md",
         "extraction": "prompts/versions/v3_business_stories/extraction.md",
-        "telegram_brief": "prompts/wechat_brief.md"
+        "telegram_brief": "prompts/telegram_brief.md"
       }
     },
     "rimbo_source_scored_v3": {

@@ -520,60 +520,94 @@ def _compact_items(value: object, *, limit: int = 2) -> list[str]:
     return lines
 
 
-def _format_wechat_brief_cn(
+def _format_structured_brief_cn(
     score: ScoreResult,
     extraction: ExtractionResult,
     content: FetchedContent | None,
 ) -> str:
-    """Local fallback that keeps the compact WeChat brief contract."""
+    """Local fallback that preserves the accepted Telegram content product.
+
+    Delivery channels must not redefine the brief. This deterministic fallback
+    mirrors ``prompts/telegram_brief.md`` so an unavailable formatting model
+    cannot silently switch WeChat back to the compact template.
+    """
     parsed = _as_dict(getattr(extraction, "parsed", {}))
     score_parsed = _as_dict(getattr(score, "parsed", {}))
     compression = _as_dict(parsed.get("content_compression") or score_parsed.get("content_compression"))
 
     title = str(parsed.get("refactored_title") or extraction.title or "未命名内容")[:30]
+    category = str(
+        parsed.get("category")
+        or score_parsed.get("signal_tier")
+        or getattr(score, "signal_tier", "未分类")
+    )[:30]
     summary = str(
         compression.get("compressed_signal")
         or parsed.get("one_line_summary")
         or extraction.one_line_signal
         or "暂无可转述判断"
-    )[:50]
+    )[:80]
     link = (
         content.url if content is not None else
         str(parsed.get("original_url") or parsed.get("url") or score_parsed.get("url") or "")
     )
 
-    core_items: list[str] = []
-    for value in (
-        compression.get("kept_facts"),
-        parsed.get("evidence"),
-        parsed.get("why_it_matters"),
-        parsed.get("inferences"),
-    ):
+    experiences: list[str] = []
+    for value in (parsed.get("why_it_matters"), parsed.get("evidence")):
         for item in _compact_items(value, limit=2):
-            if item and item != summary and item not in core_items:
-                core_items.append(item[:72])
-            if len(core_items) >= 2:
+            if item and item != summary and item not in experiences:
+                experiences.append(item[:64])
+            if len(experiences) >= 2:
                 break
-        if len(core_items) >= 2:
+        if len(experiences) >= 2:
             break
 
-    lines = [f"🎯 {title}", "", f"💡 {summary}"]
-    if core_items:
-        lines.extend(["", *(f"▪️ {item}" for item in core_items)])
+    signals: list[str] = []
+    for value in (parsed.get("inferences"), compression.get("kept_facts")):
+        for item in _compact_items(value, limit=2):
+            if item and item != summary and item not in signals:
+                signals.append(item[:64])
+            if len(signals) >= 2:
+                break
+        if len(signals) >= 2:
+            break
+    if not signals:
+        signals.append(summary[:64])
+
+    source_type = str(parsed.get("source_type") or score_parsed.get("source_type") or getattr(score, "source_type", "unknown"))
+    source_tier = str(parsed.get("source_tier") or score_parsed.get("source_tier") or getattr(score, "source_tier", "unknown"))
+    interest = str(parsed.get("interest_flag") or score_parsed.get("interest_flag") or getattr(score, "interest_flag", "unknown"))
+    source_line = f"{source_type}/{source_tier}，{interest}"[:80]
+
+    kept = _compact_items(compression.get("kept_facts"), limit=1)
+    dropped = _compact_items(compression.get("dropped_noise"), limit=1)
+    compression_parts: list[str] = []
+    if kept:
+        compression_parts.append(f"保留 {kept[0]}")
+    if dropped:
+        compression_parts.append(f"丢弃 {dropped[0]}")
+    compression_line = "；".join(compression_parts)[:100] or "保留核心判断与证据，丢弃背景和重复表述"
+
+    lines = [f"🎯 {title}", f"🏷 {category}", "", f"💡 {summary}"]
+    if experiences:
+        lines.extend(["", "🗣 1. 经验萃取", *(f"▪️ {item}" for item in experiences)])
+    lines.extend(["", "📡 2. 信号萃取", *(f"▪️ {item}" for item in signals)])
+    lines.extend([
+        "",
+        "🧭 3. 信源与压缩",
+        f"▪️ 信源: {source_line}",
+        f"▪️ 压缩: {compression_line}",
+    ])
 
     quote = _extract_original_quote(parsed.get("evidence"))
     if quote:
-        lines.extend(["", f"💬 \"{quote[:80]}\""])
-    if link:
-        lines.extend(["", f"🔗 {link}"])
+        lines.extend(["", "💬 4. 核心金句", f'"{quote[:80]}"'])
 
-    while len("\n".join(lines)) > 300 and len(core_items) > 1:
-        core_items.pop()
-        lines = [f"🎯 {title}", "", f"💡 {summary}", "", *(f"▪️ {item}" for item in core_items)]
-        if quote:
-            lines.extend(["", f"💬 \"{quote[:80]}\""])
-        if link:
-            lines.extend(["", f"🔗 {link}"])
+    actions = _compact_items(parsed.get("recommended_actions"), limit=1)
+    if actions:
+        lines.extend(["", "🛠 5. 下一步", f"▪️ {actions[0][:72]}"])
+    if link:
+        lines.extend(["", f"🔗 阅读原文: {link}"])
 
     return "\n".join(lines).strip()
 
@@ -730,7 +764,7 @@ class LiveLLMProvider:
         *,
         content: FetchedContent | None = None,
     ) -> str | TypedError:
-        """Format the configured message brief, with a compact local fallback."""
+        """Format the channel-neutral message brief with a structured fallback."""
         telegram_input = _build_telegram_input(score, extraction, content)
 
         for provider_config in self._all_providers:
@@ -755,7 +789,7 @@ class LiveLLMProvider:
                 continue
             break
 
-        return _format_wechat_brief_cn(score, extraction, content)
+        return _format_structured_brief_cn(score, extraction, content)
 
     def _call_llm(
         self,

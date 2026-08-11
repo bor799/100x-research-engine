@@ -35,7 +35,7 @@ def test_prompt_registry_loads_scoring_and_extraction_roles():
     stable_extraction = registry.load_prompt("v2_stable_cn", "extraction")
     business_scoring = registry.load_prompt("v3_business_stories", "scoring")
     business_extraction = registry.load_prompt("v3_business_stories", "extraction")
-    wechat_brief = registry.load_prompt("v3_business_stories", "telegram_brief")
+    delivery_brief = registry.load_prompt("v3_business_stories", "telegram_brief")
 
     assert "final_score" in scoring
     assert "obsidian_brief_markdown" in extraction
@@ -59,11 +59,13 @@ def test_prompt_registry_loads_scoring_and_extraction_roles():
     assert "只有宏大叙事和行业概述" not in business_scoring
     assert "必须是一句可被转述的话" in business_scoring
     assert "## 遣词风格" in business_extraction
-    assert "一句话判断，最多 50 字" in wechat_brief
-    assert "100-200 字，最多 300 字" in wechat_brief
-    assert "🏷" not in wechat_brief
-    assert "🧭" not in wechat_brief
-    assert "🛠" not in wechat_brief
+    assert "GLM" not in delivery_brief  # model choice stays in config, not content
+    assert "🗣 1. 经验萃取" in delivery_brief
+    assert "📡 2. 信号萃取" in delivery_brief
+    assert "🧭 3. 信源与压缩" in delivery_brief
+    assert "🛠 5. 下一步" in delivery_brief
+    assert "300-500 字" in delivery_brief
+    assert registry.bundle("v3_business_stories").prompt_path("telegram_brief").name == "telegram_brief.md"
 
 
 def test_prompt_registry_keeps_scoring_and_extraction_separate():
