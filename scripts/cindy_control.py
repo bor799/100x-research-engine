@@ -53,12 +53,15 @@ def cmd_enqueue_url(args) -> int:
         args.url.strip(),
         source="cindy_wechat",
         priority=args.priority,
+        reply_channel="wechat",
     )
     print(json.dumps({
         "ok": True,
         "task_id": task.id,
         "status": task.status.value,
         "url": task.url,
+        "user_message": "已收到。会按固定模板处理，完成后从当前微信入口发回。",
+        "interaction": "asynchronous",
     }, ensure_ascii=False, sort_keys=True))
     return 0
 
