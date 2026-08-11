@@ -432,7 +432,9 @@ class QueueWorker:
         result: ProcessResult,
         mode: RuntimeMode,
     ) -> str:
-        """Close the Telegram loop for manual tasks that do not reach live output."""
+        """Close manual-input loops without exposing worker internals to users."""
+        if task.reply_channel == "wechat":
+            return self._queue_wechat_failure_if_needed(task, result, mode)
         if task.reply_channel != "telegram" or not task.reply_chat_id:
             return ""
         if result.telegram_status == "sent":
@@ -472,6 +474,46 @@ class QueueWorker:
             return "reply_failed"
         status, _preview = delivery
         # Persist reply success status
+        self._queue.update_reply_status(task.id, f"reply_{status}")
+        return f"reply_{status}"
+
+    def _queue_wechat_failure_if_needed(
+        self,
+        task: QueueTask,
+        result: ProcessResult,
+        mode: RuntimeMode,
+    ) -> str:
+        """Queue one concise terminal failure for a Cindy-origin request.
+
+        Successful requested analyses already enter the normal WeChat outbox.
+        Retry noise stays hidden; only a terminal outcome is surfaced so a user
+        request cannot disappear silently.
+        """
+        if result.final_status not in {QueueStatus.REJECTED, QueueStatus.FAILED_TERMINAL}:
+            return ""
+        if mode is not RuntimeMode.LIVE:
+            return ""
+
+        from .outputs.wechat_queue import WechatQueue
+
+        loader = ConfigLoader(project_root=Path.cwd())
+        queue_dir = loader.expand_path(self._config.outputs.wechat_queue_dir)
+        message = _format_wechat_failure(task)
+        placeholder = FetchedContent(
+            url=task.url,
+            source=task.source,
+            source_type="queue_status",
+            title="内容处理未完成",
+            text=message,
+            fetched_at=utc_now(),
+            content_hash=f"cindy-task-{task.id}-{result.final_status.value}",
+            metadata={"final_score": 0.0, "business_story_fit": 0.0},
+        )
+        delivery = WechatQueue(queue_dir).deliver(placeholder, message, lane="requested")
+        if isinstance(delivery, TypedError):
+            self._queue.update_reply_status(task.id, "reply_failed")
+            return "reply_failed"
+        status, _preview = delivery
         self._queue.update_reply_status(task.id, f"reply_{status}")
         return f"reply_{status}"
 
@@ -614,6 +656,23 @@ def _format_reply_status(task: QueueTask, result: ProcessResult) -> str:
 
     lines.extend(["", f"Use /status {task.id} for the latest state."])
     return "\n".join(lines)
+
+
+def _format_wechat_failure(task: QueueTask) -> str:
+    """Return a user-facing failure message with no IDs or internal stages."""
+    reason = task.last_error.strip() or "原文暂时无法可靠读取或解析。"
+    if task.failure_kind is FailureKind.CONTENT_BLOCKED:
+        reason = "原文访问受限，暂时无法可靠读取。"
+    elif task.failure_kind is FailureKind.FETCH_TIMEOUT:
+        reason = "原文读取超时，暂时没有得到可靠内容。"
+    elif task.failure_kind is FailureKind.AUTH_INVALID:
+        reason = "原文需要额外权限，暂时无法可靠读取。"
+    return (
+        "⚠️ 这条内容暂时没有处理成功\n\n"
+        f"{reason[:160]}\n"
+        "可以稍后重发原链接，或直接粘贴正文。\n\n"
+        f"🔗 {task.url}"
+    )
 
 
 # ---------------------------------------------------------------------------
