@@ -42,6 +42,26 @@ def test_pipeline_dry_run_low_quality_is_rejected_without_output(tmp_path):
     assert result.extraction_result is None
 
 
+def test_cindy_requested_low_quality_is_interpreted_instead_of_silently_rejected(tmp_path):
+    pipeline = _pipeline(tmp_path)
+
+    result = pipeline.process_url(
+        "fixture://low_quality",
+        source="cindy_wechat",
+        mode=RuntimeMode.DRY_RUN,
+    )
+
+    assert result.final_status is QueueStatus.DONE
+    assert result.extraction_result is not None
+    requested = next(stage for stage in result.stage_results if stage.stage == "requested_analysis")
+    assert requested.detail == {
+        "requested": True,
+        "selection_gate_bypassed": True,
+        "delivery_lane": "requested",
+        "reason": "Cindy-origin input is an explicit user request, not discovery",
+    }
+
+
 def test_pipeline_hard_reject_even_with_gate_disabled(tmp_path):
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
     pipeline = Pipeline(

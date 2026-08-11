@@ -7,7 +7,7 @@ from knowledge_extractor_v3.outputs.wechat_queue import WechatQueue
 from knowledge_extractor_v3.queue_store import FailureKind
 
 
-def _content(*, score: float = 8.2) -> FetchedContent:
+def _content(*, score: float = 8.2, metadata: dict[str, object] | None = None) -> FetchedContent:
     return FetchedContent(
         url="https://example.com/story",
         source="test",
@@ -16,7 +16,7 @@ def _content(*, score: float = 8.2) -> FetchedContent:
         text="body",
         fetched_at="2026-08-10T00:00:00+00:00",
         content_hash="abc123def456",
-        metadata={"score": score},
+        metadata={"score": score, **(metadata or {})},
     )
 
 
@@ -54,6 +54,28 @@ def test_deliver_dedupes_by_event_id(tmp_path):
     assert first[0] == "queued"
     assert second[0] == "duplicate"
     assert len(list((tmp_path / "wechat" / "pending").glob("*.json"))) == 1
+
+
+def test_each_explicit_wechat_request_gets_one_reply_even_for_same_article(tmp_path):
+    queue = WechatQueue(tmp_path / "wechat")
+    first_request = _content(metadata={
+        "reply_channel": "wechat",
+        "reply_request_key": "7:2026-08-11T10:00:00+00:00",
+    })
+    repeated_same_request = _content(metadata={
+        "reply_channel": "wechat",
+        "reply_request_key": "7:2026-08-11T10:00:00+00:00",
+    })
+    new_request = _content(metadata={
+        "reply_channel": "wechat",
+        "reply_request_key": "7:2026-08-11T11:00:00+00:00",
+    })
+
+    assert queue.deliver(first_request, "first", lane="requested")[0] == "queued"
+    assert queue.deliver(repeated_same_request, "retry", lane="requested")[0] == "duplicate"
+    assert queue.deliver(new_request, "asked again", lane="requested")[0] == "queued"
+    assert len(list((tmp_path / "wechat" / "pending").glob("*.json"))) == 2
+    assert all(item.lane == "requested" for item in queue.outbox._list("pending"))
 
 
 def test_deliver_returns_typed_error_when_queue_path_is_a_file(tmp_path):

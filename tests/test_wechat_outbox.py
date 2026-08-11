@@ -11,6 +11,7 @@ import pytest
 
 from knowledge_extractor_v3.outputs.wechat_outbox import (
     BUSINESS_LANE,
+    REQUESTED_LANE,
     STRATEGIC_LANE,
     OutboxItem,
     WechatOutbox,
@@ -171,7 +172,13 @@ def test_strategic_item_uses_longer_ttl(tmp_path):
     assert (root / "pending" / "s.json").exists()
 
 
-def test_recover_stale_processing_nacks_and_records_reason(tmp_path):
+def test_requested_item_uses_short_interaction_ttl():
+    now = datetime.now(UTC).replace(microsecond=0)
+    expires = datetime.fromisoformat(ttl_for_lane(REQUESTED_LANE, now=now))
+    assert expires - now == timedelta(hours=24)
+
+
+def test_recover_stale_processing_quarantines_unknown_delivery_without_retry(tmp_path):
     root = tmp_path / "ob"
     box = WechatOutbox(root)
     box.enqueue(_item("e1"))
@@ -180,10 +187,13 @@ def test_recover_stale_processing_nacks_and_records_reason(tmp_path):
     old = time.time() - 9_999
     os.utime(path, (old, old))
     assert box.recover_stale_processing(stale_seconds=600) == 1
-    payload = _read(root, "pending")
+    payload = _read(root, "failed")
     assert payload["attempts"] == 1
+    assert payload["state"] == "failed"
+    assert payload["delivery_attempts"][0]["status"] == "delivery_unknown"
     receipt = payload["delivery_attempts"][0]["receipt"]
-    assert receipt["error_code"] == "STALE_CLAIM_RECOVERED"
+    assert receipt["error_code"] == "STALE_CLAIM_DELIVERY_UNKNOWN"
+    assert box.claim() == []
 
 
 def test_reap_sent_keeps_replay_blocked_by_idempotency_marker(tmp_path):

@@ -35,6 +35,12 @@ T = TypeVar("T")
 
 MIN_EXTRACT_FINAL_SCORE = 0.7
 
+# Discovery asks "is this worth interrupting Murphy with?". A Cindy-origin
+# submission asks a different question: "interpret this item I explicitly
+# chose". Keeping that distinction in code prevents the discovery score gate
+# from silently swallowing a direct user request.
+REQUESTED_ANALYSIS_SOURCES = frozenset({"cindy_wechat"})
+
 
 class Pipeline:
     """Run one queue task through the V3 dry-run/staging backend core."""
@@ -212,6 +218,7 @@ class Pipeline:
         # that drops to reject now is content below the archive band that is
         # also not a qualifying business story.
         route_decision = route_from_score(score_result)
+        requested_analysis = source in REQUESTED_ANALYSIS_SOURCES
         _append_stage(stage_results, "routing", detail={
             "route": route_decision.route.value,
             "business_story_fit": round(route_decision.business_story_fit, 4),
@@ -221,7 +228,7 @@ class Pipeline:
             "reason": route_decision.reason,
         })
 
-        if route_decision.route is Route.REJECT:
+        if route_decision.route is Route.REJECT and not requested_analysis:
             error = TypedError(
                 failure_kind=FailureKind.VALIDATION_FAILED,
                 message="Content rejected by routing (reject)",
@@ -246,6 +253,14 @@ class Pipeline:
                 parallel_results=parallel_results,
                 error=error,
             )
+
+        if requested_analysis:
+            _append_stage(stage_results, "requested_analysis", detail={
+                "requested": True,
+                "selection_gate_bypassed": route_decision.route is Route.REJECT,
+                "delivery_lane": "requested",
+                "reason": "Cindy-origin input is an explicit user request, not discovery",
+            })
 
         extraction_result = self._extract_and_parse(
             fetched,
@@ -314,7 +329,7 @@ class Pipeline:
         # Only push routes reach the WeChat outbox. archive_only keeps Obsidian
         # but stays out of the user's inbox; the lane tells the consumer which
         # digest schedule (morning/evening vs weekly) to attach it to.
-        _wechat_lane = {
+        _wechat_lane = "requested" if requested_analysis else {
             Route.BUSINESS_PUSH: "business",
             Route.STRATEGIC_DIGEST: "strategic",
         }.get(route_decision.route)
@@ -875,6 +890,7 @@ def _with_queue_reply_metadata(content: FetchedContent, task: QueueTask) -> Fetc
     metadata = dict(content.metadata)
     if task.reply_channel:
         metadata["reply_channel"] = task.reply_channel
+        metadata["reply_request_key"] = f"{task.id}:{task.updated_at}"
     if task.reply_chat_id:
         metadata["reply_chat_id"] = task.reply_chat_id
     return replace(content, metadata=metadata)

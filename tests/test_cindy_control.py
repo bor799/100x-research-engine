@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from knowledge_extractor_v3.outputs.wechat_outbox import OutboxItem, WechatOutbox, ttl_for_lane
+from knowledge_extractor_v3.queue_store import QueueStore
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +35,9 @@ def test_cindy_control_enqueues_url_and_reports_status(tmp_path):
     payload = json.loads(result.stdout)
     assert payload["ok"] is True
     assert payload["status"] == "pending"
+    assert payload["interaction"] == "asynchronous"
+    assert "固定模板" in payload["user_message"]
+    assert QueueStore(queue_db).get_task(payload["task_id"]).reply_channel == "wechat"
 
     status = _run(
         "scripts/cindy_control.py",

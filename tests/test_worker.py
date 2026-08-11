@@ -20,16 +20,18 @@ from knowledge_extractor_v3.worker import (
     WorkerState,
     create_worker,
 )
-from knowledge_extractor_v3.queue_store import QueueStore, QueueStatus
+from knowledge_extractor_v3.queue_store import FailureKind, NextAction, QueueStore, QueueStatus
 from knowledge_extractor_v3.config_loader import (
     AgentReachConfig,
     V3Config,
     LiveConfig,
     RuntimeConfig,
+    OutputsConfig,
     ScoreGateConfig,
     WorkerConfig as V3WorkerConfig,
 )
-from knowledge_extractor_v3.models import RuntimeMode
+from knowledge_extractor_v3.models import ProcessResult, RuntimeMode
+from knowledge_extractor_v3.outputs.wechat_outbox import WechatOutbox
 from knowledge_extractor_v3.fetchers.fixture import FixtureFetcher
 from knowledge_extractor_v3.fetchers.multi_channel import AgentReachFetcher
 from knowledge_extractor_v3.fetchers.router import FetcherRouter
@@ -254,6 +256,50 @@ def test_worker_notifies_telegram_reply_chat_on_terminal_failure():
         assert reply_client.messages[0]["chat_id"] == "chat-123"
         assert "Failed (ID:" in reply_client.messages[0]["text"]
         assert "Fixture fetch failed" in reply_client.messages[0]["text"]
+
+
+def test_worker_queues_one_plain_wechat_failure_for_cindy_request(tmp_path):
+    state_root = tmp_path / ".100x_v3"
+    base = make_test_config(state_root)
+    config = V3Config(
+        runtime=base.runtime,
+        live=base.live,
+        worker=base.worker,
+        agent_reach=base.agent_reach,
+        outputs=OutputsConfig(wechat_queue_dir=str(state_root / "wechat_queue")),
+    )
+    queue_store = QueueStore(state_root / "queue.db")
+    task = queue_store.enqueue(
+        "https://example.com/private",
+        source="cindy_wechat",
+        reply_channel="wechat",
+    )
+    task = queue_store.mark_failed_terminal(
+        task.id,
+        failure_kind=FailureKind.CONTENT_BLOCKED,
+        last_error="internal fetch stack must stay hidden",
+    )
+    result = ProcessResult(
+        url=task.url,
+        source=task.source,
+        queue_task_id=task.id,
+        current_stage="fetch",
+        final_status=QueueStatus.FAILED_TERMINAL,
+        retryable=False,
+        failure_kind=task.failure_kind,
+        next_action=NextAction.MANUAL_REVIEW,
+        output_path="",
+        telegram_status="",
+        prompt_bundle="v3_business_stories",
+    )
+    worker = QueueWorker(config=config, queue_store=queue_store)
+
+    assert worker._notify_reply_if_needed(task, result, RuntimeMode.LIVE) == "reply_queued"
+    pending = WechatOutbox(state_root / "wechat_queue")._list("pending")
+    assert len(pending) == 1
+    assert "原文访问受限" in pending[0].text
+    assert "internal fetch stack" not in pending[0].text
+    assert "Task" not in pending[0].text
 
 
 def test_worker_live_mode_does_not_silently_fall_back_to_staging():

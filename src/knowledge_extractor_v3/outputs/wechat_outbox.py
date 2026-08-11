@@ -31,11 +31,13 @@ from typing import Mapping
 MAX_ATTEMPTS = 3
 SENT_RETENTION_DAYS = 14
 BUSINESS_TTL_HOURS = 24
+REQUESTED_TTL_HOURS = 24
 STRATEGIC_TTL_HOURS = 8 * 24
 MAX_RAW_RESPONSE_CHARS = 2_048
 MAX_RECEIPT_STRING_CHARS = 512
 
 BUSINESS_LANE = "business"
+REQUESTED_LANE = "requested"
 STRATEGIC_LANE = "strategic"
 STATES = ("pending", "processing", "sent", "failed")
 
@@ -124,11 +126,13 @@ class WechatOutbox:
         *,
         max_attempts: int = MAX_ATTEMPTS,
         business_ttl_hours: int = BUSINESS_TTL_HOURS,
+        requested_ttl_hours: int = REQUESTED_TTL_HOURS,
         strategic_ttl_hours: int = STRATEGIC_TTL_HOURS,
     ) -> None:
         self.root = Path(root)
         self.max_attempts = max_attempts
         self.business_ttl_hours = business_ttl_hours
+        self.requested_ttl_hours = requested_ttl_hours
         self.strategic_ttl_hours = strategic_ttl_hours
 
     # -- producer ------------------------------------------------------
@@ -253,6 +257,37 @@ class WechatOutbox:
         self._move_with_payload(src, self.root / result_state / src.name, data)
         return result_state
 
+    def quarantine(self, event_id: str, receipt: Mapping[str, object]) -> bool:
+        """Move an item with an unknown delivery outcome directly to failed.
+
+        A consumer can crash after WeChat accepted a message but before ``ack``
+        reached disk. Retrying that stale claim would create a real duplicate.
+        Unknown outcomes are therefore fail-closed for manual review; explicit
+        connector failures still use ``nack`` and retain the three-attempt
+        retry policy.
+        """
+        src = self._find("processing", event_id)
+        if src is None:
+            return False
+        timestamp = _now()
+        data = self._load_payload(src)
+        normalized = sanitize_receipt(receipt)
+        self._finish_attempt(data, "delivery_unknown", normalized, timestamp)
+        data.update({
+            "state": "failed",
+            "failed_at": timestamp,
+            "updated_at": timestamp,
+            "failure": {
+                "code": str(normalized.get("error_code") or "DELIVERY_OUTCOME_UNKNOWN"),
+                "message": str(
+                    normalized.get("error_message")
+                    or "delivery may have succeeded before the receipt was persisted"
+                ),
+            },
+        })
+        self._move_with_payload(src, self.root / "failed" / src.name, data)
+        return True
+
     # -- inspection / maintenance ------------------------------------
 
     def find_state(self, event_id: str) -> str | None:
@@ -274,7 +309,11 @@ class WechatOutbox:
             try:
                 expires_at = datetime.fromisoformat(item.expires_at)
             except ValueError:
-                ttl = self.business_ttl_hours if item.lane == BUSINESS_LANE else self.strategic_ttl_hours
+                ttl = {
+                    BUSINESS_LANE: self.business_ttl_hours,
+                    REQUESTED_LANE: self.requested_ttl_hours,
+                    STRATEGIC_LANE: self.strategic_ttl_hours,
+                }.get(item.lane, self.business_ttl_hours)
                 try:
                     expires_at = datetime.fromisoformat(item.created_at) + timedelta(hours=ttl)
                 except ValueError:
@@ -312,7 +351,7 @@ class WechatOutbox:
         return removed
 
     def recover_stale_processing(self, stale_seconds: int = 600) -> int:
-        """Nack abandoned claims, counting them as delivery attempts."""
+        """Quarantine abandoned claims whose delivery outcome is unknowable."""
         cutoff = time.time() - stale_seconds
         recovered = 0
         for path in list((self.root / "processing").glob("*.json")):
@@ -321,16 +360,19 @@ class WechatOutbox:
             data = self._load_payload(path)
             event_id = str(data.get("event_id") or "")
             started_at = str(data.get("claimed_at") or "")
-            result = self.nack(event_id, {
+            quarantined = self.quarantine(event_id, {
                 "agent_context": {"agent_kind": "recovery"},
                 "tool": "wechat_outbox.recover_stale_processing",
                 "started_at": started_at,
                 "finished_at": _now(),
-                "error_code": "STALE_CLAIM_RECOVERED",
-                "error_message": "consumer did not ack or nack before stale timeout",
+                "error_code": "STALE_CLAIM_DELIVERY_UNKNOWN",
+                "error_message": (
+                    "consumer did not persist ack or nack before stale timeout; "
+                    "automatic resend is blocked to prevent a duplicate"
+                ),
                 "raw_response": "",
             })
-            if result != "missing":
+            if quarantined:
                 recovered += 1
         return recovered
 
@@ -486,5 +528,9 @@ def _sanitize_value(value: object, *, key: str) -> object:
 
 def ttl_for_lane(lane: str, *, now: datetime | None = None) -> str:
     now = now or datetime.now(UTC)
-    hours = BUSINESS_TTL_HOURS if lane == BUSINESS_LANE else STRATEGIC_TTL_HOURS
+    hours = {
+        BUSINESS_LANE: BUSINESS_TTL_HOURS,
+        REQUESTED_LANE: REQUESTED_TTL_HOURS,
+        STRATEGIC_LANE: STRATEGIC_TTL_HOURS,
+    }.get(lane, BUSINESS_TTL_HOURS)
     return (now + timedelta(hours=hours)).replace(microsecond=0).isoformat()
