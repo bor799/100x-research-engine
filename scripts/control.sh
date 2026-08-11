@@ -139,6 +139,12 @@ role_run() {
   write_heartbeat "$role" "starting"
   restart_delay="${ROLE_RESTART_DELAY_SECONDS:-60}"
 
+  if ! role_enabled "$role"; then
+    write_heartbeat "$role" "disabled" "disabled by production channel configuration"
+    rm -f "$pid_file"
+    return 0
+  fi
+
   if [ "$role" = "telegram-bot-loop" ] && [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
     while true; do
       write_heartbeat "$role" "waiting" "TELEGRAM_BOT_TOKEN is not configured"
@@ -201,7 +207,7 @@ for check in data.get("checks", []):
         if role != "health-monitor":
             print(role)
 PY
-    if [ -n "$role" ]; then
+    if [ -n "$role" ] && role_enabled "$role"; then
       echo "[$(date '+%Y-%m-%d %H:%M:%S')] health monitor starting stale role: $role"
       start_role "$role"
     fi
@@ -245,8 +251,38 @@ all_roles() {
   echo "scheduler-loop worker-loop telegram-bot-loop health-monitor"
 }
 
-start_all() {
+role_enabled() {
+  local role="$1"
+  case "$role" in
+    scheduler-loop)
+      [ "$(config_value scheduler.enabled)" = "True" ]
+      ;;
+    worker-loop|health-monitor)
+      return 0
+      ;;
+    telegram-bot-loop)
+      local channel bot_enabled
+      channel="$(config_value outputs.channel)"
+      bot_enabled="$(config_value telegram_bot.enabled)"
+      [ "$bot_enabled" = "True" ] && { [ "$channel" = "telegram" ] || [ "$channel" = "both" ]; }
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+enabled_roles() {
+  local role
   for role in $(all_roles); do
+    if role_enabled "$role"; then
+      echo "$role"
+    fi
+  done
+}
+
+start_all() {
+  for role in $(enabled_roles); do
     start_role "$role"
   done
 }
@@ -272,10 +308,15 @@ start_tmux() {
   fi
 
   stop_all >/dev/null 2>&1 || true
-  tmux new-session -d -s "$TMUX_SESSION" -n scheduler-loop -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run scheduler-loop)"
-  tmux new-window -t "$TMUX_SESSION" -n worker-loop -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run worker-loop)"
-  tmux new-window -t "$TMUX_SESSION" -n telegram-bot-loop -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run telegram-bot-loop)"
-  tmux new-window -t "$TMUX_SESSION" -n health-monitor -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run health-monitor)"
+  local role first="true"
+  for role in $(enabled_roles); do
+    if [ "$first" = "true" ]; then
+      tmux new-session -d -s "$TMUX_SESSION" -n "$role" -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run "$role")"
+      first="false"
+    else
+      tmux new-window -t "$TMUX_SESSION" -n "$role" -c "$PROJECT_ROOT" "$(printf '%q ' "$CONTROL_SCRIPT" role-run "$role")"
+    fi
+  done
   echo "started tmux session: $TMUX_SESSION"
 }
 
@@ -314,13 +355,17 @@ status() {
   echo "State:   $STATE_ROOT"
   echo
   for role in $(all_roles); do
-    local pid_file state
+    local pid_file state enabled
     pid_file="$(role_pid_file "$role")"
     state="stopped"
+    enabled="disabled"
+    if role_enabled "$role"; then
+      enabled="enabled"
+    fi
     if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" >/dev/null 2>&1; then
       state="running pid=$(cat "$pid_file")"
     fi
-    echo "$role: $state"
+    echo "$role: $state ($enabled)"
     if [ -f "$(role_heartbeat_file "$role")" ]; then
       "$PYTHON" - "$role" "$(role_heartbeat_file "$role")" <<'PY'
 import json
@@ -422,7 +467,7 @@ EOF
 
 install_autostart() {
   mkdir -p "$LAUNCHD_DIR"
-  for role in $(all_roles); do
+  for role in $(enabled_roles); do
     local plist="$LAUNCHD_DIR/$(role_label "$role").plist"
     print_plist "$role" > "$plist"
     launchctl unload "$plist" >/dev/null 2>&1 || true

@@ -117,7 +117,7 @@ class TestConfigLoader:
         assert isinstance(config, V3Config)
         assert config.runtime.state_root == "~/.100x_v3"
         assert config.prompts.active_bundle == "v3_business_stories"
-        assert config.outputs.channel == "telegram"
+        assert config.outputs.channel == "wechat"
         assert config.outputs.wechat_queue_dir == "~/.100x_v3/wechat_queue"
         assert loader.config_path_used.name == "config.example.yaml"
 
@@ -266,7 +266,7 @@ class TestConfigLoader:
         assert config.outputs.obsidian_root == ""
         assert config.outputs.obsidian_subdir == "inbox"
         assert config.outputs.write_manifest is True
-        assert config.outputs.telegram_enabled is True
+        assert config.outputs.telegram_enabled is False
         assert config.outputs.telegram_bot_token_env == "TELEGRAM_BOT_TOKEN"
 
     def test_llm_section_loaded(self, tmp_path):

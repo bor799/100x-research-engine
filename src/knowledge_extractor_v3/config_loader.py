@@ -64,13 +64,13 @@ class OutputsConfig:
     obsidian_root: str = ""
     obsidian_subdir: str = "inbox"
     write_manifest: bool = True
-    channel: str = "telegram"
+    channel: str = "wechat"
     wechat_queue_dir: str = "~/.100x_v3/wechat_queue"
     telegram_bot_token_env: str = "TELEGRAM_BOT_TOKEN"
     telegram_admin_chat_id_env: str = "TELEGRAM_ADMIN_CHAT_ID"
     telegram_bot_token: str = ""  # 直接配置 token（优先于环境变量，兼容 V2）
     telegram_admin_chat_id: str = ""  # 直接配置 chat_id（优先于环境变量，兼容 V2）
-    telegram_enabled: bool = True
+    telegram_enabled: bool = False
 
 
 @dataclass(frozen=True)
@@ -517,7 +517,7 @@ def _build_llm(raw: dict[str, object]) -> LLMConfig:
 
 
 def _build_outputs(raw: dict[str, object]) -> OutputsConfig:
-    channel = str(raw.get("channel", "telegram")).strip().lower()
+    channel = str(raw.get("channel", "wechat")).strip().lower()
     if channel not in OUTPUT_CHANNELS:
         choices = ", ".join(sorted(OUTPUT_CHANNELS))
         raise ConfigLoaderError(f"outputs.channel must be one of: {choices}")
@@ -531,7 +531,7 @@ def _build_outputs(raw: dict[str, object]) -> OutputsConfig:
         telegram_admin_chat_id_env=str(raw.get("telegram_admin_chat_id_env", "TELEGRAM_ADMIN_CHAT_ID")),
         telegram_bot_token=str(raw.get("telegram_bot_token", "")),
         telegram_admin_chat_id=str(raw.get("telegram_admin_chat_id", "")),
-        telegram_enabled=bool(raw.get("telegram_enabled", True)),
+        telegram_enabled=bool(raw.get("telegram_enabled", False)),
     )
 
 

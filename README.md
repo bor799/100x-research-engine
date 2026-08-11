@@ -10,6 +10,14 @@ V3 is a clean sibling repository for the primary-market version of the 100X know
 - `scripts/run-v3.sh` exposes lower-level preflight, enqueue, scheduler, worker, live role, and log commands.
 - Runtime state is isolated under `~/.100x_v3` by default and guarded before live roles touch the queue.
 
+### Cindy / WeChat Control Plane
+
+- 100X produces durable events; Cindy owns the authenticated WeChat session and delivery tool.
+- The default production channel is WeChat. Telegram remains an explicit rollback option and is not started by the production controller when disabled.
+- Outbox delivery is all-state idempotent, capped at three attempts, and records sanitized receipts without raw peer/session/token values.
+- Cindy-origin URL and status commands use the deterministic `scripts/cindy_control.py` interface.
+- See [Cindy WeChat Operations](docs/CINDY_WECHAT_OPERATIONS.md) for the schedule contract and zero-touch runbook.
+
 ### Multi-Channel Content Fetching
 
 V3 supports fetching content from multiple platforms:

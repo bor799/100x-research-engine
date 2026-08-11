@@ -70,7 +70,7 @@ class WechatQueue:
         )
 
         try:
-            self.outbox.enqueue(item)
+            enqueued = self.outbox.enqueue(item)
         except OSError as exc:
             return TypedError(
                 failure_kind=FailureKind.OUTPUT_FAILED,
@@ -81,7 +81,7 @@ class WechatQueue:
                 detail=str(exc),
             )
 
-        return "queued", text.strip()[:80]
+        return ("queued" if enqueued else "duplicate"), text.strip()[:80]
 
 
 def _slug(value: str, *, max_length: int = 48) -> str:
