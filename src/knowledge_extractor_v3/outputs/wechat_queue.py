@@ -7,6 +7,7 @@ via the outbox CLI (claim / ack / nack).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -42,6 +43,11 @@ class WechatQueue:
         created_at = utc_now()
         slug = _slug(content.title) or content.content_hash[:12] or "brief"
         event_id = content.content_hash or f"{created_at}-{slug}"
+        if content.metadata.get("reply_channel") == "wechat":
+            request_key = str(content.metadata.get("reply_request_key") or "").strip()
+            if request_key:
+                request_ref = hashlib.sha256(request_key.encode("utf-8")).hexdigest()[:16]
+                event_id = f"{event_id}-request-{request_ref}"
 
         try:
             final_score = float(content.metadata.get("final_score", 0.0))
