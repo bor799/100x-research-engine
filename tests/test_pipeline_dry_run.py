@@ -66,10 +66,18 @@ def test_pipeline_hard_reject_even_with_gate_disabled(tmp_path):
 class FixedScoreLLMProvider(StubLLMProvider):
     model_route = "test://fixed-score"
 
-    def __init__(self, *, score: float, final_score: float, signal_tier: str = "B") -> None:
+    def __init__(
+        self,
+        *,
+        score: float,
+        final_score: float,
+        signal_tier: str = "B",
+        l_dims: tuple[float, float, float] = (0.7, 0.7, 0.7),
+    ) -> None:
         self._score = score
         self._final_score = final_score
         self._signal_tier = signal_tier
+        self._l_dims = l_dims
         self.extract_calls = 0
 
     def score(self, content: FetchedContent, prompt: str) -> str:
@@ -78,9 +86,9 @@ class FixedScoreLLMProvider(StubLLMProvider):
                 "score": self._score,
                 "final_score": self._final_score,
                 "signal_tier": self._signal_tier,
-                "L1": 0.7,
-                "L2": 0.7,
-                "L3": 0.7,
+                "L1": self._l_dims[0],
+                "L2": self._l_dims[1],
+                "L3": self._l_dims[2],
                 "L4": self._final_score,
                 "objective_quality": 0.343,
                 "decision_window_status": "open",
@@ -99,7 +107,12 @@ class FixedScoreLLMProvider(StubLLMProvider):
         return super().extract(content, score, prompt)
 
 
-def test_pipeline_rejects_scores_below_seven_before_extraction_even_with_gate_disabled(tmp_path):
+def test_pipeline_archives_band_content_and_rejects_below_floor_before_extraction(tmp_path):
+    """Since the 2026-08-16 recalibration, 0.5-0.69 final_score is archive
+    material under the linear scoring formula (extracted + stored in Obsidian,
+    never pushed), while content below the 0.55 archive floor is still rejected
+    at routing, before any extraction tokens are spent."""
+    # 0.69: archive band -> extracted, done, no push lane.
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
     llm = FixedScoreLLMProvider(score=6.9, final_score=0.69, signal_tier="B")
     pipeline = Pipeline(
@@ -112,13 +125,31 @@ def test_pipeline_rejects_scores_below_seven_before_extraction_even_with_gate_di
 
     result = pipeline.process_url("fixture://high_signal", source="rss", mode=RuntimeMode.DRY_RUN)
 
-    assert result.final_status is QueueStatus.REJECTED
-    assert result.failure_kind is FailureKind.VALIDATION_FAILED
-    assert result.next_action is NextAction.DROP
-    assert result.extraction_result is None
-    assert llm.extract_calls == 0
+    assert result.final_status is QueueStatus.DONE
+    assert result.extraction_result is not None
+    assert llm.extract_calls == 1
     route_stage = next(stage for stage in result.stage_results if stage.stage == "routing")
-    assert route_stage.detail.get("route") == "reject"
+    assert route_stage.detail.get("route") == "archive_only"
+
+    # 0.40 (L-dims low so the parser's linear recompute also lands below the
+    # 0.55 floor): below the archive floor -> rejected before extraction.
+    store2 = QueueStore(tmp_path / ".100x_v3b" / "queue.db", runtime_fingerprint="test-fp")
+    llm2 = FixedScoreLLMProvider(score=4.0, final_score=0.40, signal_tier="C", l_dims=(0.4, 0.4, 0.4))
+    pipeline2 = Pipeline(
+        store2,
+        llm_provider=llm2,
+        staging_root=tmp_path / "staging2",
+        score_gate_enabled=False,
+        allow_test_provider=True,
+    )
+    result2 = pipeline2.process_url("fixture://high_signal", source="rss", mode=RuntimeMode.DRY_RUN)
+    assert result2.final_status is QueueStatus.REJECTED
+    assert result2.failure_kind is FailureKind.VALIDATION_FAILED
+    assert result2.next_action is NextAction.DROP
+    assert result2.extraction_result is None
+    assert llm2.extract_calls == 0
+    route_stage2 = next(stage for stage in result2.stage_results if stage.stage == "routing")
+    assert route_stage2.detail.get("route") == "reject"
 
 
 def test_pipeline_allows_score_equal_to_seven(tmp_path):

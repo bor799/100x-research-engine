@@ -46,13 +46,28 @@ PUSH_OPERATING_DETAIL_MIN = 0.60
 PUSH_EVIDENCE_MIN = 0.50
 PUSH_L1_MIN = 0.40
 STRATEGIC_FINAL_SCORE_MIN = 0.75
-ARCHIVE_FINAL_SCORE_MIN = 0.70
+# Recalibrated 2026-08-16: 0.70 was set under the old multiplicative scoring,
+# where 0.70+ was rare and 0.5-0.6 meant "mediocre". Under the linear formula a
+# 0.5-0.6 final_score is genuinely good content (sampled band: Simon Willison,
+# Anthropic alignment research, Bluesky protocol posts) and was being dropped
+# without even an Obsidian archive. The push bar is unchanged — only the
+# "worth keeping" floor moved.
+ARCHIVE_FINAL_SCORE_MIN = 0.55
 
 # Per-source preference floor (config `routing.source_preferences`). Sources the
 # user explicitly wants in the daily push route to business_push on a much
 # lower quality bar, so a Chinese-language source the rubric underrates is not
 # silently dropped. Promotional content is still rejected.
 DEFAULT_SOURCE_PREFERENCE_MIN_FINAL_SCORE = 0.20
+
+# The preference lowers the final_score bar, not the "a story must exist" bar.
+# Calibrated against live output on 2026-08-16: every item humans actually
+# received had business_story_fit >= 0.50 and signal_tier A/B/C, while every
+# fetch-failure skeleton pushed by mistake had bsf <= 0.02 with signal_tier
+# "Reject". A preference item below these floors falls back to the ordinary
+# final_score routing instead of being pushed.
+PREFERENCE_MIN_BSF = 0.30
+PREFERENCE_MIN_EVIDENCE = 0.20
 
 
 @dataclass(frozen=True)
@@ -101,6 +116,7 @@ def decide_route(
     business_story_fit: float,
     operating_detail: float,
     evidence_strength: float,
+    signal_tier: str = "",
     source: str = "",
     url: str = "",
     source_preferences: Mapping[str, SourcePreference] | None = None,
@@ -111,8 +127,29 @@ def decide_route(
     final_score, so a strong first-hand story is not killed by a low source
     tier), then a per-source user preference override, then strategic_digest,
     then archive_only, then reject.
+
+    The scorer's own Reject verdict is authoritative for pushes: a
+    signal_tier of "Reject" means the content has nothing worth retelling
+    (fetch skeletons, boilerplate), so it can never reach business_push or
+    strategic_digest no matter which floor it clears. Content the scorer
+    rejected but whose final_score still clears the archive band is kept in
+    Obsidian rather than pushed.
     """
     bsf = business_story_fit
+    tier_reject = str(signal_tier).strip().lower() == "reject"
+
+    # No story dimensions + an explicit Reject verdict = nothing to route at
+    # all. This guard precedes every override so a fetch failure that returns
+    # page scaffolding cannot reach the outbox through any path.
+    if tier_reject and bsf < PREFERENCE_MIN_BSF:
+        return RouteDecision(
+            route=Route.REJECT,
+            business_story_fit=bsf,
+            reason=(
+                f"signal_tier=reject with business_story_fit={bsf:.2f}"
+                f"<{PREFERENCE_MIN_BSF:.2f} (no story to push)"
+            ),
+        )
 
     # Funding PR with names/numbers but no operating mechanism must not slip in:
     # evidence_strength + operating_detail + the non-Promotional guard filter
@@ -123,6 +160,7 @@ def decide_route(
         and evidence_strength >= PUSH_EVIDENCE_MIN
         and l1 >= PUSH_L1_MIN
         and not is_promotional
+        and not tier_reject
     ):
         return RouteDecision(
             route=Route.BUSINESS_PUSH,
@@ -137,18 +175,22 @@ def decide_route(
     if (
         preference is not None
         and not is_promotional
+        and not tier_reject
         and final_score >= preference.min_final_score
+        and bsf >= PREFERENCE_MIN_BSF
+        and evidence_strength >= PREFERENCE_MIN_EVIDENCE
     ):
         return RouteDecision(
             route=Route.BUSINESS_PUSH,
             business_story_fit=bsf,
             reason=(
                 f"preferred source {source!r}: final_score={final_score:.2f}"
-                f">={preference.min_final_score:.2f} (user preference override)"
+                f">={preference.min_final_score:.2f}, bsf={bsf:.2f}, "
+                f"evidence={evidence_strength:.2f} (user preference override)"
             ),
         )
 
-    if final_score >= STRATEGIC_FINAL_SCORE_MIN:
+    if not tier_reject and final_score >= STRATEGIC_FINAL_SCORE_MIN:
         return RouteDecision(
             route=Route.STRATEGIC_DIGEST,
             business_story_fit=bsf,
@@ -159,13 +201,19 @@ def decide_route(
         return RouteDecision(
             route=Route.ARCHIVE_ONLY,
             business_story_fit=bsf,
-            reason=f"final_score={final_score:.2f} in archive band (0.70-0.75)",
+            reason=(
+                f"final_score={final_score:.2f} in archive band "
+                f"({ARCHIVE_FINAL_SCORE_MIN:.2f}-{STRATEGIC_FINAL_SCORE_MIN:.2f})"
+            ),
         )
 
     return RouteDecision(
         route=Route.REJECT,
         business_story_fit=bsf,
-        reason=f"final_score={final_score:.2f}<0.70 and not a qualifying business story",
+        reason=(
+            f"final_score={final_score:.2f}<{ARCHIVE_FINAL_SCORE_MIN:.2f} "
+            f"and not a qualifying business story"
+        ),
     )
 
 
@@ -188,6 +236,7 @@ def route_from_score(
         business_story_fit=getattr(score, "business_story_fit", 0.0),
         operating_detail=getattr(score, "operating_detail", 0.0),
         evidence_strength=getattr(score, "evidence_strength", 0.0),
+        signal_tier=getattr(score, "signal_tier", ""),
         source=source,
         url=url,
         source_preferences=source_preferences,
