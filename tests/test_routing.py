@@ -16,6 +16,7 @@ from knowledge_extractor_v3.routing import (
     PUSH_OPERATING_DETAIL_MIN,
     STRATEGIC_FINAL_SCORE_MIN,
     Route,
+    SourcePreference,
     compute_business_story_fit,
     decide_route,
     route_from_score,
@@ -118,7 +119,7 @@ def test_business_push_blocked_when_operating_detail_low():
 def test_business_push_blocked_when_l1_below_source_floor():
     d = _decision(
         final_score=0.50,
-        l1=0.40,  # below 0.45
+        l1=0.35,  # below 0.40 floor
         business_story_fit=PUSH_BSF_MIN,
         operating_detail=0.80,
         evidence_strength=0.70,
@@ -162,6 +163,80 @@ def test_business_push_takes_precedence_over_strategic():
         evidence_strength=PUSH_EVIDENCE_MIN,
     )
     assert d.route is Route.BUSINESS_PUSH
+
+
+# ---------------------------------------------------------------------------
+# per-source preference overrides (routing.source_preferences)
+# ---------------------------------------------------------------------------
+
+_ELSEWHERE = "Elsewhere (别处发生)"
+
+
+def test_preferred_source_pushes_on_low_final_score():
+    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
+    d = _decision(
+        final_score=0.25,
+        l1=0.10,
+        business_story_fit=0.10,
+        operating_detail=0.10,
+        evidence_strength=0.10,
+        source=_ELSEWHERE,
+        source_preferences=prefs,
+    )
+    assert d.route is Route.BUSINESS_PUSH
+    assert "user preference override" in d.reason
+
+
+def test_preferred_source_custom_floor_is_respected():
+    prefs = {"Picky Feed": SourcePreference(source="Picky Feed", min_final_score=0.40)}
+    assert _decision(final_score=0.30, source="Picky Feed", source_preferences=prefs).route is Route.REJECT
+    assert _decision(final_score=0.45, source="Picky Feed", source_preferences=prefs).route is Route.BUSINESS_PUSH
+
+
+def test_preferred_source_still_rejects_promotional():
+    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
+    d = _decision(
+        final_score=0.50,
+        is_promotional=True,
+        source=_ELSEWHERE,
+        source_preferences=prefs,
+    )
+    assert d.route is Route.REJECT
+
+
+def test_preference_requires_exact_source_match():
+    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
+    d = _decision(final_score=0.50, source="Some Other Feed", source_preferences=prefs)
+    assert d.route is Route.REJECT
+
+
+def test_preferred_source_matches_by_url_prefix():
+    """Manual enqueues carry the submission channel as source; the channel
+    preference must still apply via the article URL."""
+    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE, url_prefixes=("https://elsewhere.news/",))}
+    d = _decision(
+        final_score=0.38,
+        source="cindy_wechat",
+        url="https://elsewhere.news/zh/funeralai/seedance-25",
+        source_preferences=prefs,
+    )
+    assert d.route is Route.BUSINESS_PUSH
+    # Same submission channel, different site: no preference.
+    d2 = _decision(
+        final_score=0.38,
+        source="cindy_wechat",
+        url="https://example.com/some-article",
+        source_preferences=prefs,
+    )
+    assert d2.route is Route.REJECT
+
+
+def test_route_from_score_passes_source_preference():
+    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
+    score = _FakeScore(final_score=0.25, l1=0.05, business_story_fit=0.05)
+    assert route_from_score(score).route is Route.REJECT
+    routed = route_from_score(score, source=_ELSEWHERE, source_preferences=prefs)
+    assert routed.route is Route.BUSINESS_PUSH
 
 
 # ---------------------------------------------------------------------------

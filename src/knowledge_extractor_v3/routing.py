@@ -17,6 +17,7 @@ behaviour is auditable in one place rather than scattered across prompts.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 
@@ -40,12 +41,32 @@ BSF_WEIGHTS = {
 }
 
 # Fixed push thresholds (from the V3 plan). Centralised so tests can pin them.
-PUSH_BSF_MIN = 0.80
-PUSH_OPERATING_DETAIL_MIN = 0.70
-PUSH_EVIDENCE_MIN = 0.60
-PUSH_L1_MIN = 0.45
-STRATEGIC_FINAL_SCORE_MIN = 0.80
+PUSH_BSF_MIN = 0.70
+PUSH_OPERATING_DETAIL_MIN = 0.60
+PUSH_EVIDENCE_MIN = 0.50
+PUSH_L1_MIN = 0.40
+STRATEGIC_FINAL_SCORE_MIN = 0.75
 ARCHIVE_FINAL_SCORE_MIN = 0.70
+
+# Per-source preference floor (config `routing.source_preferences`). Sources the
+# user explicitly wants in the daily push route to business_push on a much
+# lower quality bar, so a Chinese-language source the rubric underrates is not
+# silently dropped. Promotional content is still rejected.
+DEFAULT_SOURCE_PREFERENCE_MIN_FINAL_SCORE = 0.20
+
+
+@dataclass(frozen=True)
+class SourcePreference:
+    """Routing override for one source, keyed by the exact sources.yaml name.
+
+    ``url_prefixes`` extends the match to any task URL starting with one of
+    them, so manually submitted links (whose task source is the submission
+    channel, e.g. cindy_wechat) still get the channel preference.
+    """
+
+    source: str
+    min_final_score: float = DEFAULT_SOURCE_PREFERENCE_MIN_FINAL_SCORE
+    url_prefixes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -80,12 +101,16 @@ def decide_route(
     business_story_fit: float,
     operating_detail: float,
     evidence_strength: float,
+    source: str = "",
+    url: str = "",
+    source_preferences: Mapping[str, SourcePreference] | None = None,
 ) -> RouteDecision:
     """Apply the four-way routing rules.
 
     Order matters: business_push is evaluated on its own merits (independent of
     final_score, so a strong first-hand story is not killed by a low source
-    tier), then strategic_digest, then archive_only, then reject.
+    tier), then a per-source user preference override, then strategic_digest,
+    then archive_only, then reject.
     """
     bsf = business_story_fit
 
@@ -103,8 +128,23 @@ def decide_route(
             route=Route.BUSINESS_PUSH,
             business_story_fit=bsf,
             reason=(
-                f"business_story_fit={bsf:.2f}>=0.80, "
+                f"business_story_fit={bsf:.2f}>=0.70, "
                 f"operating_detail={operating_detail:.2f}, L1={l1:.2f}"
+            ),
+        )
+
+    preference = _match_source_preference(source, url, source_preferences)
+    if (
+        preference is not None
+        and not is_promotional
+        and final_score >= preference.min_final_score
+    ):
+        return RouteDecision(
+            route=Route.BUSINESS_PUSH,
+            business_story_fit=bsf,
+            reason=(
+                f"preferred source {source!r}: final_score={final_score:.2f}"
+                f">={preference.min_final_score:.2f} (user preference override)"
             ),
         )
 
@@ -112,14 +152,14 @@ def decide_route(
         return RouteDecision(
             route=Route.STRATEGIC_DIGEST,
             business_story_fit=bsf,
-            reason=f"final_score={final_score:.2f}>=0.80 (high overall signal)",
+            reason=f"final_score={final_score:.2f}>=0.75 (high overall signal)",
         )
 
     if final_score >= ARCHIVE_FINAL_SCORE_MIN:
         return RouteDecision(
             route=Route.ARCHIVE_ONLY,
             business_story_fit=bsf,
-            reason=f"final_score={final_score:.2f} in archive band (0.70-0.80)",
+            reason=f"final_score={final_score:.2f} in archive band (0.70-0.75)",
         )
 
     return RouteDecision(
@@ -129,7 +169,13 @@ def decide_route(
     )
 
 
-def route_from_score(score) -> RouteDecision:
+def route_from_score(
+    score,
+    *,
+    source: str = "",
+    url: str = "",
+    source_preferences: Mapping[str, SourcePreference] | None = None,
+) -> RouteDecision:
     """Convenience wrapper: build a RouteDecision from a ScoreResult.
 
     Accepts any object exposing the dimension fields populated by the parser;
@@ -142,7 +188,28 @@ def route_from_score(score) -> RouteDecision:
         business_story_fit=getattr(score, "business_story_fit", 0.0),
         operating_detail=getattr(score, "operating_detail", 0.0),
         evidence_strength=getattr(score, "evidence_strength", 0.0),
+        source=source,
+        url=url,
+        source_preferences=source_preferences,
     )
+
+
+def _match_source_preference(
+    source: str,
+    url: str,
+    source_preferences: Mapping[str, SourcePreference] | None,
+) -> SourcePreference | None:
+    if not source_preferences:
+        return None
+    if source:
+        preference = source_preferences.get(source)
+        if preference is not None:
+            return preference
+    if url:
+        for preference in source_preferences.values():
+            if any(url.startswith(prefix) for prefix in preference.url_prefixes):
+                return preference
+    return None
 
 
 def _clip01(value: float) -> float:

@@ -66,6 +66,9 @@ class OutboxItem:
     failed_at: str = ""
     updated_at: str = ""
     delivery_attempts: tuple[dict[str, object], ...] = field(default_factory=tuple)
+    # Feed source name from sources.yaml; used by claim() to spread a digest
+    # window across sources. Empty for legacy payloads and manual enqueues.
+    source: str = ""
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -86,6 +89,7 @@ class OutboxItem:
             "failed_at": self.failed_at,
             "updated_at": self.updated_at,
             "delivery_attempts": list(self.delivery_attempts),
+            "source": self.source,
         }
 
     @classmethod
@@ -112,6 +116,7 @@ class OutboxItem:
             failed_at=str(data.get("failed_at") or ""),
             updated_at=str(data.get("updated_at") or ""),
             delivery_attempts=delivery_attempts,
+            source=str(data.get("source") or ""),
         )
 
 
@@ -176,7 +181,15 @@ class WechatOutbox:
     # -- consumer ------------------------------------------------------
 
     def claim(self, lane: str | None = None, limit: int = 1) -> list[OutboxItem]:
-        """Move up to ``limit`` events to processing and start an attempt."""
+        """Move up to ``limit`` events to processing and start an attempt.
+
+        Selection is round-robin by source: the first pass takes the best
+        remaining item per source, so one prolific source cannot fill the whole
+        digest window; a second pass backfills from skipped items when there
+        are fewer distinct sources than slots. Items without a source fall back
+        to their URL as the grouping key, so legacy/manual entries never
+        collide.
+        """
         pending = self._list("pending")
         if lane:
             pending = [item for item in pending if item.lane == lane]
@@ -186,8 +199,25 @@ class WechatOutbox:
             item.created_at,
         ))
 
+        selected: list[OutboxItem] = []
+        seen_sources: set[str] = set()
+        skipped: list[OutboxItem] = []
+        for item in pending:
+            if len(selected) >= limit:
+                break
+            key = item.source or item.url
+            if key in seen_sources:
+                skipped.append(item)
+                continue
+            seen_sources.add(key)
+            selected.append(item)
+        for item in skipped:
+            if len(selected) >= limit:
+                break
+            selected.append(item)
+
         claimed: list[OutboxItem] = []
-        for item in pending[:limit]:
+        for item in selected:
             src = self.root / "pending" / self._filename(item)
             dst = self.root / "processing" / self._filename(item)
             try:

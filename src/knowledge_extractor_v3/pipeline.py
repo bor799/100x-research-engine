@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Callable, TypeVar
@@ -27,7 +28,7 @@ from .outputs.obsidian import DryRunOutputPort, OutputPort, StagingOutputPort
 from .prompt_parser import parse_extraction_result, parse_score_result
 from .prompt_registry import PromptRegistry, PromptRegistryError
 from .queue_store import FailureKind, NextAction, QueueStatus, QueueStore, QueueTask
-from .routing import Route, route_from_score
+from .routing import Route, SourcePreference, route_from_score
 from .brief_contract import validate_brief
 
 
@@ -54,6 +55,7 @@ class Pipeline:
         score_gate_enabled: bool = True,
         live_output: OutputPort | None = None,
         allow_test_provider: bool = False,
+        source_preferences: Mapping[str, SourcePreference] | None = None,
     ) -> None:
         project_root = Path(__file__).resolve().parents[2]
         self.queue_store = queue_store
@@ -63,6 +65,7 @@ class Pipeline:
         self.staging_root = Path(staging_root or queue_store.db_path.parent / "staging")
         self.reject_threshold = reject_threshold
         self.score_gate_enabled = score_gate_enabled
+        self._source_preferences = dict(source_preferences or {})
         self._live_output = live_output
         self.allow_test_provider = allow_test_provider
         self.dry_run_output = DryRunOutputPort()
@@ -210,8 +213,14 @@ class Pipeline:
         # business_push bypasses the archive floor entirely so a first-hand
         # operating story is not killed by a low source tier; the only thing
         # that drops to reject now is content below the archive band that is
-        # also not a qualifying business story.
-        route_decision = route_from_score(score_result)
+        # also not a qualifying business story. Sources listed in
+        # routing.source_preferences get the same push on a lower floor.
+        route_decision = route_from_score(
+            score_result,
+            source=task.source,
+            url=task_url,
+            source_preferences=self._source_preferences,
+        )
         _append_stage(stage_results, "routing", detail={
             "route": route_decision.route.value,
             "business_story_fit": round(route_decision.business_story_fit, 4),
@@ -858,7 +867,7 @@ def _looks_like_shell_content(content: FetchedContent) -> bool:
         return True
 
     from .fetchers.web import PAYWALL_MARKERS
-    if any(marker in lower for marker in PAYWALL_MARKERS) and word_count < 450:
+    if any(marker in lower for marker in PAYWALL_MARKERS) and word_count < 300:
         return True
 
     return False

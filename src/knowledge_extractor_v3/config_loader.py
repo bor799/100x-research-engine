@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Optional
 
+from .routing import DEFAULT_SOURCE_PREFERENCE_MIN_FINAL_SCORE, SourcePreference
+
 
 class ConfigLoaderError(RuntimeError):
     """Raised when config loading or validation fails."""
@@ -87,6 +89,11 @@ class PromptsConfig:
 class ScoreGateConfig:
     enabled: bool = True
     reject_threshold: float = DEFAULT_SCORE_REJECT_THRESHOLD
+
+
+@dataclass(frozen=True)
+class RoutingConfig:
+    source_preferences: dict[str, SourcePreference] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -169,6 +176,7 @@ class V3Config:
     outputs: OutputsConfig = field(default_factory=OutputsConfig)
     prompts: PromptsConfig = field(default_factory=PromptsConfig)
     score_gate: ScoreGateConfig = field(default_factory=ScoreGateConfig)
+    routing: RoutingConfig = field(default_factory=RoutingConfig)
     sources: list[SourceConfig] = field(default_factory=list)
     sources_files: list[str] = field(default_factory=list)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
@@ -573,6 +581,38 @@ def _build_score_gate(raw: dict[str, object], legacy_score_threshold: object = N
     )
 
 
+def _build_source_preferences(raw: object) -> dict[str, SourcePreference]:
+    if not isinstance(raw, list):
+        return {}
+    preferences: dict[str, SourcePreference] = {}
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        source = str(item.get("source", "")).strip()
+        if not source:
+            continue
+        try:
+            min_final_score = float(
+                item.get("min_final_score", DEFAULT_SOURCE_PREFERENCE_MIN_FINAL_SCORE)
+            )
+        except (TypeError, ValueError):
+            min_final_score = DEFAULT_SOURCE_PREFERENCE_MIN_FINAL_SCORE
+        raw_prefixes = item.get("url_prefixes")
+        prefixes = tuple(
+            str(prefix) for prefix in raw_prefixes if str(prefix).strip()
+        ) if isinstance(raw_prefixes, list) else ()
+        preferences[source] = SourcePreference(
+            source=source,
+            min_final_score=max(0.0, min(1.0, min_final_score)),
+            url_prefixes=prefixes,
+        )
+    return preferences
+
+
+def _build_routing(raw: dict[str, object]) -> RoutingConfig:
+    return RoutingConfig(source_preferences=_build_source_preferences(raw.get("source_preferences")))
+
+
 def _build_sources(raw: list[object]) -> list[SourceConfig]:
     if not isinstance(raw, list):
         return []
@@ -718,6 +758,7 @@ class ConfigLoader:
             outputs=_build_outputs(self._section(raw, "outputs")),
             prompts=_build_prompts(self._section(raw, "prompts")),
             score_gate=_build_score_gate(self._section(raw, "score_gate"), raw.get("score_threshold")),
+            routing=_build_routing(self._section(raw, "routing")),
             sources=_build_sources(raw.get("sources", [])),  # type: ignore[arg-type]
             sources_files=_build_sources_files(raw.get("sources_files", [])),
             scheduler=_build_scheduler(self._section(raw, "scheduler")),

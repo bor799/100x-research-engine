@@ -67,6 +67,7 @@ class WechatQueue:
             created_at=created_at,
             expires_at=ttl_for_lane(lane),
             attempts=0,
+            source=content.source,
         )
 
         try:

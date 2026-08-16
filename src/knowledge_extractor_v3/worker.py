@@ -344,6 +344,7 @@ class QueueWorker:
             staging_root=self._queue.db_path.parent / "staging",
             reject_threshold=self._config.score_gate.reject_threshold,
             score_gate_enabled=self._config.score_gate.enabled,
+            source_preferences=self._config.routing.source_preferences,
             live_output=None,  # Will be set by mode if needed
         )
 

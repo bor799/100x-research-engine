@@ -71,6 +71,17 @@ score_gate:
   # Only score >= 7/10 enters extraction; lower values are dropped.
   reject_threshold: 0.7
 
+# Per-source routing preferences (optional). A listed source bypasses the
+# generic floors: its items route to business_push once final_score >=
+# min_final_score and they are not promotional. The source name must match
+# config/sources.yaml exactly; url_prefixes additionally matches manually
+# submitted links from that site. Keep personal preferences in config.local.yaml.
+routing:
+  source_preferences: []
+  # - source: "Example Source Name"
+  #   url_prefixes: ["https://example.com/"]
+  #   min_final_score: 0.20
+
 sources: []
 
 scheduler:
