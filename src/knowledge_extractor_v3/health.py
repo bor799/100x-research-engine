@@ -31,7 +31,7 @@ from typing import Any
 
 from .config_loader import ConfigLoader, V3Config
 from .models import sha256_text, utc_now
-from .prompt_registry import PromptRegistry
+from .absorption_prompt import AbsorptionPrompt, load_absorption_prompt
 from .queue_store import QueueStore, QueueStatus
 from .runtime_guard import RuntimeGuard, RuntimeGuardError
 
@@ -91,12 +91,12 @@ class HealthChecker:
         *,
         queue_store: QueueStore | None = None,
         runtime_guard: RuntimeGuard | None = None,
-        prompt_registry: PromptRegistry | None = None,
+        absorption_prompt: AbsorptionPrompt | None = None,
     ) -> None:
         self._config = config
         self._queue = queue_store
         self._guard = runtime_guard
-        self._prompts = prompt_registry
+        self._prompts = absorption_prompt
 
     def run_all(self) -> HealthReport:
         """Run all health checks and return aggregate report."""
@@ -460,37 +460,25 @@ class HealthChecker:
         )
 
     def _check_prompt_registry(self) -> HealthCheck:
-        """Validate active prompt routing and report the active bundle hash."""
+        """Validate the single V4 absorption prompt and report its hash."""
         try:
-            prompts = self._prompts or PromptRegistry.from_config(
-                Path(__file__).resolve().parents[2],
-                self._config.prompts,
-            )
-            prompts.validate(required_roles=("scoring", "extraction", "telegram_brief"))
-            prompts.validate_active_contract()
-            active_bundle = prompts.active_bundle_name
-            scoring_prompt = prompts.load_prompt(active_bundle, "scoring")
-            extraction_prompt = prompts.load_prompt(active_bundle, "extraction")
-            telegram_prompt = prompts.load_prompt(active_bundle, "telegram_brief")
-            prompt_hash = sha256_text(
-                scoring_prompt + extraction_prompt + telegram_prompt,
-                length=16,
+            prompt = self._prompts or load_absorption_prompt(
+                Path(__file__).resolve().parents[2]
             )
             return HealthCheck(
                 name="prompt_registry",
                 status=HealthStatus.HEALTHY,
-                message=f"Active prompt bundle: {active_bundle} ({prompt_hash})",
+                message=f"Active prompt bundle: {prompt.bundle} ({prompt.prompt_hash})",
                 detail={
-                    "active_bundle": active_bundle,
-                    "prompt_hash": prompt_hash,
-                    "parallel_test_bundles": prompts.parallel_test_bundle_names,
+                    "active_bundle": prompt.bundle,
+                    "prompt_hash": prompt.prompt_hash,
                 },
             )
         except Exception as exc:
             return HealthCheck(
                 name="prompt_registry",
                 status=HealthStatus.ERROR,
-                message=f"Prompt registry error: {exc}",
+                message=f"Absorption prompt error: {exc}",
             )
 
     @staticmethod
@@ -560,7 +548,7 @@ def main(argv: list[str] | None = None) -> int:
         config=config,
         queue_store=queue_store,
         runtime_guard=guard,
-        prompt_registry=PromptRegistry.from_config(project_root, config.prompts),
+        absorption_prompt=load_absorption_prompt(project_root),
     )
 
     report = checker.run_all()

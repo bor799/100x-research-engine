@@ -68,7 +68,7 @@ def test_outbox_cli_ack_records_structured_receipt(tmp_path):
         text="fixture",
         url="https://example.com/fixture",
         final_score=0.8,
-        business_story_fit=0.8,
+        action_value=0.8,
         prompt_hash="hash",
         created_at="2026-08-11T14:00:00+00:00",
         expires_at=ttl_for_lane("business"),

@@ -36,7 +36,7 @@ def test_deliver_writes_expected_utf8_json_atomically(tmp_path):
     assert payload["lane"] == "business"
     assert payload["event_id"] == "abc123def456"
     assert payload["final_score"] == 0.0
-    assert payload["business_story_fit"] == 0.0
+    assert payload["action_value"] == 0.0
     assert payload["prompt_hash"] == ""
     assert payload["attempts"] == 0
     assert payload["expires_at"].endswith("+00:00")

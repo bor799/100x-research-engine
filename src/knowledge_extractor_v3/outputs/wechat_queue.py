@@ -48,9 +48,9 @@ class WechatQueue:
         except (TypeError, ValueError):
             final_score = 0.0
         try:
-            business_story_fit = float(content.metadata.get("business_story_fit", 0.0))
+            action_value = float(content.metadata.get("action_value", 0.0))
         except (TypeError, ValueError):
-            business_story_fit = 0.0
+            action_value = 0.0
         try:
             score = float(content.metadata.get("score", 0.0))
         except (TypeError, ValueError):
@@ -62,7 +62,7 @@ class WechatQueue:
             text=text.strip(),
             url=content.url,
             final_score=final_score,
-            business_story_fit=business_story_fit,
+            action_value=action_value,
             prompt_hash=str(content.metadata.get("prompt_hash", "")),
             created_at=created_at,
             expires_at=ttl_for_lane(lane),

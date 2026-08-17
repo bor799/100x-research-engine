@@ -78,21 +78,6 @@ class ScoreResult:
     score: float
     final_score: float
     signal_tier: str
-    decision_window_status: str
-    source_type: str
-    source_tier: str
-    interest_flag: str
-    attribution_chain: object
-    # V3 business-story dimensions (each 0-1) plus the code-computed blend.
-    # Replaces the non-computable "2.0/1.8" prompt weights: the model emits the
-    # five dimensions and the routing module combines them into business_story_fit.
-    actor_scene: float = 0.0
-    operating_detail: float = 0.0
-    causal_arc: float = 0.0
-    transferability: float = 0.0
-    evidence_strength: float = 0.0
-    business_story_fit: float = 0.0
-    is_promotional: bool = False
     # V4 absorption dimensions (each 0-1). Code-weighted into final_score by
     # parse_absorption_result; replaces every source-credibility dimension —
     # the operator curates sources by hand and trusts them.
@@ -101,6 +86,8 @@ class ScoreResult:
     relevance: float = 0.0
     rationale: str = ""
     is_spam: bool = False
+    # Alias of is_spam, kept for log/schema continuity.
+    is_promotional: bool = False
 
 
 @dataclass(frozen=True)
@@ -128,16 +115,6 @@ class OutputResult:
 
 
 @dataclass(frozen=True)
-class PromptRunResult:
-    prompt_bundle: str
-    prompt_hash: str
-    ok: bool
-    score_result: ScoreResult | None = None
-    extraction_result: ExtractionResult | None = None
-    error: TypedError | None = None
-
-
-@dataclass(frozen=True)
 class ProcessResult:
     url: str
     source: str
@@ -161,5 +138,4 @@ class ProcessResult:
     stage_results: list[StageResult] = field(default_factory=list)
     score_result: ScoreResult | None = None
     extraction_result: ExtractionResult | None = None
-    parallel_results: list[PromptRunResult] = field(default_factory=list)
     error: TypedError | None = None

@@ -225,22 +225,16 @@ class RuntimeGuard:
         )
 
     def _active_bundle_identity(self) -> tuple[str, str]:
-        """Return (active_bundle_name, prompt_hash) for the current registry.
+        """Return (bundle, prompt_hash) for the single V4 absorption prompt.
 
-        Defensive: a malformed registry during a guard check must not crash the
-        whole daemon. Returns empty strings if the bundle cannot be resolved.
+        Defensive: a missing/unreadable prompt during a guard check must not
+        crash the whole daemon. Returns empty strings if it cannot be resolved.
         """
         try:
-            from .prompt_registry import PromptRegistry  # local import avoids cycle
-            from .models import sha256_text
+            from .absorption_prompt import load_absorption_prompt  # local import avoids cycle
 
-            registry = PromptRegistry.default(self.paths.project_root)
-            bundle_name = registry.active_bundle_name
-            scoring = registry.load_prompt(bundle_name, "scoring")
-            extraction = registry.load_prompt(bundle_name, "extraction")
-            brief = registry.load_prompt(bundle_name, "telegram_brief")
-            digest = sha256_text(scoring + extraction + brief, length=16)
-            return bundle_name, digest
+            prompt = load_absorption_prompt(self.paths.project_root)
+            return prompt.bundle, prompt.prompt_hash
         except Exception:
             return "", ""
 

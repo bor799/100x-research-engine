@@ -81,7 +81,7 @@ def cmd_list(args) -> int:
     items = box._list("pending")
     if args.lane:
         items = [it for it in items if it.lane == args.lane]
-    items.sort(key=lambda it: (-it.business_story_fit, -it.final_score, it.created_at))
+    items.sort(key=lambda it: (-it.final_score, it.created_at))
     for item in items:
         print(json.dumps(item.to_payload(), ensure_ascii=False))
     return 0

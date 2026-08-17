@@ -33,7 +33,6 @@ from knowledge_extractor_v3.models import RuntimeMode
 from knowledge_extractor_v3.fetchers.fixture import FixtureFetcher
 from knowledge_extractor_v3.fetchers.multi_channel import AgentReachFetcher
 from knowledge_extractor_v3.fetchers.router import FetcherRouter
-from knowledge_extractor_v3.prompt_registry import PromptRegistry
 
 
 class CapturingReplyClient:
@@ -312,7 +311,6 @@ def test_worker_live_gate_loader_is_loaded_before_check(tmp_path, monkeypatch):
         config=config,
         queue_store=queue_store,
         fetcher=FixtureFetcher(),
-        prompt_registry=PromptRegistry.default(PROJECT_ROOT),
         worker_config=WorkerConfig(mode=RuntimeMode.LIVE),
     )
 

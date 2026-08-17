@@ -1,360 +1,161 @@
-"""Tests for the V3 four-way routing and business_story_fit formula.
-
-These pin the exact thresholds from the efficiency-first plan so that the
-scoring → routing contract cannot drift silently.
-"""
+"""V4 routing: score bands, lane split, spam hard-reject, preference override."""
 
 from __future__ import annotations
 
-import math
-
 from knowledge_extractor_v3.routing import (
-    ARCHIVE_FINAL_SCORE_MIN,
-    PUSH_BSF_MIN,
-    PUSH_EVIDENCE_MIN,
-    PUSH_L1_MIN,
-    PUSH_OPERATING_DETAIL_MIN,
-    STRATEGIC_FINAL_SCORE_MIN,
+    ACTION_VALUE_BUSINESS_MIN,
+    PREFERENCE_MIN_CONTENT_CHARS,
+    PUSH_FINAL_SCORE_MIN,
+    REJECT_FINAL_SCORE_MAX,
     Route,
     SourcePreference,
-    compute_business_story_fit,
     decide_route,
     route_from_score,
 )
 
-
-# ---------------------------------------------------------------------------
-# business_story_fit formula
-# ---------------------------------------------------------------------------
-
-
-def test_bsf_uses_exact_weights_from_plan():
-    # All dims at 1.0 -> fit = 1.0
-    assert math.isclose(
-        compute_business_story_fit(1, 1, 1, 1, 1), 1.0, abs_tol=1e-9
+PREFS = {
+    "elsewhere": SourcePreference(
+        source="elsewhere",
+        min_final_score=0.20,
+        url_prefixes=("https://elsewhere.news/",),
     )
-    # operating_detail carries the heaviest single weight (0.30)
-    fit = compute_business_story_fit(0, 1, 0, 0, 0)
-    assert math.isclose(fit, 0.30, abs_tol=1e-9)
-    # actor_scene + causal_arc tie at 0.20
-    assert math.isclose(compute_business_story_fit(1, 0, 0, 0, 0), 0.20, abs_tol=1e-9)
-    assert math.isclose(compute_business_story_fit(0, 0, 1, 0, 0), 0.20, abs_tol=1e-9)
-    # transferability + evidence_strength tie at 0.15
-    assert math.isclose(compute_business_story_fit(0, 0, 0, 1, 0), 0.15, abs_tol=1e-9)
-    assert math.isclose(compute_business_story_fit(0, 0, 0, 0, 1), 0.15, abs_tol=1e-9)
+}
 
 
-def test_bsf_clamps_out_of_range_to_01():
-    # actor_scene=2->1.0 (0.20), operating_detail=-1->0.0 (0), causal_arc=5->1.0 (0.20)
-    assert math.isclose(compute_business_story_fit(2, -1, 5, 0, 0), 0.40, abs_tol=1e-9)
+class _Score:
+    """Lightweight ScoreResult stand-in for route_from_score."""
 
-
-# ---------------------------------------------------------------------------
-# Four-way routing boundaries
-# ---------------------------------------------------------------------------
-
-
-def _decision(**overrides):
-    base = dict(
-        final_score=0.5,
-        l1=0.5,
-        is_promotional=False,
-        business_story_fit=0.5,
-        operating_detail=0.5,
-        evidence_strength=0.5,
-    )
-    base.update(overrides)
-    return decide_route(**base)
-
-
-def test_business_push_when_all_thresholds_met():
-    d = _decision(
-        final_score=0.50,  # low overall score is OK — the point of the bypass
-        l1=PUSH_L1_MIN,
-        business_story_fit=PUSH_BSF_MIN,
-        operating_detail=PUSH_OPERATING_DETAIL_MIN,
-        evidence_strength=PUSH_EVIDENCE_MIN,
-    )
-    assert d.route is Route.BUSINESS_PUSH
-
-
-def test_business_push_bypasses_low_final_score():
-    """A first-hand operating story must not be killed by a low source tier."""
-    d = _decision(
-        final_score=0.45,
-        l1=PUSH_L1_MIN,
-        business_story_fit=0.90,
-        operating_detail=0.80,
-        evidence_strength=0.70,
-    )
-    assert d.route is Route.BUSINESS_PUSH
-
-
-def test_business_push_blocked_when_promotional():
-    """Funding PR with names+numbers but no honest mechanism is filtered out."""
-    d = _decision(
-        final_score=0.85,
-        l1=0.80,
-        business_story_fit=0.90,
-        operating_detail=0.80,
-        evidence_strength=0.70,
-        is_promotional=True,
-    )
-    assert d.route is not Route.BUSINESS_PUSH
-    # Still high overall signal -> strategic digest, not wasted
-    assert d.route is Route.STRATEGIC_DIGEST
-
-
-def test_business_push_blocked_when_operating_detail_low():
-    d = _decision(
-        final_score=0.50,
-        l1=0.80,
-        business_story_fit=PUSH_BSF_MIN,
-        operating_detail=0.40,  # below 0.70
-        evidence_strength=0.70,
-    )
-    assert d.route is not Route.BUSINESS_PUSH
-
-
-def test_business_push_blocked_when_l1_below_source_floor():
-    d = _decision(
-        final_score=0.50,
-        l1=0.35,  # below 0.40 floor
-        business_story_fit=PUSH_BSF_MIN,
-        operating_detail=0.80,
-        evidence_strength=0.70,
-    )
-    assert d.route is not Route.BUSINESS_PUSH
-
-
-def test_strategic_digest_for_high_final_score_non_business():
-    d = _decision(
-        final_score=STRATEGIC_FINAL_SCORE_MIN,
-        l1=0.80,
-        business_story_fit=0.40,  # not a qualifying business story
-    )
-    assert d.route is Route.STRATEGIC_DIGEST
-
-
-def test_archive_only_between_recalibrated_floor_and_strategic():
-    d = _decision(
-        final_score=ARCHIVE_FINAL_SCORE_MIN,
-        l1=0.50,
-        business_story_fit=0.30,
-    )
-    assert d.route is Route.ARCHIVE_ONLY
-    # The 2026-08-16 recalibration moved good-but-unpushed content (linear
-    # scoring's 0.5-0.6 band) from reject to archive.
-    rescued = _decision(final_score=0.60, l1=0.50, business_story_fit=0.30)
-    assert rescued.route is Route.ARCHIVE_ONLY
-
-
-def test_reject_below_archive_floor_without_business_fit():
-    d = _decision(
-        final_score=0.50,
-        l1=0.50,
-        business_story_fit=0.30,
-    )
-    assert d.route is Route.REJECT
-
-
-def test_business_push_takes_precedence_over_strategic():
-    d = _decision(
-        final_score=0.95,  # would qualify for strategic on its own
-        l1=PUSH_L1_MIN,
-        business_story_fit=PUSH_BSF_MIN,
-        operating_detail=PUSH_OPERATING_DETAIL_MIN,
-        evidence_strength=PUSH_EVIDENCE_MIN,
-    )
-    assert d.route is Route.BUSINESS_PUSH
-
-
-# ---------------------------------------------------------------------------
-# per-source preference overrides (routing.source_preferences)
-# ---------------------------------------------------------------------------
-
-_ELSEWHERE = "Elsewhere (别处发生)"
-
-
-def test_preferred_source_pushes_on_low_final_score():
-    """The preference rescues a real story the rubric underrates on source
-    tier: dimensions prove a story exists, only final_score is low."""
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
-    d = _decision(
-        final_score=0.25,
-        l1=0.10,
-        business_story_fit=0.45,
-        operating_detail=0.35,
-        evidence_strength=0.30,
-        source=_ELSEWHERE,
-        source_preferences=prefs,
-    )
-    assert d.route is Route.BUSINESS_PUSH
-    assert "user preference override" in d.reason
-
-
-# ---------------------------------------------------------------------------
-# signal_tier quality gate (2026-08-16 incident: fetch skeletons pushed)
-# ---------------------------------------------------------------------------
-
-
-def test_reject_tier_with_empty_story_is_hard_rejected_even_for_preferred_source():
-    """Live incident: an Elsewhere fetch returned only page scaffolding. The
-    scorer honestly emitted signal_tier=Reject with all-zero story dimensions,
-    yet final_score 0.42 cleared the 0.20 preference floor and the skeleton
-    reached the business push lane."""
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
-    d = _decision(
-        final_score=0.42,
-        business_story_fit=0.0,
-        operating_detail=0.0,
-        evidence_strength=0.0,
-        signal_tier="Reject",
-        source=_ELSEWHERE,
-        source_preferences=prefs,
-    )
-    assert d.route is Route.REJECT
-    assert "signal_tier=reject" in d.reason
-
-
-def test_preference_floor_still_requires_minimum_story_evidence():
-    """Even without a Reject verdict, the preference must not push a headline
-    with no body: bsf below the floor falls back to ordinary final_score
-    routing (0.40 < 0.70 archive floor -> reject)."""
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
-    d = _decision(
-        final_score=0.40,
-        business_story_fit=0.10,
-        evidence_strength=0.10,
-        signal_tier="C",
-        source=_ELSEWHERE,
-        source_preferences=prefs,
-    )
-    assert d.route is Route.REJECT
-
-
-def test_reject_tier_cannot_push_even_with_strong_dimensions():
-    """Contradictory signals (Reject verdict + strong dimensions) resolve in
-    favour of the verdict: never push what the scorer rejected."""
-    d = _decision(
-        final_score=0.50,
-        l1=0.80,
-        business_story_fit=0.80,
-        operating_detail=0.80,
-        evidence_strength=0.80,
-        signal_tier="Reject",
-    )
-    assert d.route is not Route.BUSINESS_PUSH
-
-
-def test_reject_tier_high_final_score_archives_instead_of_strategic():
-    d = _decision(
-        final_score=0.80,
-        business_story_fit=0.40,
-        signal_tier="Reject",
-    )
-    assert d.route is Route.ARCHIVE_ONLY
-
-
-def test_preferred_source_custom_floor_is_respected():
-    prefs = {"Picky Feed": SourcePreference(source="Picky Feed", min_final_score=0.40)}
-    assert _decision(final_score=0.30, source="Picky Feed", source_preferences=prefs).route is Route.REJECT
-    assert _decision(final_score=0.45, source="Picky Feed", source_preferences=prefs).route is Route.BUSINESS_PUSH
-
-
-def test_preferred_source_still_rejects_promotional():
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
-    d = _decision(
-        final_score=0.50,
-        is_promotional=True,
-        source=_ELSEWHERE,
-        source_preferences=prefs,
-    )
-    assert d.route is Route.REJECT
-
-
-def test_preference_requires_exact_source_match():
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
-    d = _decision(final_score=0.50, source="Some Other Feed", source_preferences=prefs)
-    assert d.route is Route.REJECT
-
-
-def test_preferred_source_matches_by_url_prefix():
-    """Manual enqueues carry the submission channel as source; the channel
-    preference must still apply via the article URL."""
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE, url_prefixes=("https://elsewhere.news/",))}
-    d = _decision(
-        final_score=0.38,
-        source="cindy_wechat",
-        url="https://elsewhere.news/zh/funeralai/seedance-25",
-        source_preferences=prefs,
-    )
-    assert d.route is Route.BUSINESS_PUSH
-    # Same submission channel, different site: no preference.
-    d2 = _decision(
-        final_score=0.38,
-        source="cindy_wechat",
-        url="https://example.com/some-article",
-        source_preferences=prefs,
-    )
-    assert d2.route is Route.REJECT
-
-
-def test_route_from_score_passes_source_preference():
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
-    score = _FakeScore(
-        final_score=0.25,
-        l1=0.05,
-        business_story_fit=0.45,
-        operating_detail=0.35,
-        evidence_strength=0.30,
-    )
-    assert route_from_score(score).route is Route.REJECT
-    routed = route_from_score(score, source=_ELSEWHERE, source_preferences=prefs)
-    assert routed.route is Route.BUSINESS_PUSH
-
-
-def test_route_from_score_forwards_signal_tier():
-    prefs = {_ELSEWHERE: SourcePreference(source=_ELSEWHERE)}
-    skeleton = _FakeScore(
-        final_score=0.42,
-        l1=0.60,
-        business_story_fit=0.0,
-        signal_tier="Reject",
-    )
-    assert route_from_score(skeleton, source=_ELSEWHERE, source_preferences=prefs).route is Route.REJECT
-
-
-# ---------------------------------------------------------------------------
-# route_from_score wrapper
-# ---------------------------------------------------------------------------
-
-
-class _FakeScore:
-    """Minimal stand-in matching the ScoreResult fields route_from_score reads."""
-
-    def __init__(self, final_score, l1, **dim_kw):
+    def __init__(
+        self,
+        final_score: float,
+        *,
+        action_value: float = 0.0,
+        is_spam: bool = False,
+    ):
         self.final_score = final_score
-        self.parsed = {"L1": l1}
-        self.is_promotional = dim_kw.get("is_promotional", False)
-        self.business_story_fit = dim_kw.get("business_story_fit", 0.0)
-        self.operating_detail = dim_kw.get("operating_detail", 0.0)
-        self.evidence_strength = dim_kw.get("evidence_strength", 0.0)
-        self.signal_tier = dim_kw.get("signal_tier", "")
+        self.action_value = action_value
+        self.is_spam = is_spam
+        self.is_promotional = is_spam
 
 
-def test_route_from_score_coerces_string_l1_safely():
-    score = _FakeScore(final_score=0.82, l1="not a number")
-    # String L1 coerces to 0 -> can't be business_push -> falls to strategic
-    assert route_from_score(score).route is Route.STRATEGIC_DIGEST
+def test_push_band_boundaries():
+    # 0.749 archives, 0.75 pushes
+    assert decide_route(final_score=0.749, action_value=0.9).route is Route.ARCHIVE_ONLY
+    assert decide_route(final_score=0.75, action_value=0.9).route is Route.BUSINESS_PUSH
 
 
-def test_route_from_score_business_push_path():
-    score = _FakeScore(
-        final_score=0.50,
-        l1=0.50,
-        business_story_fit=0.85,
-        operating_detail=0.75,
-        evidence_strength=0.65,
+def test_reject_floor_boundaries():
+    # 0.40 archives, 0.399 rejects — the only score-based drop
+    assert decide_route(final_score=0.40, action_value=0.0).route is Route.ARCHIVE_ONLY
+    assert decide_route(final_score=0.399, action_value=0.9).route is Route.REJECT
+
+
+def test_push_band_splits_by_action_value():
+    high_action = decide_route(final_score=0.80, action_value=ACTION_VALUE_BUSINESS_MIN)
+    assert high_action.route is Route.BUSINESS_PUSH
+
+    low_action = decide_route(final_score=0.80, action_value=ACTION_VALUE_BUSINESS_MIN - 0.01)
+    assert low_action.route is Route.STRATEGIC_DIGEST
+    assert "worth knowing" in low_action.reason
+
+
+def test_spam_hard_rejects_even_with_high_score():
+    decision = decide_route(final_score=0.95, action_value=0.9, is_spam=True)
+    assert decision.route is Route.REJECT
+    assert "spam" in decision.reason.lower()
+
+
+def test_preference_rescues_below_push_bar():
+    decision = decide_route(
+        final_score=0.25,
+        action_value=0.2,
+        source="elsewhere",
+        url="https://elsewhere.news/zh/article",
+        content_chars=800,
+        source_preferences=PREFS,
     )
-    assert route_from_score(score).route is Route.BUSINESS_PUSH
+    assert decision.route is Route.BUSINESS_PUSH
+    assert "preference" in decision.reason
+
+
+def test_preference_url_prefix_matches_manual_submissions():
+    # Manual enqueue uses source='cindy_wechat'; the URL prefix carries the
+    # channel preference (production Elsewhere case).
+    decision = decide_route(
+        final_score=0.30,
+        action_value=0.3,
+        source="cindy_wechat",
+        url="https://elsewhere.news/zh/funeralai/kimi-1786944734501",
+        content_chars=2000,
+        source_preferences=PREFS,
+    )
+    assert decision.route is Route.BUSINESS_PUSH
+
+
+def test_preference_blocked_by_fetch_skeleton_guard():
+    # Under 400 chars of content: no preference push. 0.25 falls to reject.
+    decision = decide_route(
+        final_score=0.25,
+        action_value=0.5,
+        source="elsewhere",
+        url="https://elsewhere.news/zh/article",
+        content_chars=120,
+        source_preferences=PREFS,
+    )
+    assert decision.route is Route.REJECT
+    assert "fetch-skeleton" in decision.reason
+
+    # Same skeleton at an archive-band score still never pushes.
+    archive = decide_route(
+        final_score=0.55,
+        action_value=0.5,
+        source="elsewhere",
+        url="https://elsewhere.news/zh/article",
+        content_chars=120,
+        source_preferences=PREFS,
+    )
+    assert archive.route is Route.ARCHIVE_ONLY
+
+
+def test_preference_respects_custom_floor():
+    decision = decide_route(
+        final_score=0.15,
+        action_value=0.5,
+        source="elsewhere",
+        url="https://elsewhere.news/zh/article",
+        content_chars=800,
+        source_preferences=PREFS,  # floor 0.20
+    )
+    assert decision.route is Route.REJECT
+
+
+def test_no_preference_for_unknown_source():
+    decision = decide_route(
+        final_score=0.50,
+        action_value=0.5,
+        source="some-other-feed",
+        url="https://example.com/a",
+        content_chars=900,
+        source_preferences=PREFS,
+    )
+    assert decision.route is Route.ARCHIVE_ONLY
+
+
+def test_route_from_score_maps_score_result_fields():
+    score = _Score(0.76, action_value=0.8)
+    decision = route_from_score(score, source="feed", url="https://a.b/c", content_chars=1000)
+    assert decision.route is Route.BUSINESS_PUSH
+
+    spam = _Score(0.9, is_spam=True)
+    assert route_from_score(spam).route is Route.REJECT
+
+    legacy_promotional = _Score(0.9)
+    legacy_promotional.is_promotional = True
+    assert route_from_score(legacy_promotional).route is Route.REJECT
+
+
+def test_threshold_constants_are_pinned():
+    assert REJECT_FINAL_SCORE_MAX == 0.40
+    assert PUSH_FINAL_SCORE_MIN == 0.75
+    assert ACTION_VALUE_BUSINESS_MIN == 0.70
+    assert PREFERENCE_MIN_CONTENT_CHARS == 400

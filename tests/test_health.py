@@ -4,7 +4,7 @@ from pathlib import Path
 
 from knowledge_extractor_v3.config_loader import RuntimeConfig, V3Config
 from knowledge_extractor_v3.health import HealthChecker, HealthStatus
-from knowledge_extractor_v3.prompt_registry import PromptRegistry
+from knowledge_extractor_v3.absorption_prompt import load_absorption_prompt
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -61,25 +61,27 @@ def test_role_lock_stopped_status_is_not_stale(tmp_path):
     assert check.status is HealthStatus.HEALTHY
 
 
-def test_prompt_registry_health_reports_active_bundle_and_hash():
-    registry = PromptRegistry.default(PROJECT_ROOT)
-    checker = HealthChecker(V3Config(), prompt_registry=registry)
+def test_prompt_health_reports_absorption_prompt_and_hash():
+    checker = HealthChecker(V3Config(), absorption_prompt=load_absorption_prompt(PROJECT_ROOT))
 
     check = checker._check_prompt_registry()
 
     assert check.status is HealthStatus.HEALTHY
-    assert check.detail["active_bundle"] == "v3_business_stories_v2"
+    assert check.detail["active_bundle"] == "v4_absorption"
     assert check.detail["prompt_hash"]
 
 
-def test_prompt_registry_health_rejects_incompatible_active_bundle():
-    registry = PromptRegistry(
-        PROJECT_ROOT / "prompts" / "registry.json",
-        active_bundle="v2_legacy",
-    )
-    checker = HealthChecker(V3Config(), prompt_registry=registry)
-
-    check = checker._check_prompt_registry()
+def test_prompt_health_errors_when_prompt_file_is_missing(tmp_path):
+    checker = HealthChecker(V3Config(), absorption_prompt=None)
+    checker._prompts = None
+    # Force the fallback loader onto an empty project root.
+    import knowledge_extractor_v3.health as health_mod
+    original = health_mod.load_absorption_prompt
+    health_mod.load_absorption_prompt = lambda root: original(tmp_path)
+    try:
+        check = checker._check_prompt_registry()
+    finally:
+        health_mod.load_absorption_prompt = original
 
     assert check.status is HealthStatus.ERROR
-    assert "incompatible with the V3 parser contract" in check.message
+    assert "Absorption prompt error" in check.message

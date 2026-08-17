@@ -26,7 +26,7 @@ def _item(event_id="e1", lane=BUSINESS_LANE, **kw):
         text="brief",
         url="https://example.com/a",
         final_score=0.8,
-        business_story_fit=0.85,
+        action_value=0.85,
         prompt_hash="h",
         created_at=datetime.now(UTC).replace(microsecond=0).isoformat(),
         expires_at=ttl_for_lane(lane),
@@ -102,20 +102,21 @@ def test_claim_moves_to_processing_and_starts_attempt(tmp_path):
 
 def test_claim_filters_and_orders_by_lane_and_scores(tmp_path):
     box = WechatOutbox(tmp_path / "ob")
-    box.enqueue(_item("low_bsf", business_story_fit=0.5, final_score=0.95))
-    box.enqueue(_item("high_bsf", business_story_fit=0.9, final_score=0.8))
+    box.enqueue(_item("high_score", final_score=0.95))
+    box.enqueue(_item("low_score", final_score=0.8))
     box.enqueue(_item("strategic", lane=STRATEGIC_LANE))
     claimed = box.claim(lane=BUSINESS_LANE, limit=2)
-    assert [item.event_id for item in claimed] == ["high_bsf", "low_bsf"]
+    # V4 orders by final_score (the headline rank), not action_value.
+    assert [item.event_id for item in claimed] == ["high_score", "low_score"]
 
 
 def test_claim_round_robins_by_source(tmp_path):
     """One prolific source must not fill the whole digest window."""
     root = tmp_path / "ob"
     box = WechatOutbox(root)
-    box.enqueue(_item("a1", source="Alpha", business_story_fit=0.9, url="https://a/1"))
-    box.enqueue(_item("a2", source="Alpha", business_story_fit=0.85, url="https://a/2"))
-    box.enqueue(_item("b1", source="Beta", business_story_fit=0.8, url="https://b/1"))
+    box.enqueue(_item("a1", source="Alpha", action_value=0.9, url="https://a/1"))
+    box.enqueue(_item("a2", source="Alpha", action_value=0.85, url="https://a/2"))
+    box.enqueue(_item("b1", source="Beta", action_value=0.8, url="https://b/1"))
     claimed = box.claim(lane=BUSINESS_LANE, limit=2)
     assert [item.event_id for item in claimed] == ["a1", "b1"]
     assert _read(root, "processing", "a1")["source"] == "Alpha"
@@ -123,8 +124,8 @@ def test_claim_round_robins_by_source(tmp_path):
 
 def test_claim_backfills_when_fewer_sources_than_slots(tmp_path):
     box = WechatOutbox(tmp_path / "ob")
-    box.enqueue(_item("a1", source="Alpha", business_story_fit=0.9, url="https://a/1"))
-    box.enqueue(_item("a2", source="Alpha", business_story_fit=0.8, url="https://a/2"))
+    box.enqueue(_item("a1", source="Alpha", action_value=0.9, url="https://a/1"))
+    box.enqueue(_item("a2", source="Alpha", action_value=0.8, url="https://a/2"))
     claimed = box.claim(lane=BUSINESS_LANE, limit=2)
     assert [item.event_id for item in claimed] == ["a1", "a2"]
 
@@ -132,8 +133,8 @@ def test_claim_backfills_when_fewer_sources_than_slots(tmp_path):
 def test_claim_sourceless_items_still_fill_window(tmp_path):
     """Legacy/manual items without a source never collide with each other."""
     box = WechatOutbox(tmp_path / "ob")
-    box.enqueue(_item("legacy1", business_story_fit=0.9, url="https://x/1"))
-    box.enqueue(_item("legacy2", business_story_fit=0.8, url="https://x/2"))
+    box.enqueue(_item("legacy1", action_value=0.9, url="https://x/1"))
+    box.enqueue(_item("legacy2", action_value=0.8, url="https://x/2"))
     claimed = box.claim(lane=BUSINESS_LANE, limit=2)
     assert [item.event_id for item in claimed] == ["legacy1", "legacy2"]
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Score-only traceback for a URL: fetch, preprocess, score, dump full JSON.
+"""Absorption traceback for a URL: fetch, absorb, dump full JSON, show route.
 
-Reproduces the exact scoring path used by the worker (Pipeline._score_and_parse)
-without touching the queue, outputs, or WeChat. Used to audit why items land on
-a given final_score and route, and to compare prompt bundles offline.
+Reproduces the exact absorption path used by the worker (single LLM call +
+code-owned scoring) without touching the queue, outputs, or WeChat. Used to
+audit why items land on a given final_score and route.
 
 Usage:
-    python scripts/score_traceback.py <url> [--bundle NAME]
+    python scripts/score_traceback.py <url> [--from-file page.html]
 """
 
 from __future__ import annotations
@@ -28,8 +28,8 @@ from knowledge_extractor_v3.fetchers.router import FetcherRouter
 from knowledge_extractor_v3.llm.live_provider import create_live_provider
 from knowledge_extractor_v3.models import FetchedContent, TypedError
 from knowledge_extractor_v3.pipeline import _preprocess_long_content
-from knowledge_extractor_v3.prompt_parser import parse_score_result
-from knowledge_extractor_v3.prompt_registry import PromptRegistry
+from knowledge_extractor_v3.absorption_prompt import load_absorption_prompt
+from knowledge_extractor_v3.prompt_parser import parse_absorption_result
 from knowledge_extractor_v3.routing import route_from_score
 
 LONG_CONTENT_THRESHOLD = 10000
@@ -60,9 +60,8 @@ def _content_from_html_file(path: Path, url: str) -> FetchedContent:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Score-only traceback for one URL")
+    parser = argparse.ArgumentParser(description="Absorption traceback for one URL")
     parser.add_argument("url", help="URL to score")
-    parser.add_argument("--bundle", default=None, help="Prompt bundle (default: active)")
     parser.add_argument(
         "--from-file",
         type=Path,
@@ -73,9 +72,8 @@ def main() -> int:
 
     loader = ConfigLoader(project_root=project_root)
     config = loader.load()
-    prompts = PromptRegistry.from_config(project_root, config.prompts)
-    bundle_name = args.bundle or prompts.active_bundle_name
-    scoring_prompt = prompts.load_prompt(bundle_name, "scoring")
+    prompt = load_absorption_prompt(project_root)
+    bundle_name = prompt.bundle
 
     print(f"bundle={bundle_name} model={config.llm.scoring_model}")
     if args.from_file:
@@ -111,25 +109,31 @@ def main() -> int:
     )
 
     llm = create_live_provider(config.llm, env=os.environ)
-    raw = llm.score(content, scoring_prompt)
+    raw = llm.score(content, prompt.text)
     if isinstance(raw, TypedError):
-        print(f"SCORE FAILED: {raw.message} ({raw.detail})")
+        print(f"ABSORB FAILED: {raw.message} ({raw.detail})")
         return 1
 
-    score = parse_score_result(
+    absorbed = parse_absorption_result(
         raw,
         prompt_bundle=bundle_name,
         prompt_hash="traceback",
         model_route=getattr(llm, "model_route", "unknown"),
     )
-    if isinstance(score, TypedError):
-        print(f"PARSE FAILED: {score.message} ({score.detail})")
+    if isinstance(absorbed, TypedError):
+        print(f"PARSE FAILED: {absorbed.message} ({absorbed.detail})")
         print(raw[:2000])
         return 1
+    score, extraction = absorbed
 
     print(json.dumps(score.parsed, ensure_ascii=False, indent=2))
-    decision = route_from_score(score)
-    print(f"\nROUTE: {decision.route.value} | bsf={decision.business_story_fit:.2f} | {decision.reason}")
+    decision = route_from_score(score, content_chars=len(content.text))
+    print(
+        f"\nROUTE: {decision.route.value} | "
+        f"final={score.final_score:.2f} score={score.score:.1f} tier={score.signal_tier} | "
+        f"gain={score.information_gain:.2f} action={score.action_value:.2f} "
+        f"relevance={score.relevance:.2f} spam={score.is_spam} | {decision.reason}"
+    )
     return 0
 
 

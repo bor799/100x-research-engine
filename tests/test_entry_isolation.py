@@ -18,7 +18,6 @@ import pytest
 
 from knowledge_extractor_v3.config_loader import ConfigLoader, V3Config
 from knowledge_extractor_v3.llm.provider import StubLLMProvider
-from knowledge_extractor_v3.llm.shadow import ShadowHeuristicLLMProvider
 from knowledge_extractor_v3.models import RuntimeMode
 from knowledge_extractor_v3.outputs.obsidian import (
     DryRunOutputPort,
@@ -90,19 +89,19 @@ def _score():
     from knowledge_extractor_v3.models import ScoreResult
 
     return ScoreResult(
-        score=7.0,
-        final_score=7.5,
+        score=7.5,
+        final_score=0.75,
         signal_tier="A",
         model_route="stub://test",
-        prompt_bundle="default",
+        prompt_bundle="v4_absorption",
         prompt_hash="deadbeef",
-        raw_text="score: 7.0",
-        parsed={"source_score": 7},
-        decision_window_status="open",
-        source_type="web",
-        source_tier="A",
-        interest_flag="high",
-        attribution_chain=[],
+        raw_text="score: 7.5",
+        parsed={"information_gain": 0.75, "action_value": 0.75, "relevance": 0.75},
+        information_gain=0.75,
+        action_value=0.75,
+        relevance=0.75,
+        rationale="测试用途。",
+        is_spam=False,
     )
 
 
@@ -206,11 +205,17 @@ class TestProviderSafety:
         assert result.final_status == QueueStatus.FAILED_TERMINAL
         assert "Test provider" in (result.error.message if result.error else "")
 
-    def test_real_url_with_shadow_provider_fails_terminal(self, tmp_path: Path):
+    def test_real_url_with_test_route_provider_fails_terminal(self, tmp_path: Path):
+        class _FakeTestProvider:
+            model_route = "test://heuristic"
+
+            def score(self, content, prompt):
+                raise AssertionError("guard must reject before any LLM call")
+
         queue = QueueStore(tmp_path / "q.db")
         pipeline = Pipeline(
             queue_store=queue,
-            llm_provider=ShadowHeuristicLLMProvider(),
+            llm_provider=_FakeTestProvider(),  # type: ignore[arg-type]
             allow_test_provider=False,
         )
         result = pipeline.process_url("https://example.com/real-article")

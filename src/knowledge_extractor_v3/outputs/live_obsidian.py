@@ -256,7 +256,7 @@ class LiveOutputPort:
                     **content.metadata,
                     "score": score.score,
                     "final_score": score.final_score,
-                    "business_story_fit": getattr(score, "business_story_fit", 0.0),
+                    "action_value": getattr(score, "action_value", 0.0),
                     "lane": wechat_lane,
                     "prompt_hash": prompt_hash,
                 },

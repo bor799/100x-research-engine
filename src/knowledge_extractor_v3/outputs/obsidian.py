@@ -204,17 +204,14 @@ def _render_markdown(
         "score": score.score,
         "final_score": score.final_score,
         "signal_tier": score.signal_tier,
+        "information_gain": getattr(score, "information_gain", 0.0),
+        "action_value": getattr(score, "action_value", 0.0),
+        "relevance": getattr(score, "relevance", 0.0),
+        "rationale": str(getattr(score, "rationale", ""))[:80],
         "source": content.source,
         "source_type": content.source_type,
         "processed_at": processed_at,
         "url": content.url,
-        "business_story_fit": round(getattr(score, "business_story_fit", 0.0), 4),
-        "actor_scene": getattr(score, "actor_scene", 0.0),
-        "operating_detail": getattr(score, "operating_detail", 0.0),
-        "causal_arc": getattr(score, "causal_arc", 0.0),
-        "transferability": getattr(score, "transferability", 0.0),
-        "evidence_strength": getattr(score, "evidence_strength", 0.0),
-        "is_promotional": getattr(score, "is_promotional", False),
     }
     if runtime_mode:
         frontmatter["runtime_mode"] = runtime_mode

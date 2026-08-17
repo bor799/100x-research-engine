@@ -110,20 +110,24 @@ class LiveGate:
         return LiveGateCheck(name="runtime_guard", passed=True, message="ok")
 
     def check_active_prompt_contract(self) -> LiveGateCheck:
-        """The active prompt bundle must declare the V3 parser schema."""
-        from .prompt_registry import PromptRegistry, PromptRegistryError
+        """The single absorption prompt must load and carry the V4 schema."""
+        from .absorption_prompt import AbsorptionPromptError, load_absorption_prompt
+        from .prompt_parser import ABSORPTION_REQUIRED_FIELDS
 
         try:
-            prompts = PromptRegistry.from_config(
-                self._loader.project_root,
-                self._config.prompts,
-            )
-            prompts.validate_active_contract()
-        except (PromptRegistryError, OSError) as exc:
+            prompt = load_absorption_prompt(self._loader.project_root)
+        except (AbsorptionPromptError, OSError) as exc:
             return LiveGateCheck(
                 name="active_prompt_contract",
                 passed=False,
                 message=str(exc),
+            )
+        missing = [f for f in ABSORPTION_REQUIRED_FIELDS if f not in prompt.text]
+        if missing:
+            return LiveGateCheck(
+                name="active_prompt_contract",
+                passed=False,
+                message=f"absorption prompt missing schema fields: {', '.join(missing)}",
             )
         return LiveGateCheck(name="active_prompt_contract", passed=True, message="ok")
 

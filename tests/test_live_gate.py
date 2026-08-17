@@ -136,14 +136,19 @@ class TestCheckRuntimeGuard:
 
 
 class TestCheckActivePromptContract:
-    def test_v2_legacy_fails(self):
-        config = _make_config(active_bundle="v2_legacy")
-        gate = LiveGate(config, config_loader=_make_loader(), runtime_guard=_make_guard())
+    def test_prompt_missing_schema_fields_fails(self, tmp_path):
+        from knowledge_extractor_v3.absorption_prompt import PROMPT_PATH
+        root = tmp_path
+        (root / PROMPT_PATH.parent).mkdir(parents=True, exist_ok=True)
+        (root / PROMPT_PATH).write_text("# prompt without schema fields", encoding="utf-8")
+        config = _make_config(active_bundle="v4_absorption")
+        loader = _make_loader(project_root=root)
+        gate = LiveGate(config, config_loader=loader, runtime_guard=_make_guard())
 
         check = gate.check_active_prompt_contract()
 
         assert not check.passed
-        assert "incompatible with the V3 parser contract" in check.message
+        assert "missing schema fields" in check.message
 
     def test_v2_stable_cn_passes(self):
         config = _make_config(active_bundle="v2_stable_cn")

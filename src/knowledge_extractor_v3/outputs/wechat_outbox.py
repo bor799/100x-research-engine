@@ -54,7 +54,7 @@ class OutboxItem:
     text: str
     url: str
     final_score: float
-    business_story_fit: float
+    action_value: float
     prompt_hash: str
     created_at: str
     expires_at: str
@@ -77,7 +77,7 @@ class OutboxItem:
             "text": self.text,
             "url": self.url,
             "final_score": self.final_score,
-            "business_story_fit": self.business_story_fit,
+            "action_value": self.action_value,
             "prompt_hash": self.prompt_hash,
             "created_at": self.created_at,
             "expires_at": self.expires_at,
@@ -104,7 +104,7 @@ class OutboxItem:
             text=str(data.get("text") or ""),
             url=str(data.get("url") or ""),
             final_score=float(data.get("final_score") or 0.0),
-            business_story_fit=float(data.get("business_story_fit") or 0.0),
+            action_value=float(data.get("action_value", data.get("business_story_fit")) or 0.0),
             prompt_hash=str(data.get("prompt_hash") or ""),
             created_at=str(data.get("created_at") or ""),
             expires_at=str(data.get("expires_at") or ""),
@@ -194,9 +194,9 @@ class WechatOutbox:
         if lane:
             pending = [item for item in pending if item.lane == lane]
         pending.sort(key=lambda item: (
-            -item.business_story_fit,
             -item.final_score,
             item.created_at,
+            item.event_id,  # deterministic order for same-second enqueues
         ))
 
         selected: list[OutboxItem] = []

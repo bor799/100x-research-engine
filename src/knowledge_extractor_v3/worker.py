@@ -31,7 +31,6 @@ from .live_gate import LiveGate
 from .llm.provider import LLMProvider, StubLLMProvider
 from .models import FetchedContent, ProcessResult, QueueStatus, RuntimeMode, TypedError, retry_at, utc_now
 from .pipeline import Pipeline
-from .prompt_registry import PromptRegistry
 from .queue_store import FailureKind, NextAction, QueueStore, QueueTask
 from .runtime_guard import RuntimeGuard, RuntimeGuardError, RuntimePaths, resolve_runtime_paths
 
@@ -124,7 +123,6 @@ class QueueWorker:
         queue_store: QueueStore,
         fetcher: Fetcher | None = None,
         llm_provider: LLMProvider | None = None,
-        prompt_registry: PromptRegistry | None = None,
         worker_config: WorkerConfig | None = None,
         log_path: Path | None = None,
         reply_telegram_client: TelegramReplyClient | None = None,
@@ -133,7 +131,6 @@ class QueueWorker:
         self._queue = queue_store
         self._fetcher = fetcher or _create_default_fetcher(config)
         self._llm = llm_provider or StubLLMProvider()
-        self._prompts = prompt_registry or PromptRegistry.from_config(Path.cwd(), config.prompts)
         self._worker_cfg = worker_config or WorkerConfig()
         self._log_path = log_path
         self._reply_telegram_client = reply_telegram_client
@@ -340,10 +337,7 @@ class QueueWorker:
             queue_store=self._queue,
             fetcher=self._fetcher,
             llm_provider=self._llm,
-            prompt_registry=self._prompts,
             staging_root=self._queue.db_path.parent / "staging",
-            reject_threshold=self._config.score_gate.reject_threshold,
-            score_gate_enabled=self._config.score_gate.enabled,
             source_preferences=self._config.routing.source_preferences,
             live_output=None,  # Will be set by mode if needed
         )
@@ -538,7 +532,10 @@ class QueueWorker:
             "score": result.score_result.score if result.score_result else None,
             "final_score": result.score_result.final_score if result.score_result else None,
             "signal_tier": result.score_result.signal_tier if result.score_result else None,
-            "business_story_fit": result.score_result.business_story_fit if result.score_result else None,
+            "information_gain": result.score_result.information_gain if result.score_result else None,
+            "action_value": result.score_result.action_value if result.score_result else None,
+            "relevance": result.score_result.relevance if result.score_result else None,
+            "is_spam": result.score_result.is_spam if result.score_result else None,
             "route": result.route,
             "brief_contract_failed": result.brief_contract_failed,
             "stage_count": len(result.stage_results),

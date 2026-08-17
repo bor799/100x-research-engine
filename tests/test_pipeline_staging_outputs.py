@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from knowledge_extractor_v3.models import RuntimeMode, sha256_text
+from knowledge_extractor_v3.models import RuntimeMode
 from knowledge_extractor_v3.pipeline import Pipeline
 from knowledge_extractor_v3.queue_store import FailureKind, QueueStatus, QueueStore
 
@@ -20,12 +20,9 @@ def test_pipeline_staging_writes_obsidian_and_telegram_stub(tmp_path):
     assert output_path.exists()
     assert output_path.is_relative_to(tmp_path / "staging" / "obsidian")
     markdown = output_path.read_text(encoding="utf-8")
-    assert f"prompt_bundle: \"{pipeline.prompt_registry.active_bundle_name}\"" in markdown
-    scoring_prompt = pipeline.prompt_registry.load_prompt(pipeline.prompt_registry.active_bundle_name, "scoring")
-    extraction_prompt = pipeline.prompt_registry.load_prompt(pipeline.prompt_registry.active_bundle_name, "extraction")
-    telegram_prompt = pipeline.prompt_registry.load_prompt(pipeline.prompt_registry.active_bundle_name, "telegram_brief")
-    expected_hash = sha256_text(scoring_prompt + extraction_prompt + telegram_prompt, length=16)
-    assert f"prompt_hash: \"{expected_hash}\"" in markdown
+    assert 'prompt_bundle: "v4_absorption"' in markdown
+    expected_hash = pipeline.absorption_prompt.prompt_hash
+    assert f'prompt_hash: "{expected_hash}"' in markdown
     assert "signal_tier: \"A\"" in markdown
     assert "fixture://high_signal" in markdown
 

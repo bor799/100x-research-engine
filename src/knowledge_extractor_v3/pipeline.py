@@ -1,4 +1,11 @@
-"""Sequential Phase 2 pipeline for dry-run and staging verification."""
+"""V4 pipeline: one URL in, one absorption call, one routed output.
+
+Flow: fetch -> validate -> absorb (single LLM call: three dimensions + card
+material) -> code-weighted score/tier -> route -> deterministic card render ->
+output (Obsidian archive + WeChat outbox lanes). Scoring and extraction were
+merged into one call for latency and cost; the card is rendered in code, so a
+model can never break the delivery format.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +15,14 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Callable, TypeVar
 
+from .absorption_prompt import (
+    PROMPT_BUNDLE,
+    AbsorptionPrompt,
+    AbsorptionPromptError,
+    load_absorption_prompt,
+)
+from .brief_contract import validate_brief
+from .brief_renderer import render_wechat_card
 from .fetchers.base import Fetcher
 from .fetchers.fixture import FixtureFetcher
 from .llm.provider import LLMProvider, StubLLMProvider
@@ -15,30 +30,24 @@ from .models import (
     ExtractionResult,
     FetchedContent,
     ProcessResult,
-    PromptRunResult,
     RuntimeMode,
     ScoreResult,
     StageResult,
     TypedError,
     retry_at,
-    sha256_text,
     utc_now,
 )
 from .outputs.obsidian import DryRunOutputPort, OutputPort, StagingOutputPort
-from .prompt_parser import parse_extraction_result, parse_score_result
-from .prompt_registry import PromptRegistry, PromptRegistryError
+from .prompt_parser import parse_absorption_result
 from .queue_store import FailureKind, NextAction, QueueStatus, QueueStore, QueueTask
 from .routing import Route, SourcePreference, route_from_score
-from .brief_contract import validate_brief
 
 
 T = TypeVar("T")
 
-MIN_EXTRACT_FINAL_SCORE = 0.7
-
 
 class Pipeline:
-    """Run one queue task through the V3 dry-run/staging backend core."""
+    """Run one queue task through the V4 absorption core."""
 
     # Provider routes that are only allowed for testing
     TEST_PROVIDER_ROUTES = ("stub://", "shadow-heuristic://", "test://")
@@ -49,22 +58,21 @@ class Pipeline:
         *,
         fetcher: Fetcher | None = None,
         llm_provider: LLMProvider | None = None,
-        prompt_registry: PromptRegistry | None = None,
         staging_root: Path | None = None,
-        reject_threshold: float = MIN_EXTRACT_FINAL_SCORE,
-        score_gate_enabled: bool = True,
         live_output: OutputPort | None = None,
         allow_test_provider: bool = False,
         source_preferences: Mapping[str, SourcePreference] | None = None,
+        absorption_prompt: AbsorptionPrompt | None = None,
     ) -> None:
         project_root = Path(__file__).resolve().parents[2]
         self.queue_store = queue_store
         self.fetcher = fetcher or FixtureFetcher()
         self.llm_provider = llm_provider or StubLLMProvider()
-        self.prompt_registry = prompt_registry or PromptRegistry.default(project_root)
+        try:
+            self.absorption_prompt = absorption_prompt or load_absorption_prompt(project_root)
+        except AbsorptionPromptError as exc:
+            raise AbsorptionPromptError(str(exc)) from exc
         self.staging_root = Path(staging_root or queue_store.db_path.parent / "staging")
-        self.reject_threshold = reject_threshold
-        self.score_gate_enabled = score_gate_enabled
         self._source_preferences = dict(source_preferences or {})
         self._live_output = live_output
         self.allow_test_provider = allow_test_provider
@@ -78,14 +86,11 @@ class Pipeline:
         source: str = "manual",
         queue_task_id: int | None = None,
         mode: RuntimeMode = RuntimeMode.DRY_RUN,
-        prompt_bundle: str | None = None,
-        run_parallel_tests: bool = False,
         claim_task: bool = True,
     ) -> ProcessResult:
         mode = RuntimeMode(mode)
-        active_bundle = prompt_bundle or self.prompt_registry.active_bundle_name
+        bundle = self.absorption_prompt.bundle
         stage_results: list[StageResult] = []
-        parallel_results: list[PromptRunResult] = []
 
         # Guard against using test providers with real URLs
         provider_route = str(getattr(self.llm_provider, "model_route", ""))
@@ -119,7 +124,7 @@ class Pipeline:
                     next_action=error.next_action,
                     output_path="",
                     telegram_status="",
-                    prompt_bundle=active_bundle,
+                    prompt_bundle=bundle,
                     stage_results=stage_results,
                     error=error,
                 )
@@ -144,7 +149,7 @@ class Pipeline:
                 next_action=error.next_action,
                 output_path="",
                 telegram_status="",
-                prompt_bundle=active_bundle,
+                prompt_bundle=bundle,
                 stage_results=stage_results,
                 error=error,
             )
@@ -158,75 +163,44 @@ class Pipeline:
         fetched = _run_stage(stage_results, "fetch", lambda: self.fetcher.fetch(task_url))
         if isinstance(fetched, TypedError):
             return self._fail(
-                task,
-                fetched,
-                source=source,
-                prompt_bundle=active_bundle,
-                current_stage="fetch",
-                stage_results=stage_results,
-                parallel_results=parallel_results,
+                task, fetched, source=source, current_stage="fetch", stage_results=stage_results
             )
         fetched = _with_queue_reply_metadata(fetched, task)
 
         validation = _run_stage(stage_results, "validate", lambda: _validate_content(fetched))
         if isinstance(validation, TypedError):
             return self._fail(
-                task,
-                validation,
-                source=source,
-                prompt_bundle=active_bundle,
-                current_stage="validate",
-                stage_results=stage_results,
-                parallel_results=parallel_results,
+                task, validation, source=source, current_stage="validate", stage_results=stage_results
             )
 
-        prompts = _run_stage(
-            stage_results,
-            "resolve_prompt_bundle",
-            lambda: self._load_prompts(active_bundle),
-        )
-        if isinstance(prompts, TypedError):
+        absorbed = self._absorb_and_parse(fetched, stage_results)
+        if isinstance(absorbed, TypedError):
             return self._fail(
                 task,
-                prompts,
+                absorbed,
                 source=source,
-                prompt_bundle=active_bundle,
-                current_stage="resolve_prompt_bundle",
+                current_stage=absorbed.stage,
                 stage_results=stage_results,
-                parallel_results=parallel_results,
             )
-        scoring_prompt, extraction_prompt, telegram_prompt, prompt_hash = prompts
+        score_result, extraction_result = absorbed
 
-        score_result = self._score_and_parse(fetched, active_bundle, prompt_hash, scoring_prompt, stage_results)
-        if isinstance(score_result, TypedError):
-            return self._fail(
-                task,
-                score_result,
-                source=source,
-                prompt_bundle=active_bundle,
-                current_stage=score_result.stage,
-                stage_results=stage_results,
-                parallel_results=parallel_results,
-            )
-
-        # Four-way routing replaces the old non-bypassable 0.7 final_score floor.
-        # business_push bypasses the archive floor entirely so a first-hand
-        # operating story is not killed by a low source tier; the only thing
-        # that drops to reject now is content below the archive band that is
-        # also not a qualifying business story. Sources listed in
-        # routing.source_preferences get the same push on a lower floor.
+        # Routing: the score prioritises, spam/<4.0 drops. The preference
+        # override rescues favoured channels; the content-length floor keeps
+        # fetch skeletons out of the outbox.
         route_decision = route_from_score(
             score_result,
             source=task.source,
             url=task_url,
+            content_chars=len(fetched.text),
             source_preferences=self._source_preferences,
         )
         _append_stage(stage_results, "routing", detail={
             "route": route_decision.route.value,
-            "business_story_fit": round(route_decision.business_story_fit, 4),
             "final_score": score_result.final_score,
-            "is_promotional": score_result.is_promotional,
-            "interest_flag": score_result.interest_flag,
+            "information_gain": score_result.information_gain,
+            "action_value": score_result.action_value,
+            "relevance": score_result.relevance,
+            "is_spam": score_result.is_spam,
             "reason": route_decision.reason,
         })
 
@@ -248,72 +222,19 @@ class Pipeline:
             return self._result_from_task(
                 rejected,
                 source=source,
-                prompt_bundle=active_bundle,
                 current_stage="routing",
                 stage_results=stage_results,
                 score_result=score_result,
-                parallel_results=parallel_results,
                 error=error,
             )
 
-        extraction_result = self._extract_and_parse(
-            fetched,
-            score_result,
-            active_bundle,
-            prompt_hash,
-            extraction_prompt,
-            stage_results,
-        )
-        if isinstance(extraction_result, TypedError):
-            return self._fail(
-                task,
-                extraction_result,
-                source=source,
-                prompt_bundle=active_bundle,
-                current_stage=extraction_result.stage,
-                stage_results=stage_results,
-                score_result=score_result,
-                parallel_results=parallel_results,
-            )
-
-        if run_parallel_tests:
-            parallel_results = _run_stage(
-                stage_results,
-                "parallel_bundles",
-                lambda: self._run_parallel_bundles(fetched, active_bundle),
-            )
-            if isinstance(parallel_results, TypedError):
-                parallel_results = [
-                    PromptRunResult(
-                        prompt_bundle="parallel_bundles",
-                        prompt_hash="",
-                        ok=False,
-                        error=parallel_results,
-                    )
-                ]
-
+        # Deterministic card render against the ORIGINAL fetched text so the
+        # verbatim-quote gate cannot be fooled by preprocessing truncation.
         telegram_text = _run_stage(
             stage_results,
-            "telegram_format",
-            lambda: self.llm_provider.format_telegram(
-                score_result,
-                extraction_result,
-                telegram_prompt,
-                content=fetched,
-            ),
+            "card_render",
+            lambda: render_wechat_card(score_result, extraction_result, fetched),
         )
-        if isinstance(telegram_text, TypedError):
-            return self._fail(
-                task,
-                telegram_text,
-                source=source,
-                prompt_bundle=active_bundle,
-                current_stage="telegram_format",
-                stage_results=stage_results,
-                score_result=score_result,
-                extraction_result=extraction_result,
-                parallel_results=parallel_results,
-            )
 
         # Compute observability fields for output
         _provider_route = str(getattr(self.llm_provider, "model_route", ""))
@@ -328,13 +249,12 @@ class Pipeline:
             Route.STRATEGIC_DIGEST: "strategic",
         }.get(route_decision.route)
 
-        # Hard brief contract. The model gets one attempt. If the brief a push
-        # route would send violates the contract, we keep the Obsidian archive
-        # (still mark_done) but withhold the item from the WeChat outbox and
-        # record the failure — no auto-rewrite, so a bad brief can't spiral cost.
+        # Safety net on the deterministic card. The renderer enforces the quote
+        # rule itself (omitting the section on mismatch), so a violation here
+        # means a renderer bug — record it rather than silently trusting it.
         _brief_contract_failed = False
         if _wechat_lane:
-            brief_errors = validate_brief(telegram_text, fetched.text)
+            brief_errors = validate_brief(telegram_text)
             if brief_errors:
                 _brief_contract_failed = True
                 _wechat_lane = None
@@ -350,14 +270,7 @@ class Pipeline:
                     stage_results,
                     "brief_contract",
                     error=contract_error,
-                    detail={
-                        "brief_contract_failed": True,
-                        "errors": brief_errors,
-                        "withheld_lane": {
-                            Route.BUSINESS_PUSH: "business",
-                            Route.STRATEGIC_DIGEST: "strategic",
-                        }.get(route_decision.route),
-                    },
+                    detail={"brief_contract_failed": True, "errors": brief_errors},
                 )
             else:
                 _append_stage(stage_results, "brief_contract", detail={"passed": True})
@@ -370,8 +283,8 @@ class Pipeline:
                 score_result,
                 extraction_result,
                 telegram_text,
-                prompt_bundle=active_bundle,
-                prompt_hash=prompt_hash,
+                prompt_bundle=bundle,
+                prompt_hash=self.absorption_prompt.prompt_hash,
                 task_id=task.id,
                 runtime_mode=mode.value,
                 provider_route=_provider_route,
@@ -393,12 +306,10 @@ class Pipeline:
                 task,
                 error,
                 source=source,
-                prompt_bundle=active_bundle,
                 current_stage="output",
                 stage_results=stage_results,
                 score_result=score_result,
                 extraction_result=extraction_result,
-                parallel_results=parallel_results,
             )
 
         done = self.queue_store.mark_done(
@@ -409,12 +320,10 @@ class Pipeline:
         return self._result_from_task(
             done,
             source=source,
-            prompt_bundle=active_bundle,
             current_stage="done",
             stage_results=stage_results,
             score_result=score_result,
             extraction_result=extraction_result,
-            parallel_results=parallel_results,
             telegram_status=output.telegram_status,
             wechat_status=output.wechat_status,
             route=route_decision.route.value,
@@ -426,219 +335,59 @@ class Pipeline:
             return self.queue_store.get_task(queue_task_id)
         return self.queue_store.enqueue(url, source=source)
 
-    def _load_prompts(self, bundle_name: str) -> tuple[str, str, str, str] | TypedError:
-        try:
-            self.prompt_registry.validate_bundle_contract(bundle_name)
-            scoring_prompt = self.prompt_registry.load_prompt(bundle_name, "scoring")
-            extraction_prompt = self.prompt_registry.load_prompt(bundle_name, "extraction")
-            telegram_prompt = self.prompt_registry.load_prompt(bundle_name, "telegram_brief")
-        except PromptRegistryError as exc:
-            return TypedError(
-                failure_kind=FailureKind.PROMPT_CONTRACT,
-                message=f"Prompt bundle violates the V3 parser contract: {bundle_name}",
-                stage="resolve_prompt_bundle",
-                retryable=False,
-                next_action=NextAction.INVESTIGATE,
-                detail=str(exc),
-            )
-        except Exception as exc:
-            return TypedError(
-                failure_kind=FailureKind.UNKNOWN,
-                message=f"Prompt bundle could not be loaded: {bundle_name}",
-                stage="resolve_prompt_bundle",
-                retryable=False,
-                next_action=NextAction.INVESTIGATE,
-                detail=str(exc),
-            )
-        prompt_hash = sha256_text(scoring_prompt + extraction_prompt + telegram_prompt, length=16)
-        return scoring_prompt, extraction_prompt, telegram_prompt, prompt_hash
-
-    def _score_and_parse(
+    def _absorb_and_parse(
         self,
         content: FetchedContent,
-        bundle_name: str,
-        prompt_hash: str,
-        scoring_prompt: str,
         stage_results: list[StageResult],
-    ) -> ScoreResult | TypedError:
-        # 对长内容进行预处理
+    ) -> tuple[ScoreResult, ExtractionResult] | TypedError:
+        # Pre-truncate long content once; the renderer later checks quotes
+        # against the original text, not this preprocessed variant.
         processed_content = self._maybe_preprocess_content(content, stage_results)
         if isinstance(processed_content, TypedError):
             return processed_content
 
-        raw_score = _run_stage(stage_results, "score", lambda: self.llm_provider.score(processed_content, scoring_prompt))
-        if isinstance(raw_score, TypedError):
-            return raw_score
+        raw = _run_stage(
+            stage_results,
+            "absorb",
+            lambda: self.llm_provider.score(processed_content, self.absorption_prompt.text),
+        )
+        if isinstance(raw, TypedError):
+            return raw
         return _run_stage(
             stage_results,
-            "score_parse",
-            lambda: parse_score_result(
-                raw_score,
-                prompt_bundle=bundle_name,
-                prompt_hash=prompt_hash,
+            "absorb_parse",
+            lambda: parse_absorption_result(
+                raw,
+                prompt_bundle=self.absorption_prompt.bundle,
+                prompt_hash=self.absorption_prompt.prompt_hash,
                 model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
             ),
         )
-
-    def _extract_and_parse(
-        self,
-        content: FetchedContent,
-        score_result: ScoreResult,
-        bundle_name: str,
-        prompt_hash: str,
-        extraction_prompt: str,
-        stage_results: list[StageResult],
-    ) -> ExtractionResult | TypedError:
-        # 对长内容进行预处理
-        processed_content = self._maybe_preprocess_content(content, stage_results)
-        if isinstance(processed_content, TypedError):
-            return processed_content
-
-        raw_extraction = _run_stage(
-            stage_results,
-            "extract",
-            lambda: self.llm_provider.extract(processed_content, score_result, extraction_prompt),
-        )
-        if isinstance(raw_extraction, TypedError):
-            return raw_extraction
-        return _run_stage(
-            stage_results,
-            "extraction_parse",
-            lambda: parse_extraction_result(
-                raw_extraction,
-                prompt_bundle=bundle_name,
-                prompt_hash=prompt_hash,
-                model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
-            ),
-        )
-
-    def _run_parallel_bundles(
-        self,
-        content: FetchedContent,
-        active_bundle: str,
-    ) -> list[PromptRunResult] | TypedError:
-        results: list[PromptRunResult] = []
-        for bundle in self.prompt_registry.bundles_for_parallel_test():
-            if bundle.name == active_bundle:
-                continue
-            prompts = self._load_prompts(bundle.name)
-            if isinstance(prompts, TypedError):
-                results.append(
-                    PromptRunResult(
-                        prompt_bundle=bundle.name,
-                        prompt_hash="",
-                        ok=False,
-                        error=prompts,
-                    )
-                )
-                continue
-            scoring_prompt, extraction_prompt, _telegram_prompt, prompt_hash = prompts
-            raw_score = self.llm_provider.score(content, scoring_prompt)
-            if isinstance(raw_score, TypedError):
-                results.append(
-                    PromptRunResult(
-                        prompt_bundle=bundle.name,
-                        prompt_hash=prompt_hash,
-                        ok=False,
-                        error=raw_score,
-                    )
-                )
-                continue
-            score_result = parse_score_result(
-                raw_score,
-                prompt_bundle=bundle.name,
-                prompt_hash=prompt_hash,
-                model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
-            )
-            if isinstance(score_result, TypedError):
-                results.append(
-                    PromptRunResult(
-                        prompt_bundle=bundle.name,
-                        prompt_hash=prompt_hash,
-                        ok=False,
-                        error=score_result,
-                    )
-                )
-                continue
-            raw_extraction = self.llm_provider.extract(content, score_result, extraction_prompt)
-            if isinstance(raw_extraction, TypedError):
-                results.append(
-                    PromptRunResult(
-                        prompt_bundle=bundle.name,
-                        prompt_hash=prompt_hash,
-                        ok=False,
-                        score_result=score_result,
-                        error=raw_extraction,
-                    )
-                )
-                continue
-            extraction_result = parse_extraction_result(
-                raw_extraction,
-                prompt_bundle=bundle.name,
-                prompt_hash=prompt_hash,
-                model_route=getattr(self.llm_provider, "model_route", "stub://unknown"),
-            )
-            if isinstance(extraction_result, TypedError):
-                results.append(
-                    PromptRunResult(
-                        prompt_bundle=bundle.name,
-                        prompt_hash=prompt_hash,
-                        ok=False,
-                        score_result=score_result,
-                        error=extraction_result,
-                    )
-                )
-                continue
-            results.append(
-                PromptRunResult(
-                    prompt_bundle=bundle.name,
-                    prompt_hash=prompt_hash,
-                    ok=True,
-                    score_result=score_result,
-                    extraction_result=extraction_result,
-                )
-            )
-        return results
 
     def _maybe_preprocess_content(
         self,
         content: FetchedContent,
         stage_results: list[StageResult],
     ) -> FetchedContent | TypedError:
-        """
-        对长内容进行预处理，避免 LLM 超时
-
-        仅对超过长度阈值的内容进行压缩，并在 stage_results 中记录
-        """
-        # 长度阈值：10000 字符
+        """Compress very long content to keep the single LLM call fast."""
         LONG_CONTENT_THRESHOLD = 10000
 
         if len(content.text) <= LONG_CONTENT_THRESHOLD:
             return content
 
-        # 记录预处理阶段
-        from dataclasses import replace
-        import time
-
         start_time = time.time()
 
         try:
-            # 使用预处理函数压缩内容
             compressed_text = _preprocess_long_content(content.text)
             compression_ratio = len(compressed_text) / len(content.text)
-
-            # 创建新的 FetchedContent 对象
             processed_content = replace(content, text=compressed_text)
-
-            # 记录预处理详情
-            duration_ms = int((time.time() - start_time) * 1000)
             stage_results.append(
                 StageResult(
                     stage="preprocess",
                     ok=True,
-                    started_at=start_time,
-                    ended_at=time.time(),
-                    duration_ms=duration_ms,
+                    started_at=utc_now(),
+                    ended_at=utc_now(),
+                    duration_ms=int((time.time() - start_time) * 1000),
                     error=None,
                     detail={
                         "original_length": len(content.text),
@@ -648,33 +397,27 @@ class Pipeline:
                     },
                 )
             )
-
             return processed_content
-
         except Exception as exc:
-            # 预处理失败，返回错误但允许使用原始内容重试
             error = TypedError(
                 failure_kind=FailureKind.PARSE_ERROR,
                 message=f"Content preprocessing failed: {exc}",
                 stage="preprocess",
-                retryable=True,  # 允许重试
+                retryable=True,
                 next_action=NextAction.RETRY_LATER,
                 detail=str(exc),
             )
-
-            duration_ms = int((time.time() - start_time) * 1000)
             stage_results.append(
                 StageResult(
                     stage="preprocess",
                     ok=False,
-                    started_at=start_time,
-                    ended_at=time.time(),
-                    duration_ms=duration_ms,
+                    started_at=utc_now(),
+                    ended_at=utc_now(),
+                    duration_ms=int((time.time() - start_time) * 1000),
                     error=error,
                     detail={"error_message": str(exc)},
                 )
             )
-
             return error
 
     def _output_port(self, mode: RuntimeMode) -> OutputPort:
@@ -694,12 +437,10 @@ class Pipeline:
         error: TypedError,
         *,
         source: str,
-        prompt_bundle: str,
         current_stage: str,
         stage_results: list[StageResult],
         score_result: ScoreResult | None = None,
         extraction_result: ExtractionResult | None = None,
-        parallel_results: list[PromptRunResult] | None = None,
     ) -> ProcessResult:
         if error.retryable:
             updated = self.queue_store.schedule_retry(
@@ -728,12 +469,10 @@ class Pipeline:
         return self._result_from_task(
             updated,
             source=source,
-            prompt_bundle=prompt_bundle,
             current_stage=current_stage,
             stage_results=stage_results,
             score_result=score_result,
             extraction_result=extraction_result,
-            parallel_results=parallel_results or [],
             error=error,
         )
 
@@ -742,12 +481,10 @@ class Pipeline:
         task: QueueTask,
         *,
         source: str,
-        prompt_bundle: str,
         current_stage: str,
         stage_results: list[StageResult],
         score_result: ScoreResult | None = None,
         extraction_result: ExtractionResult | None = None,
-        parallel_results: list[PromptRunResult] | None = None,
         telegram_status: str = "",
         wechat_status: str = "",
         route: str = "",
@@ -765,14 +502,13 @@ class Pipeline:
             next_action=task.next_action,
             output_path=task.output_path,
             telegram_status=telegram_status,
-            prompt_bundle=prompt_bundle,
+            prompt_bundle=PROMPT_BUNDLE,
             wechat_status=wechat_status,
             route=route,
             brief_contract_failed=brief_contract_failed,
             stage_results=stage_results,
             score_result=score_result,
             extraction_result=extraction_result,
-            parallel_results=parallel_results or [],
             error=error,
         )
 
@@ -889,28 +625,6 @@ def _with_queue_reply_metadata(content: FetchedContent, task: QueueTask) -> Fetc
     return replace(content, metadata=metadata)
 
 
-def _should_reject(score: ScoreResult, threshold: float) -> bool:
-    effective_threshold = max(threshold, MIN_EXTRACT_FINAL_SCORE)
-    return score.signal_tier.lower() == "reject" or _below_score_floor(
-        score,
-        final_score_threshold=effective_threshold,
-    )
-
-
-def _is_hard_reject(score: ScoreResult) -> bool:
-    return score.signal_tier.lower() == "reject" or _below_score_floor(
-        score,
-        final_score_threshold=MIN_EXTRACT_FINAL_SCORE,
-    )
-
-
-def _below_score_floor(score: ScoreResult, *, final_score_threshold: float) -> bool:
-    return (
-        score.final_score < final_score_threshold
-        or score.score < final_score_threshold * 10
-    )
-
-
 def _run_stage(
     stage_results: list[StageResult],
     stage: str,
@@ -960,22 +674,16 @@ def _append_stage(
 
 
 def _preprocess_long_content(text: str, max_length: int = 8000) -> str:
-    """
-    预处理长文本内容，智能压缩到合适长度以避免 LLM 超时
+    """Compress very long text so the single LLM call stays fast.
 
-    Args:
-        text: 原始文本
-        max_length: 最大长度限制
-
-    Returns:
-        压缩后的文本
+    Keeps the highest-signal paragraphs (open/close weighting plus
+    business-signal keywords), strips boilerplate, caps total length.
     """
     import re
 
     if len(text) <= max_length:
         return text
 
-    # 移除常见噪音内容
     noise_patterns = [
         r'点击.*?关注.*?',
         r'扫码.*?关注.*?',
@@ -989,7 +697,6 @@ def _preprocess_long_content(text: str, max_length: int = 8000) -> str:
     for pattern in noise_patterns:
         cleaned_text = re.sub(pattern, '', cleaned_text, flags=re.IGNORECASE)
 
-    # 分段处理
     paragraphs = cleaned_text.split('\n')
     high_quality_paragraphs = []
 
@@ -998,20 +705,17 @@ def _preprocess_long_content(text: str, max_length: int = 8000) -> str:
         if not para:
             continue
 
-        # 跳过噪音段落
         skip_words = ['点击关注', '扫码关注', '转载请注明', '版权声明',
                      '商务合作', '投稿', '广告', '更多精彩', '推荐阅读']
         if any(skip_word in para.lower() for skip_word in skip_words):
             continue
 
-        # 保留有实质内容的段落
         if len(para) >= 20:
             high_quality_paragraphs.append(para)
 
     if not high_quality_paragraphs:
         return text[:max_length]
 
-    # 关键词列表
     key_phrases = [
         '融资', '投资', '估值', '上市', 'IPO', '并购',
         '技术', '研发', '创新', '发布', '推出',
@@ -1019,30 +723,6 @@ def _preprocess_long_content(text: str, max_length: int = 8000) -> str:
         '认为', '指出', '强调', '透露', '宣布',
     ]
 
-    # 段落评分
-    scored_paragraphs = []
-    for i, para in enumerate(high_quality_paragraphs):
-        score = 0
-
-        # 开头和结尾段落加分
-        if i < 3:
-            score += 3
-        elif i >= len(high_quality_paragraphs) - 3:
-            score += 3
-
-        # 包含关键词加分
-        para_lower = para.lower()
-        for phrase in key_phrases:
-            if phrase in para_lower:
-                score += 2
-
-        # 段落长度适中加分
-        if 50 <= len(para) <= 300:
-            score += 1
-
-        scored_paragraphs.append((score, i, para))
-
-    # 选择高分段落（去重）
     seen_paras = set()
     unique_paragraphs = []
     for para in high_quality_paragraphs:
@@ -1050,36 +730,30 @@ def _preprocess_long_content(text: str, max_length: int = 8000) -> str:
             seen_paras.add(para)
             unique_paragraphs.append(para)
 
-    # 重新评分去重后的段落
     scored_paragraphs = []
     for i, para in enumerate(unique_paragraphs):
         score = 0
 
-        # 开头和结尾段落加分
         if i < 3:
             score += 3
         elif i >= len(unique_paragraphs) - 3:
             score += 3
 
-        # 包含关键词加分
         para_lower = para.lower()
         for phrase in key_phrases:
             if phrase in para_lower:
                 score += 2
 
-        # 段落长度适中加分
         if 50 <= len(para) <= 300:
             score += 1
 
         scored_paragraphs.append((score, i, para))
 
-    # 按分数排序选择前15个
     scored_paragraphs.sort(reverse=True)
     selected_paragraphs = [
         para for score, i, para in scored_paragraphs[:15]
     ]
 
-    # 组合并限制长度
     compressed_text = '\n\n'.join(selected_paragraphs)
 
     if len(compressed_text) > max_length:

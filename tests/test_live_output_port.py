@@ -43,14 +43,14 @@ def _score() -> ScoreResult:
         model_route="test://model",
         raw_text="{}",
         parsed={},
-        score=7.5,
+        score=8.2,
         final_score=0.82,
-        signal_tier="Tier A",
-        decision_window_status="open",
-        source_type="web_article",
-        source_tier="primary",
-        interest_flag="high",
-        attribution_chain=[],
+        signal_tier="A",
+        information_gain=0.82,
+        action_value=0.80,
+        relevance=0.78,
+        rationale="测试用途。",
+        is_spam=False,
     )
 
 
@@ -325,7 +325,7 @@ class TestLiveOutputPort:
         payload = json.loads(next((queue_dir / "pending").glob("*.json")).read_text(encoding="utf-8"))
         assert payload["text"] == "微信简报"
         assert payload["lane"] == "business"
-        assert "final_score" in payload  # plan schema: final_score + business_story_fit
+        assert "final_score" in payload  # plan schema: final_score + action_value
 
     def test_both_channels_deliver(self, tmp_path):
         writer = LiveObsidianWriter(tmp_path, subdir="inbox", write_manifest=False)
