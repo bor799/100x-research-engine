@@ -1,4 +1,0 @@
-runtime:
-  state_root: "/custom/state"
-live:
-  enabled: true

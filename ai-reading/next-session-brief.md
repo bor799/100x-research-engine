@@ -1,5 +1,7 @@
 # Next Session Brief
 
+> 2026-05-30：本文件已归档为 Phase 2 历史开发 brief，不是当前接手入口。当前入口见项目根 `AGENTS.md` 与 `docs/MIGRATION_COMPLETE.md`。
+
 Use this as the opening instruction for the next independent development session.
 
 ```text

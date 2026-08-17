@@ -14,7 +14,7 @@ def test_prompt_registry_validates_active_and_parallel_bundles():
     registry.validate()
 
     parallel_bundle_names = [bundle.name for bundle in registry.bundles_for_parallel_test()]
-    assert registry.active_bundle_name == "v3_business_stories"
+    assert registry.active_bundle_name == "v3_business_stories_v2"
     assert registry.active_bundle_name in parallel_bundle_names
     assert parallel_bundle_names[0] == "primary_market_v1"
     assert "rimbo_source_scored_v3" in parallel_bundle_names

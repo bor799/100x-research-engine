@@ -2,6 +2,8 @@
 
 Created: 2026-04-28
 
+> 2026-05-30：本文件已归档为 Phase 4 历史开发 brief，不是当前接手入口。当前入口见项目根 `AGENTS.md` 与 `docs/MIGRATION_COMPLETE.md`。
+
 **目标**：完成 Phase 4C-4H，使 V3 可以真正运行定时抓取、LLM 萃取、Obsidian 写入、Telegram 推送。
 
 ---

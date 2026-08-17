@@ -2,7 +2,9 @@
 
 这个目录给后续独立 AI/Codex session 阅读，不是正式产品文档，也不是用户侧运维手册。
 
-阅读顺序：
+2026-05-30 状态：本目录是历史规划材料归档，不再作为当前接手入口。当前事实以项目根 `AGENTS.md`、`README.md`、`docs/architecture.md`、`docs/V3_AUTORUN_OPERATIONS.md` 和 `docs/MIGRATION_COMPLETE.md` 为准。
+
+如需回看历史设计脉络，再按以下顺序阅读：
 
 1. `phase2-background-and-backend-architecture.md`
 2. `prompt-versioning-and-ab-testing.md`

@@ -10,9 +10,11 @@ Provides:
 
 from __future__ import annotations
 
+import os
 import time
 import urllib.error
 import urllib.request
+from http.client import IncompleteRead
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -81,7 +83,11 @@ class HttpClient:
         self.user_agent = user_agent
         self.timeout = timeout
         self.max_retries = max_retries
-        self.proxy = proxy
+        # Fall back to env vars when no explicit proxy is configured. Python's
+        # urllib respects HTTP_PROXY/HTTPS_PROXY but NOT ALL_PROXY (which is the
+        # curl/socks convention). We check ALL_PROXY as a last resort so the
+        # client works in environments where only ALL_PROXY is set.
+        self.proxy = proxy or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or os.environ.get("ALL_PROXY")
         self.enable_jina_fallback = enable_jina_fallback
 
     def get(
@@ -174,7 +180,14 @@ class HttpClient:
         try:
             with self._urlopen(request, timeout=timeout) as response:
                 content_type = response.headers.get("Content-Type", "")
-                content = response.read().decode("utf-8", errors="replace")
+                try:
+                    raw = response.read()
+                except IncompleteRead as exc:
+                    # Server closed early; use whatever bytes we got. For RSS
+                    # feeds the partial XML is often still parseable, and for
+                    # web pages the truncated HTML is better than nothing.
+                    raw = exc.partial
+                content = raw.decode("utf-8", errors="replace")
                 return HttpClientResponse(
                     status=getattr(response, "status", response.getcode()),
                     content=content,
@@ -223,11 +236,21 @@ class HttpClient:
         jina_url = f"{JINA_READER_URL}{url}"
 
         try:
-            # Jina Reader requires User-Agent header
-            request = urllib.request.Request(jina_url, headers={"User-Agent": self.user_agent})
+            # Jina Reader requires User-Agent header.
+            # When JINA_API_KEY is set, include it as a Bearer token — Jina
+            # now blocks anonymous queries from some networks (AS reputation).
+            jina_headers: dict[str, str] = {"User-Agent": self.user_agent}
+            jina_api_key = os.environ.get("JINA_API_KEY", "")
+            if jina_api_key:
+                jina_headers["Authorization"] = f"Bearer {jina_api_key}"
+            request = urllib.request.Request(jina_url, headers=jina_headers)
             with self._urlopen(request, timeout=self.timeout + 10) as response:
                 content_type = response.headers.get("Content-Type", "")
-                content = response.read().decode("utf-8", errors="replace")
+                try:
+                    raw = response.read()
+                except IncompleteRead as exc:
+                    raw = exc.partial
+                content = raw.decode("utf-8", errors="replace")
                 status = getattr(response, "status", response.getcode())
 
                 if status >= 400:

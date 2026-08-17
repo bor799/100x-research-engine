@@ -68,7 +68,7 @@ def test_prompt_registry_health_reports_active_bundle_and_hash():
     check = checker._check_prompt_registry()
 
     assert check.status is HealthStatus.HEALTHY
-    assert check.detail["active_bundle"] == "v3_business_stories"
+    assert check.detail["active_bundle"] == "v3_business_stories_v2"
     assert check.detail["prompt_hash"]
 
 

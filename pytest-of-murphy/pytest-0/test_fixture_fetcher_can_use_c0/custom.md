@@ -1,3 +1,0 @@
-# Custom Source
-
-Fixture body.

@@ -351,9 +351,17 @@ def extract_page(html: str, *, fallback_title: str = "Untitled") -> ExtractedPag
         or full.title
         or fallback_title
     )
+    text = page.text or full.text
+    # Client-rendered Next.js pages (e.g. elsewhere.news) carry the article
+    # only inside escaped flight-data chunks; tag stripping then sees nothing
+    # but nav boilerplate. When the flight payload holds clearly more prose
+    # than the rendered DOM, prefer it.
+    flight_text = _flight_data_text(html)
+    if _text_richness(flight_text) > _text_richness(text):
+        text = flight_text
     return ExtractedPage(
         title=_clean_title(title, fallback=fallback_title),
-        text=page.text or full.text,
+        text=text,
         description=page.meta.get("description") or full.meta.get("description", ""),
         author=page.meta.get("author") or full.meta.get("author", ""),
         published_at=(
@@ -383,6 +391,40 @@ def _article_html_candidates(html: str) -> list[str]:
     for pattern in patterns:
         candidates.extend(re.findall(pattern, html, flags=re.IGNORECASE | re.DOTALL))
     return candidates[:20]
+
+
+def _flight_data_text(html: str) -> str:
+    """Recover prose from Next.js app-router flight payloads.
+
+    The chunks embed the article as escaped JSON strings
+    (``self.__next_f.push("...\\u4f60\\u597d...")``). Decode the escapes and
+    keep CJK-led prose runs, deduplicated in order; boilerplate (short UI
+    strings, URLs, keys) fails the length gate.
+    """
+    if "self.__next_f" not in html:
+        return ""
+    decoded = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), html)
+    decoded = unescape(decoded)
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for run in re.findall(r"[一-鿿][^<>{}\"\\]{30,}", decoded):
+        run = run.strip()
+        if run in seen:
+            continue
+        seen.add(run)
+        ordered.append(run)
+    return "\n\n".join(ordered)
+
+
+def _text_richness(text: str) -> int:
+    """Rank text by CJK character count plus latin word count.
+
+    CJK prose has no spaces, so len(text.split()) undercounts it and would
+    always lose against whitespace-heavy boilerplate.
+    """
+    cjk = len(re.findall(r"[一-鿿]", text))
+    latin_words = len(re.findall(r"[A-Za-z]{2,}", text))
+    return cjk + latin_words
 
 
 def _normalize_text(text: str) -> str:

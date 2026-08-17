@@ -1,11 +1,12 @@
 {
-  "active_bundle": "v3_business_stories",
+  "active_bundle": "v3_business_stories_v2",
   "parallel_test_bundles": [
     "primary_market_v1",
     "rimbo_source_scored_v3",
     "v2_legacy",
     "v2_stable_cn",
-    "v3_business_stories"
+    "v3_business_stories",
+    "v3_business_stories_v2"
   ],
   "roles": [
     "scoring",
@@ -46,6 +47,15 @@
       "roles": {
         "scoring": "prompts/versions/v3_business_stories/scoring.md",
         "extraction": "prompts/versions/v3_business_stories/extraction.md",
+        "telegram_brief": "prompts/telegram_brief.md"
+      }
+    },
+    "v3_business_stories_v2": {
+      "label": "V3 Business Stories v2 (linear blend)",
+      "description": "v2 修复：objective_quality 改为 0.4*L1+0.3*L2+0.3*L3 线性合成（代码侧同名公式），消除 L1*L2*L3 乘法把优质内容压到 0 的问题；信源分级语言与地域中立，PositionTalking 折价有下限，专业中文创投媒体（elsewhere.news 及同类）按机制定级而非按知名度。",
+      "roles": {
+        "scoring": "prompts/versions/v3_business_stories_v2/scoring.md",
+        "extraction": "prompts/versions/v3_business_stories_v2/extraction.md",
         "telegram_brief": "prompts/telegram_brief.md"
       }
     },

@@ -103,14 +103,17 @@ def _score_payload(
     signal_tier: str,
 ) -> dict[str, object]:
     high = signal_tier != "Reject"
+    # Dimensions feed the code-owned linear blend (prompt_parser): high-signal
+    # fixtures must blend above 0.8, low-quality below 0.3, matching the
+    # scenario semantics the stub provider promises.
     return {
         "score": score,
         "final_score": final_score,
         "signal_tier": signal_tier,
-        "L1": 0.78 if high else 0.30,
-        "L2": 0.80 if high else 0.30,
-        "L3": 0.82 if high else 0.30,
-        "L4": 0.80 if high else 0.30,
+        "L1": 0.82 if high else 0.25,
+        "L2": 0.80 if high else 0.25,
+        "L3": 0.82 if high else 0.25,
+        "L4": 0.80 if high else 0.25,
         "objective_quality": 0.55 if high else 0.10,
         "actor_scene": 0.85 if high else 0.20,
         "operating_detail": 0.80 if high else 0.20,

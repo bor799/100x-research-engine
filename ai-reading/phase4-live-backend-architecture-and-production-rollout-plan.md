@@ -668,7 +668,7 @@ Required commands:
 - `live.enabled: true`;
 - required env vars are present;
 - Runtime Guard passes;
-- `python -m pytest` and `python -m compileall src tests` were recently run or
+- `python -m pytest` and `python -m compileall src tests` were run for the current code revision or
   preflight is explicitly invoked in the command.
 
 Avoid broad `pkill`. Stop role-specific processes by lock/pid metadata.

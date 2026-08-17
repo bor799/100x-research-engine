@@ -26,6 +26,7 @@ from ..queue_store import FailureKind, NextAction
 from .http_client import HttpClient, create_http_client
 from .rss_channel import RSSChannelAdapter
 from .social import RedditChannelAdapter, V2EXChannelAdapter, HackerNewsChannelAdapter
+from .web import _flight_data_text, _text_richness
 
 
 @dataclass(frozen=True)
@@ -788,7 +789,22 @@ def _title_from_html(html: str) -> str:
 def _body_from_html(html: str) -> str:
     m = re.search(r"<body[^>]*>(.*)</body>", html, re.IGNORECASE | re.DOTALL)
     raw = m.group(1) if m else html
-    return re.sub(r"<[^>]+>", " ", raw).strip()
+    # Remove script/style blocks BEFORE stripping tags: their JS/CSS source
+    # would otherwise leak into the "text" and swamp the article (client-side
+    # sites like elsewhere.news ship 40KB+ of inline script).
+    text = re.sub(
+        r"<(script|style|noscript|svg)[^>]*>.*?</\1>",
+        " ",
+        raw,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    text = re.sub(r"<[^>]+>", " ", text).strip()
+    # When the body is client-rendered, the prose only exists inside the
+    # flight-data chunks we just removed; recover it when clearly richer.
+    flight = _flight_data_text(html)
+    if _text_richness(flight) > _text_richness(text):
+        text = flight
+    return text
 
 
 def _body_from_jina(content: str) -> str:

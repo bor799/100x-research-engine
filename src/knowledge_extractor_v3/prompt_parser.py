@@ -10,6 +10,13 @@ from .prompt_contract import EXTRACTION_REQUIRED_FIELDS, SCORING_REQUIRED_FIELDS
 from .queue_store import FailureKind, NextAction
 from .routing import compute_business_story_fit
 
+# Code-owned aggregation of the L1-L4 dimensions. The prompt describes the same
+# formula, but arithmetic lives here so a model cannot silently crush good
+# content by multiplying three sub-1.0 dimensions (the L1*L2*L3 product that
+# zeroed out entire unfamiliar sources) or by drifting on the math itself.
+OBJECTIVE_QUALITY_WEIGHTS = {"L1": 0.40, "L2": 0.30, "L3": 0.30}
+FINAL_SCORE_QUALITY_WEIGHT = 0.70  # remainder goes to L4 user-affinity
+
 
 def parse_score_result(
     raw_text: str,
@@ -59,6 +66,32 @@ def parse_score_result(
     )
     interest_flag = str(parsed["interest_flag"])
     is_promotional = interest_flag.lower() == "promotional"
+
+    # Recompute the aggregates from the dimensions whenever the model emitted
+    # numeric L1-L4 (all V3 bundles do). Legacy string-typed dimensions keep the
+    # model's verbatim aggregates so old bundles and fixtures stay comparable.
+    dimensions = {
+        key: parsed.get(key) for key in ("L1", "L2", "L3", "L4")
+    }
+    if all(
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        for value in dimensions.values()
+    ):
+        l1, l2, l3, l4 = (float(dimensions[key]) for key in ("L1", "L2", "L3", "L4"))
+        objective_quality = (
+            OBJECTIVE_QUALITY_WEIGHTS["L1"] * _clip01(l1)
+            + OBJECTIVE_QUALITY_WEIGHTS["L2"] * _clip01(l2)
+            + OBJECTIVE_QUALITY_WEIGHTS["L3"] * _clip01(l3)
+        )
+        final_score = (
+            FINAL_SCORE_QUALITY_WEIGHT * objective_quality
+            + (1.0 - FINAL_SCORE_QUALITY_WEIGHT) * _clip01(l4)
+        )
+        parsed = dict(parsed)
+        parsed["objective_quality"] = round(objective_quality, 4)
+        parsed["final_score"] = round(final_score, 4)
+        parsed["score"] = round(final_score * 10, 2)
+        score = round(final_score * 10, 2)
 
     return ScoreResult(
         prompt_bundle=prompt_bundle,
@@ -193,3 +226,11 @@ def _parse_error(message: str, *, stage: str, detail: str = "") -> TypedError:
         next_action=NextAction.INVESTIGATE,
         detail=detail,
     )
+
+
+def _clip01(value: float) -> float:
+    if value < 0.0:
+        return 0.0
+    if value > 1.0:
+        return 1.0
+    return value
