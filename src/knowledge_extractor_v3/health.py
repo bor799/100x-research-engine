@@ -353,17 +353,6 @@ class HealthChecker:
             if not obsidian_path.exists():
                 issues.append(f"obsidian_root does not exist: {obsidian_path}")
 
-        # Check Telegram if enabled
-        if (
-            self._config.outputs.channel in {"telegram", "both"}
-            and self._config.outputs.telegram_enabled
-        ):
-            # 优先检查直接配置的 token，其次检查环境变量
-            token = self._config.outputs.telegram_bot_token or os.environ.get(self._config.outputs.telegram_bot_token_env)
-            if not token:
-                token_env = self._config.outputs.telegram_bot_token_env
-                issues.append(f"Telegram token not found: {token_env}")
-
         if issues:
             return HealthCheck(
                 name="live_requirements",

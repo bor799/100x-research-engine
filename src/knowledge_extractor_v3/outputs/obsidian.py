@@ -17,7 +17,36 @@ from ..models import (
     utc_now,
 )
 from ..queue_store import FailureKind, NextAction
-from .telegram import TelegramStub
+
+
+class BriefStub:
+    """Deterministic stand-in delivery: log the card to a file, no network.
+
+    Successor of the old TelegramStub; the field/file names it feeds
+    (telegram_status, telegram_stub.log) are kept so downstream tooling and
+    tests stay stable.
+    """
+
+    def __init__(self, log_path: Path | None = None) -> None:
+        self.log_path = Path(log_path) if log_path else Path("dry-run") / "telegram_stub.log"
+
+    def deliver(self, content: FetchedContent, text: str) -> tuple[str, str] | TypedError:
+        if content.metadata.get("fixture_scenario") == "output_failed":
+            return TypedError(
+                failure_kind=FailureKind.OUTPUT_FAILED,
+                message="Stub brief delivery failed",
+                stage="output.brief_stub",
+                retryable=False,
+                next_action=NextAction.MANUAL_REVIEW,
+                detail=content.url,
+            )
+        try:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.log_path.open("a", encoding="utf-8") as f:
+                f.write(text + "\n")
+        except OSError:
+            pass
+        return "stubbed", text[:80]
 
 
 class OutputPort(Protocol):
@@ -45,8 +74,8 @@ class DryRunOutputPort:
 
     mode = RuntimeMode.DRY_RUN
 
-    def __init__(self, telegram: TelegramStub | None = None) -> None:
-        self.telegram = telegram or TelegramStub()
+    def __init__(self, telegram: BriefStub | None = None) -> None:
+        self.telegram = telegram or BriefStub()
 
     def write(
         self,
@@ -135,10 +164,10 @@ class StagingOutputPort:
 
     mode = RuntimeMode.STAGING
 
-    def __init__(self, root: Path, telegram: TelegramStub | None = None) -> None:
+    def __init__(self, root: Path, telegram: BriefStub | None = None) -> None:
         self.root = Path(root)
         self.writer = StagingObsidianWriter(self.root)
-        self.telegram = telegram or TelegramStub(self.root / "telegram_stub.log")
+        self.telegram = telegram or BriefStub(self.root / "telegram_stub.log")
 
     def write(
         self,

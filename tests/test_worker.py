@@ -224,36 +224,6 @@ def test_worker_hard_rejects_even_when_score_gate_disabled():
         assert updated.status == QueueStatus.REJECTED
 
 
-def test_worker_notifies_telegram_reply_chat_on_terminal_failure():
-    """Manual Telegram tasks receive a closing failure message."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        state_root = Path(tmpdir)
-        config = make_test_config(state_root)
-        queue_store = QueueStore(state_root / "queue.db")
-        queue_store.enqueue(
-            "fixture://fetch_failed",
-            source="telegram_bot",
-            priority=10,
-            reply_channel="telegram",
-            reply_chat_id="chat-123",
-        )
-        reply_client = CapturingReplyClient()
-
-        worker = QueueWorker(
-            config=config,
-            queue_store=queue_store,
-            fetcher=FixtureFetcher(),
-            reply_telegram_client=reply_client,
-        )
-
-        result = worker.run_once()
-
-        assert result.tasks_failed == 1
-        assert len(reply_client.messages) == 1
-        assert reply_client.messages[0]["chat_id"] == "chat-123"
-        assert "Failed (ID:" in reply_client.messages[0]["text"]
-        assert "Fixture fetch failed" in reply_client.messages[0]["text"]
-
 
 def test_worker_live_mode_does_not_silently_fall_back_to_staging():
     """A requested live worker should fail loudly when the live gate is closed."""

@@ -1,15 +1,12 @@
 # Agent Handoff
 
-This repository is the V3 implementation of the 100X knowledge extraction system. Treat it as the active product workspace, but do not assume every local-only secret or runtime file is publishable.
+This repository is the V4 implementation of the 100X knowledge extraction system (absorption-first rewrite of V3; the V3 behaviour is preserved under git tag `v3-final`). Treat it as the active product workspace, but do not assume every local-only secret or runtime file is publishable.
 
 ## Current State
 
-- Latest V3 code commits before this documentation cleanup:
-  - `87924ed` fixes `RuntimeGuard` so a public checkout named `information-tracking-agent` is valid.
-  - `ae4bca0` is the V3 product snapshot used for publishing.
-- Draft PR: `https://github.com/bor799/information-tracking-agent/pull/1`
-- PR branch: `claude code/publish-v3-latest`
-- Base branch: `main`
+- V4 core: single absorption call (`prompts/absorption.md`, 14-field JSON), code-owned weighted score `0.40×information_gain + 0.35×action_value + 0.25×relevance`, code-owned tier (A>=7.5 / B>=5.0 / C>=4.0 / Reject), spam hard-reject.
+- Routing: `<0.40 or spam -> reject`; `0.40-0.74 -> archive_only`; `>=0.75 -> push` (action_value>=0.70 business lane, else strategic). Favored channels ride `routing.source_preferences` with a 400-char content floor.
+- All LLM roles run GLM-5.2. One daemon role (`loop` = scan + work); Cindy owns WeChat delivery.
 - Published scope intentionally excludes `.env`, `config/config.local.yaml`, cache files, `.DS_Store`, `ai-reading/`, and local staging output.
 
 ## Safety Rules
@@ -22,13 +19,12 @@ This repository is the V3 implementation of the 100X knowledge extraction system
 ## Verification Commands
 
 ```bash
-python -m compileall -q src tests scripts/v2_compare.py scripts/test_rss_fetch.py
+python -m compileall -q src tests scripts
 bash -n scripts/*.sh
 python -m pytest -q
-python scripts/test_rss_fetch.py --all --timeout 8 --target-rate 95
 ```
 
-The 2026-05-30 publish verification passed compile, shell syntax, and `pytest` with `259 passed`. The RSS live fetch command was skipped by operator approval after a previous run hung without output; keep it as the remaining live-source-health gate.
+V4 baseline on 2026-08-17: `275 passed` after the single-call rewrite.
 
 ## Runtime And Config
 
@@ -38,7 +34,7 @@ The 2026-05-30 publish verification passed compile, shell syntax, and `pytest` w
 - Safe template: `config/config.example.yaml`
 - Local secrets/config: `config/config.local.yaml` and `.env` only
 - External RSS source registry: `config/sources.yaml`; `ConfigLoader` auto-loads it when no explicit `sources_files` is configured.
-- Daily report CLI: `100x-v3-us-ai-daily` or `python -m knowledge_extractor_v3.daily_reports.runner`
+- Single daemon: `python -m knowledge_extractor_v3.daemon --loop` (scan + work); forensic scoring for one URL: `python scripts/score_traceback.py <url>`
 
 ## GitHub Tooling Note
 
@@ -50,7 +46,7 @@ Cindy 微信会话是本系统的默认交互入口（替代 Telegram）。当�
 
 **收到 HTTP/HTTPS 链接时**：
 1. 运行 `python3 scripts/cindy_control.py enqueue-url "<URL>"` 将链接加入处理队列
-2. 将返回的 JSON（含 `task_id` 和 `status`）回复给用户，例如："✅ 已入队（task #123），系统会自动抓取、评分、萃取，完成后推送结果。"
+2. 将返回的 JSON（含 `task_id` 和 `status`）回复给用户，例如："✅ 已入队（task #123），系统会自动抓取、吸收、评分分层，完成后推送结果。"
 
 **用户询问队列/系统状态时**（如"状态"、"queue"、"怎么样了"）：
 1. 运行 `python3 scripts/cindy_control.py status` 获取队列概况

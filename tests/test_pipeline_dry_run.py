@@ -4,10 +4,8 @@ from pathlib import Path
 from knowledge_extractor_v3.llm.provider import StubLLMProvider
 from knowledge_extractor_v3.models import FetchedContent, RuntimeMode, ScoreResult, sha256_text
 from knowledge_extractor_v3.outputs.live_obsidian import LiveObsidianWriter, LiveOutputPort
-from knowledge_extractor_v3.outputs.telegram_live import LiveTelegramClient
 from knowledge_extractor_v3.pipeline import Pipeline
 from knowledge_extractor_v3.queue_store import FailureKind, NextAction, QueueStatus, QueueStore
-from tests.test_live_output_port import _mock_http_post
 
 
 def _pipeline(tmp_path: Path) -> Pipeline:
@@ -280,12 +278,7 @@ def test_pipeline_live_mode_with_live_output_processes(tmp_path):
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
     obsidian_root = tmp_path / "obsidian"
     writer = LiveObsidianWriter(obsidian_root, subdir="inbox", write_manifest=False)
-    telegram = LiveTelegramClient(
-        bot_token="test-token",
-        chat_id="123",
-        enabled=False,
-    )
-    live_port = LiveOutputPort(obsidian_writer=writer, telegram_client=telegram)
+    live_port = LiveOutputPort(obsidian_writer=writer)
 
     pipeline = Pipeline(store, staging_root=tmp_path / "staging", live_output=live_port)
 

@@ -185,11 +185,9 @@ class LiveOutputPort:
         self,
         *,
         obsidian_writer: LiveObsidianWriter,
-        telegram_client: "LiveTelegramClient | None" = None,
         wechat_queue: "WechatQueue | None" = None,
     ) -> None:
         self.writer = obsidian_writer
-        self.telegram = telegram_client
         self.wechat_queue = wechat_queue
 
     def write(
@@ -226,23 +224,6 @@ class LiveOutputPort:
 
         telegram_status = "not_configured"
         telegram_preview = ""
-        if self.telegram is None:
-            pass
-        else:
-            reply_chat_id = content.metadata.get("reply_chat_id")
-            delivery = self.telegram.deliver(
-                content,
-                telegram_text,
-                chat_id=str(reply_chat_id) if reply_chat_id else None,
-            )
-            if isinstance(delivery, TypedError):
-                return OutputResult(
-                    ok=False,
-                    mode=self.mode,
-                    obsidian_path=output_path,
-                    error=delivery,
-                )
-            telegram_status, telegram_preview = delivery
 
         wechat_status = ""
         wechat_preview = ""

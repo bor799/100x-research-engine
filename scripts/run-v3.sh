@@ -164,19 +164,12 @@ import sys
 sys.path.insert(0, 'src')
 from pathlib import Path
 from knowledge_extractor_v3.config_loader import ConfigLoader
-from knowledge_extractor_v3.models import sha256_text
-from knowledge_extractor_v3.prompt_registry import PromptRegistry
 loader = ConfigLoader()
 config = loader.load()
-prompts = PromptRegistry.from_config(Path.cwd(), config.prompts)
-prompts.validate_active_contract()
-active_bundle = prompts.active_bundle_name
-prompt_hash = sha256_text(
-    prompts.load_prompt(active_bundle, 'scoring')
-    + prompts.load_prompt(active_bundle, 'extraction')
-    + prompts.load_prompt(active_bundle, 'telegram_brief'),
-    length=16,
-)
+from knowledge_extractor_v3.absorption_prompt import load_absorption_prompt
+prompt = load_absorption_prompt(Path.cwd())
+active_bundle = prompt.bundle
+prompt_hash = prompt.prompt_hash
 print('Config loaded successfully')
 print('  State root:', config.runtime.state_root)
 print('  Queue DB:', config.runtime.queue_db_path)
@@ -222,21 +215,15 @@ import sys, os
 sys.path.insert(0, 'src')
 from pathlib import Path
 from knowledge_extractor_v3.config_loader import ConfigLoader
-from knowledge_extractor_v3.models import sha256_text
-from knowledge_extractor_v3.prompt_registry import PromptRegistry
 from knowledge_extractor_v3.runtime_guard import resolve_runtime_paths
 from knowledge_extractor_v3.queue_store import QueueStore
 loader = ConfigLoader()
 config = loader.load()
 paths = resolve_runtime_paths(Path.cwd(), config, loader, env=os.environ)
-prompts = PromptRegistry.from_config(Path.cwd(), config.prompts)
-active_bundle = prompts.active_bundle_name
-prompt_hash = sha256_text(
-    prompts.load_prompt(active_bundle, 'scoring')
-    + prompts.load_prompt(active_bundle, 'extraction')
-    + prompts.load_prompt(active_bundle, 'telegram_brief'),
-    length=16,
-)
+from knowledge_extractor_v3.absorption_prompt import load_absorption_prompt
+prompt = load_absorption_prompt(Path.cwd())
+active_bundle = prompt.bundle
+prompt_hash = prompt.prompt_hash
 queue = QueueStore(paths.queue_db_path)
 queue.initialize()
 

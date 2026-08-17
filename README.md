@@ -1,19 +1,37 @@
-# 100X Knowledge Extractor V3
+# 100X Knowledge Extractor V4
 
-V3 is a clean sibling repository for the primary-market version of the 100X knowledge extraction system.
+V4 is the absorption-first rewrite of the 100X knowledge extraction system:
+articles are input, one LLM call absorbs each one, and the score ranks content
+into lanes instead of gate-keeping it.
+
+## V4 Pipeline
+
+```
+scan (95+ RSS sources) -> fetch (multi-channel) -> absorb (1x GLM-5.2 call)
+  -> code-weighted score (0.40 gain / 0.35 action / 0.25 relevance)
+  -> route: spam or <4.0 drop | 4.0-7.4 archive | >=7.5 push
+             (action_value >= 0.70 -> daily business lane, else weekly digest)
+  -> deterministic card render -> Obsidian archive + WeChat outbox
+```
+
+- One prompt (`prompts/absorption.md`), one LLM call, code-owned scoring.
+- No source-credibility scoring: sources are hand-curated and trusted.
+- Quotes must appear verbatim in the source or the section is omitted — never
+  a failed push (V3 withheld 45 good briefs this way).
 
 ## Features
 
 ### Production Control Surface
 
-- `scripts/control.sh` starts, stops, recovers, diagnoses, and tails the V3 roles.
-- `scripts/run-v3.sh` exposes lower-level preflight, enqueue, scheduler, worker, live role, and log commands.
+- `scripts/control.sh` starts, stops, recovers, diagnoses, and tails the V4 roles (`loop` + `health-monitor`).
+- The `loop` role runs `python -m knowledge_extractor_v3.daemon`: source scanning and queue working in one process.
+- `scripts/run-v3.sh` exposes lower-level preflight, enqueue, worker, and log commands.
 - Runtime state is isolated under `~/.100x_v3` by default and guarded before live roles touch the queue.
 
 ### Cindy / WeChat Control Plane
 
 - 100X produces durable events; Cindy owns the authenticated WeChat session and delivery tool.
-- The default production channel is WeChat. Telegram remains an explicit rollback option and is not started by the production controller when disabled.
+- The production channel is WeChat via the Cindy schedule (daily business pushes 8:30/18:30, weekly strategic digest Sunday 18:40).
 - Outbox delivery is all-state idempotent, capped at three attempts, and records sanitized receipts without raw peer/session/token values.
 - Cindy-origin URL and status commands use the deterministic `scripts/cindy_control.py` interface.
 - See [Cindy WeChat Operations](docs/CINDY_WECHAT_OPERATIONS.md) for the schedule contract and zero-touch runbook.
@@ -46,12 +64,6 @@ V3 supports fetching content from multiple platforms:
 - **RSS Feeds**: `config/sources.yaml` is auto-loaded by `ConfigLoader` and currently carries 95 RSS sources after dedupe
 - **Web Search**: Query-based content discovery
 
-### Daily Reports
-
-- US AI market daily report runner: `100x-v3-us-ai-daily`
-- Python entrypoint: `python -m knowledge_extractor_v3.daily_reports.runner`
-- Report output is routed by trading week and category, with system ledgers under the configured daily-report system directory.
-
 ## Safety Defaults
 
 - Default state root: `~/.100x_v3`
@@ -68,7 +80,7 @@ bash -n scripts/*.sh
 python -m pytest -q
 ```
 
-Latest local verification on 2026-05-30: `259 passed`.
+V4 baseline on 2026-08-17: `275 passed` (single-call absorption core).
 
 ## Documentation
 

@@ -39,17 +39,6 @@ class LiveModeUnavailable(RuntimeError):
     """Raised when LIVE was requested but the live gate does not pass."""
 
 
-class TelegramReplyClient(Protocol):
-    def deliver(
-        self,
-        content: FetchedContent,
-        text: str,
-        *,
-        chat_id: str | None = None,
-    ) -> tuple[str, str] | TypedError:
-        ...
-
-
 # ---------------------------------------------------------------------------
 # Worker state
 # ---------------------------------------------------------------------------
@@ -125,7 +114,6 @@ class QueueWorker:
         llm_provider: LLMProvider | None = None,
         worker_config: WorkerConfig | None = None,
         log_path: Path | None = None,
-        reply_telegram_client: TelegramReplyClient | None = None,
     ) -> None:
         self._config = config
         self._queue = queue_store
@@ -133,7 +121,6 @@ class QueueWorker:
         self._llm = llm_provider or StubLLMProvider()
         self._worker_cfg = worker_config or WorkerConfig()
         self._log_path = log_path
-        self._reply_telegram_client = reply_telegram_client
 
         # Setup signal handlers for graceful shutdown
         self._state = WorkerState()
@@ -347,7 +334,6 @@ class QueueWorker:
         if mode is RuntimeMode.LIVE:
             from .llm.live_provider import create_live_provider
             from .outputs.live_obsidian import LiveOutputPort, LiveObsidianWriter
-            from .outputs.telegram_live import LiveTelegramClient
             from .outputs.wechat_queue import WechatQueue
             from .config_loader import ConfigLoader
 
@@ -360,19 +346,6 @@ class QueueWorker:
                 write_manifest=self._config.outputs.write_manifest,
             )
 
-            telegram = None
-            channel = self._config.outputs.channel
-            if channel in {"telegram", "both"} and self._config.outputs.telegram_enabled:
-                # 优先使用直接配置的 token/chat_id，其次使用环境变量
-                token = self._config.outputs.telegram_bot_token or loader.resolve_env(self._config.outputs.telegram_bot_token_env)
-                chat_id = self._config.outputs.telegram_admin_chat_id or loader.resolve_env(self._config.outputs.telegram_admin_chat_id_env)
-                if token and chat_id:
-                    telegram = LiveTelegramClient(
-                        bot_token=token,
-                        chat_id=chat_id,
-                        enabled=True,
-                    )
-
             wechat_queue = None
             if channel in {"wechat", "both"}:
                 queue_dir = loader.expand_path(self._config.outputs.wechat_queue_dir)
@@ -380,7 +353,6 @@ class QueueWorker:
 
             live_output = LiveOutputPort(
                 obsidian_writer=writer,
-                telegram_client=telegram,
                 wechat_queue=wechat_queue,
             )
 
@@ -397,9 +369,6 @@ class QueueWorker:
             mode=mode,
             claim_task=False,  # Already claimed by worker
         )
-        reply_status = self._notify_reply_if_needed(task, result, mode)
-        if reply_status and not result.telegram_status:
-            result = replace(result, telegram_status=reply_status)
         return result
 
     def _determine_runtime_mode(self) -> RuntimeMode:
@@ -421,73 +390,6 @@ class QueueWorker:
         reasons = "; ".join(result.rejection_reasons)
         raise LiveModeUnavailable(f"live gate failed: {reasons}")
 
-    def _notify_reply_if_needed(
-        self,
-        task: QueueTask,
-        result: ProcessResult,
-        mode: RuntimeMode,
-    ) -> str:
-        """Close the Telegram loop for manual tasks that do not reach live output."""
-        if task.reply_channel != "telegram" or not task.reply_chat_id:
-            return ""
-        if result.telegram_status == "sent":
-            return ""
-
-        should_notify = result.final_status in {
-            QueueStatus.RETRY_SCHEDULED,
-            QueueStatus.REJECTED,
-            QueueStatus.FAILED_TERMINAL,
-        }
-        if result.final_status is QueueStatus.DONE and result.telegram_status not in {"sent", ""}:
-            should_notify = True
-        if not should_notify:
-            return ""
-
-        client = self._reply_client(mode)
-        if client is None:
-            # No client available, mark as reply_failed
-            self._queue.update_reply_status(task.id, "reply_failed_no_client")
-            return "reply_failed_no_client"
-
-        updated_task = self._queue.get_task(task.id)
-        message = _format_reply_status(updated_task, result)
-        placeholder = FetchedContent(
-            url=result.url,
-            source=result.source,
-            source_type="queue_status",
-            title=updated_task.result_title or result.current_stage,
-            text=message,
-            fetched_at=utc_now(),
-            content_hash=str(updated_task.id),
-        )
-        delivery = client.deliver(placeholder, message, chat_id=task.reply_chat_id)
-        if isinstance(delivery, TypedError):
-            # Persist reply failure status
-            self._queue.update_reply_status(task.id, "reply_failed")
-            return "reply_failed"
-        status, _preview = delivery
-        # Persist reply success status
-        self._queue.update_reply_status(task.id, f"reply_{status}")
-        return f"reply_{status}"
-
-    def _reply_client(self, mode: RuntimeMode) -> TelegramReplyClient | None:
-        if self._reply_telegram_client is not None:
-            return self._reply_telegram_client
-        if mode is not RuntimeMode.LIVE or not self._config.outputs.telegram_enabled:
-            return None
-
-        from .outputs.telegram_live import LiveTelegramClient
-
-        # 优先使用直接配置的 token/chat_id，其次使用环境变量
-        token = self._config.outputs.telegram_bot_token
-        chat_id = self._config.outputs.telegram_admin_chat_id
-        if not token or not chat_id:
-            loader = ConfigLoader(project_root=Path.cwd())
-            token = loader.resolve_env(self._config.outputs.telegram_bot_token_env)
-            chat_id = loader.resolve_env(self._config.outputs.telegram_admin_chat_id_env)
-        if not token or not chat_id:
-            return None
-        return LiveTelegramClient(bot_token=token, chat_id=chat_id, enabled=True)
 
     # -- Recovery ------------------------------------------------------------
 
@@ -578,45 +480,6 @@ class QueueWorker:
                 break
 
 
-def _format_reply_status(task: QueueTask, result: ProcessResult) -> str:
-    """Format a concise Telegram status update for manual submissions."""
-    status_label = {
-        QueueStatus.RETRY_SCHEDULED: "Retry scheduled",
-        QueueStatus.REJECTED: "Rejected",
-        QueueStatus.FAILED_TERMINAL: "Failed",
-        QueueStatus.DONE: "Done",
-    }.get(result.final_status, result.final_status.value)
-
-    lines = [
-        f"{status_label} (ID: {task.id})",
-        task.url[:500],
-        "",
-        f"Status: {task.status.value}",
-        f"Stage: {result.current_stage}",
-    ]
-
-    if task.result_title:
-        lines.append(f"Title: {task.result_title[:200]}")
-    if task.failure_kind.value:
-        lines.append(f"Failure: {task.failure_kind.value}")
-    if task.last_error:
-        lines.append(f"Reason: {task.last_error[:500]}")
-    if task.last_status_detail:
-        lines.append(f"Detail: {task.last_status_detail[:500]}")
-    if task.next_action.value:
-        lines.append(f"Next action: {task.next_action.value}")
-    if task.next_retry_at:
-        lines.append(f"Retry at: {task.next_retry_at}")
-    if task.output_path:
-        lines.append(f"Output: {task.output_path}")
-
-    lines.extend(["", f"Use /status {task.id} for the latest state."])
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Factory helpers
-# ---------------------------------------------------------------------------
 
 
 def create_worker(

@@ -43,7 +43,8 @@ def test_control_status_reports_sources():
     )
     assert result.returncode == 0, result.stderr
     assert "Sources loaded: 96" in result.stdout
-    telegram_line = next(
-        line for line in result.stdout.splitlines() if line.startswith("telegram-bot-loop:")
-    )
-    assert "(disabled)" in telegram_line
+    # V4: single processing role; health-monitor remains.
+    role_lines = [
+        line for line in result.stdout.splitlines() if line.startswith(("loop:", "health-monitor:"))
+    ]
+    assert len(role_lines) == 2, result.stdout

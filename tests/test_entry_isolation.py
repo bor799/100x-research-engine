@@ -327,7 +327,7 @@ class TestObservability:
         inbox = tmp_path / "inbox"
         inbox.mkdir()
         writer = LiveObsidianWriter(root=tmp_path, subdir="inbox", write_manifest=True)
-        port = LiveOutputPort(obsidian_writer=writer, telegram_client=None)
+        port = LiveOutputPort(obsidian_writer=writer)
         result = port.write(
             _fetched(),
             _score(),

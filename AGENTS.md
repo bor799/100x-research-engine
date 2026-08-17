@@ -1,6 +1,6 @@
 # Agent Handoff
 
-This repository is the V3 implementation of the 100X knowledge extraction system. Treat it as the active product workspace, but do not assume every local-only secret or runtime file is publishable.
+This repository is the V4 implementation of the 100X knowledge extraction system (V3 is preserved under git tag `v3-final`). Treat it as the active product workspace, but do not assume every local-only secret or runtime file is publishable.
 
 ## Current State
 
@@ -22,10 +22,9 @@ This repository is the V3 implementation of the 100X knowledge extraction system
 ## Verification Commands
 
 ```bash
-python -m compileall -q src tests scripts/v2_compare.py scripts/test_rss_fetch.py
+python -m compileall -q src tests scripts
 bash -n scripts/*.sh
 python -m pytest -q
-python scripts/test_rss_fetch.py --all --timeout 8 --target-rate 95
 ```
 
 The 2026-05-30 publish verification passed compile, shell syntax, and `pytest` with `259 passed`. The RSS live fetch command was skipped by operator approval after a previous run hung without output; keep it as the remaining live-source-health gate.

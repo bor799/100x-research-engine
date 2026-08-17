@@ -105,19 +105,12 @@ PY
 role_command() {
   local role="$1"
   case "$role" in
-    scheduler-loop)
-      local interval
-      interval="$(config_value scheduler.interval_seconds)"
-      printf '%q ' "$PYTHON" -m knowledge_extractor_v3.scheduler --loop --interval "$interval"
-      ;;
-    worker-loop)
-      local poll limit
+    loop)
+      local poll scan_interval limit
       poll="$(config_value worker.poll_interval_seconds)"
       limit="$(config_value worker.batch_size)"
-      printf '%q ' "$PYTHON" -m knowledge_extractor_v3.worker --loop --poll "$poll" --limit "$limit" --mode live
-      ;;
-    telegram-bot-loop)
-      printf '%q ' "$PYTHON" -m knowledge_extractor_v3.telegram_bot --poll 30
+      scan_interval="$(config_value scheduler.interval_seconds)"
+      printf '%q ' "$PYTHON" -m knowledge_extractor_v3.daemon --loop --poll "$poll" --limit "$limit" --scan-interval "$scan_interval"
       ;;
     health-monitor)
       printf '%q ' "$CONTROL_SCRIPT" health-monitor-loop
@@ -143,13 +136,6 @@ role_run() {
     write_heartbeat "$role" "disabled" "disabled by production channel configuration"
     rm -f "$pid_file"
     return 0
-  fi
-
-  if [ "$role" = "telegram-bot-loop" ] && [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
-    while true; do
-      write_heartbeat "$role" "waiting" "TELEGRAM_BOT_TOKEN is not configured"
-      sleep 300
-    done
   fi
 
   command="$(role_command "$role")"
@@ -248,27 +234,15 @@ stop_role() {
 }
 
 all_roles() {
-  echo "scheduler-loop worker-loop telegram-bot-loop health-monitor"
+  echo "loop health-monitor"
 }
 
 role_enabled() {
   local role="$1"
   case "$role" in
-    scheduler-loop)
-      [ "$(config_value scheduler.enabled)" = "True" ]
-      ;;
-    worker-loop|health-monitor)
-      return 0
-      ;;
-    telegram-bot-loop)
-      local channel bot_enabled
-      channel="$(config_value outputs.channel)"
-      bot_enabled="$(config_value telegram_bot.enabled)"
-      [ "$bot_enabled" = "True" ] && { [ "$channel" = "telegram" ] || [ "$channel" = "both" ]; }
-      ;;
-    *)
-      return 1
-      ;;
+    loop) return 0 ;;
+    health-monitor) return 0 ;;
+    *) return 1 ;;
   esac
 }
 
