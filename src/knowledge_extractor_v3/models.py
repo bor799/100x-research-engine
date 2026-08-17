@@ -93,6 +93,14 @@ class ScoreResult:
     evidence_strength: float = 0.0
     business_story_fit: float = 0.0
     is_promotional: bool = False
+    # V4 absorption dimensions (each 0-1). Code-weighted into final_score by
+    # parse_absorption_result; replaces every source-credibility dimension —
+    # the operator curates sources by hand and trusts them.
+    information_gain: float = 0.0
+    action_value: float = 0.0
+    relevance: float = 0.0
+    rationale: str = ""
+    is_spam: bool = False
 
 
 @dataclass(frozen=True)
