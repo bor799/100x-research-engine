@@ -293,11 +293,11 @@ class TestConfigLoader:
             "  temperature: 0.1",
             "  router:",
             "    quality_filter:",
-            "      model: GLM-4.5",
+            "      model: GLM-5.2",
             "    deep_analysis:",
-            "      model: GLM-4.7",
+            "      model: GLM-5.2",
             "    telegram_format:",
-            "      model: GLM-4.5-Air",
+            "      model: GLM-5.2",
             "output:",
             "  obsidian_root: /tmp/obsidian",
             "  obsidian_folder: AI进展",
@@ -311,9 +311,9 @@ class TestConfigLoader:
         assert config.llm.provider == "zhipu"
         assert config.llm.api_key == "direct-key"
         assert config.llm.api_base == "https://open.bigmodel.cn/api/coding/paas/v4"
-        assert config.llm.scoring_model == "GLM-4.5"
-        assert config.llm.extraction_model == "GLM-4.7"
-        assert config.llm.telegram_brief_model == "GLM-4.5-Air"
+        assert config.llm.scoring_model == "GLM-5.2"
+        assert config.llm.extraction_model == "GLM-5.2"
+        assert config.llm.telegram_brief_model == "GLM-5.2"
         assert config.outputs.obsidian_root == "/tmp/obsidian"
         assert config.outputs.obsidian_subdir == "AI进展"
         assert config.prompts.scoring == "config/prompts/scoring.md"

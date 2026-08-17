@@ -14,6 +14,7 @@ live:
   max_tasks_per_run: 0
   max_consecutive_failures: 5
 
+# V4 使用单一 absorption 调用；推荐 zhipu GLM-5.2。
 llm:
   provider: "placeholder"
   api_key_env: "ZHIPU_API_KEY"

@@ -275,7 +275,7 @@ def _build_openai_request(
 
 # Default models per provider
 _DEFAULT_MODELS = {
-    "zhipu": "glm-4-flash",
+    "zhipu": "GLM-5.2",
     "anthropic": "claude-3-5-sonnet-20241022",
     "openai": "gpt-4o-mini",
 }

@@ -120,7 +120,7 @@ def test_live_provider_zhipu_appends_chat_completions_to_configured_api_base():
         provider="zhipu",
         api_key="direct-key",
         api_base="https://open.bigmodel.cn/api/coding/paas/v4",
-        scoring_model="GLM-4.5",
+        scoring_model="GLM-5.2",
         temperature=0.1,
     )
     provider = LiveLLMProvider(config, env={}, http_post=http)
@@ -130,7 +130,7 @@ def test_live_provider_zhipu_appends_chat_completions_to_configured_api_base():
     assert isinstance(result, str)
     assert http.calls[0]["url"] == "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions"
     request_payload = json.loads(http.calls[0]["data"].decode("utf-8"))
-    assert request_payload["model"] == "GLM-4.5"
+    assert request_payload["model"] == "GLM-5.2"
     assert request_payload["temperature"] == 0.1
 
 
