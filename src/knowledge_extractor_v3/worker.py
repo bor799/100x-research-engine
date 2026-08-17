@@ -347,6 +347,7 @@ class QueueWorker:
             )
 
             wechat_queue = None
+            channel = self._config.outputs.channel
             if channel in {"wechat", "both"}:
                 queue_dir = loader.expand_path(self._config.outputs.wechat_queue_dir)
                 wechat_queue = WechatQueue(queue_dir)

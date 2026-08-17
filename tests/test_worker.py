@@ -23,6 +23,7 @@ from knowledge_extractor_v3.worker import (
 from knowledge_extractor_v3.queue_store import QueueStore, QueueStatus
 from knowledge_extractor_v3.config_loader import (
     AgentReachConfig,
+    OutputsConfig,
     V3Config,
     LiveConfig,
     RuntimeConfig,
@@ -31,6 +32,7 @@ from knowledge_extractor_v3.config_loader import (
 )
 from knowledge_extractor_v3.models import RuntimeMode
 from knowledge_extractor_v3.fetchers.fixture import FixtureFetcher
+from knowledge_extractor_v3.llm.provider import StubLLMProvider
 from knowledge_extractor_v3.fetchers.multi_channel import AgentReachFetcher
 from knowledge_extractor_v3.fetchers.router import FetcherRouter
 
@@ -607,3 +609,94 @@ if __name__ == "__main__":
 
     print(f"\n{passed} passed, {failed} failed")
     sys.exit(0 if failed == 0 else 1)
+
+
+def test_worker_live_mode_wechat_channel_processes_and_queues_brief(tmp_path, monkeypatch):
+    """Regression: the live branch must build the WeChat queue from config.
+
+    A past edit removed the `channel` variable while the WeChat branch still
+    referenced it, crashing every live task with NameError (task 4793).
+    """
+
+    obsidian_root = tmp_path / "obsidian"
+    obsidian_root.mkdir()
+    config = V3Config(
+        runtime=RuntimeConfig(
+            state_root=str(tmp_path),
+            queue_db_path=str(tmp_path / "queue.db"),
+            log_path=str(tmp_path / "worker.jsonl"),
+        ),
+        live=LiveConfig(enabled=True, max_consecutive_failures=5),
+        worker=V3WorkerConfig(batch_size=1, poll_interval_seconds=30),
+        agent_reach=AgentReachConfig(enabled=False),
+        outputs=OutputsConfig(
+            channel="wechat",
+            obsidian_root=str(obsidian_root),
+            obsidian_subdir="inbox",
+            wechat_queue_dir=str(tmp_path / "wechat"),
+        ),
+    )
+    queue_store = QueueStore(tmp_path / "queue.db")
+    queue_store.enqueue("fixture://high_signal", source="test")
+
+    class _LiveStub(StubLLMProvider):
+        model_route = "live://stub-test"
+
+    class _HttpsFixtureFetcher:
+        """Serve a real-scheme URL: the brief contract requires an https link."""
+
+        def fetch(self, url):
+            from knowledge_extractor_v3.models import FetchedContent, sha256_text, utc_now
+
+            text = (
+                "Frontier Payments raised a $24 million Series A led by named investors "
+                "with three customer deployment examples, a disclosed valuation range, "
+                "and concrete operating detail on pricing and go-to-market. "
+                "The article names pilot customers, payment volume baseline, hiring plans, "
+                "and the specific market wedge, with independent investor commentary "
+                "explaining why the round is happening now: chargeback growth for AI-native "
+                "merchants, compliance pressure, and a distribution partnership already live "
+                "in North America with two named banks. The founders describe their pricing "
+                "model in detail, the CAC payback window, and the retention curve after "
+                "twelve months, plus a hiring plan for risk and compliance roles."
+            )
+            return FetchedContent(
+                url="https://example.com/live-e2e",
+                source="test",
+                source_type="web_article",
+                title="Frontier Payments raises Series A",
+                text=text,
+                fetched_at=utc_now(),
+                content_hash=sha256_text(text),
+            )
+
+    worker = QueueWorker(
+        config=config,
+        queue_store=queue_store,
+        fetcher=_HttpsFixtureFetcher(),  # type: ignore[arg-type]
+        llm_provider=_LiveStub(),
+        worker_config=WorkerConfig(batch_size=1, mode=RuntimeMode.LIVE),
+    )
+
+    # The live gate normally guards LIVE mode; this test exercises the output
+    # branch behind it, so bypass the gate deterministically.
+    monkeypatch.setattr(
+        "knowledge_extractor_v3.worker.QueueWorker._determine_runtime_mode",
+        lambda self: RuntimeMode.LIVE,
+    )
+
+    result = worker.run_once()
+
+    assert result.tasks_processed == 1
+    assert result.tasks_failed == 0
+    statuses = queue_store.count_by_status()
+    assert statuses.get("done") == 1
+    import json as _json
+
+    pending = list((tmp_path / "wechat" / "pending").glob("*.json"))
+    assert pending, "business push must reach the WeChat outbox"
+    payload = _json.loads(pending[0].read_text(encoding="utf-8"))
+    assert payload["lane"] == "business"
+    assert payload["text"].startswith("🎯 ")
+    assert "🧭" not in payload["text"]
+    assert "📊 评分: 8.0 · Tier A" in payload["text"]
