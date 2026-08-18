@@ -56,4 +56,4 @@ Cindy 微信会话是本系统的默认交互入口（替代 Telegram）。当�
 1. 运行 `python3 scripts/cindy_control.py status --task-id <N>` 查询
 2. 如果 `status` 为 `done`，告知用户结果已存入 Obsidian 并会通过微信推送
 
-这些命令输出确定性 JSON，不接触微信 connector 身份或 token。推送节奏由 Cindy schedule 控制（商业故事每天 8:30/18:30，战略周报每周日 18:40）。
+这些命令输出确定性 JSON，不接触微信 connector 身份或 token。推送节奏由 Cindy schedule 控制（商业故事每天 8:30/11:30/17:20，战略周报每周日 17:20）。

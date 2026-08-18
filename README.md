@@ -31,7 +31,7 @@ scan (95+ RSS sources) -> fetch (multi-channel) -> absorb (1x GLM-5.2 call)
 ### Cindy / WeChat Control Plane
 
 - 100X produces durable events; Cindy owns the authenticated WeChat session and delivery tool.
-- The production channel is WeChat via the Cindy schedule (daily business pushes 8:30/18:30, weekly strategic digest Sunday 18:40).
+- The production channel is WeChat via the Cindy schedule (daily business pushes 8:30/11:30/17:20, weekly strategic digest Sunday 17:20).
 - Outbox delivery is all-state idempotent, capped at three attempts, and records sanitized receipts without raw peer/session/token values.
 - Cindy-origin URL and status commands use the deterministic `scripts/cindy_control.py` interface.
 - See [Cindy WeChat Operations](docs/CINDY_WECHAT_OPERATIONS.md) for the schedule contract and zero-touch runbook.

@@ -29,12 +29,12 @@ Cindy bound scheduled agent → cindy_wechat → 个人微信
 
 ## Cindy 任务
 
-生产保留两个既有节奏，共用同一个消费者协议：
+生产保留两个既有节奏，共用同一个消费者协议（cron 由 Cindy schedule 持有，以实际配置为准）：
 
-| Task | Cron | Lane | 最大条数 | Session |
-|---|---:|---|---:|---|
-| 100X 商业故事推送 | `30 8,18 * * *` | business | 2 | 同一个 verified bound session |
-| 100X 战略观察周报 | 保留现有周报 cron | strategic | 2 | 同一个 verified bound session |
+| Task | 节奏 | Lane | 最大条数 | Session |
+|---|---|---|---:|---|
+| 100X 商业故事推送 | 每天 8:30 / 11:30 / 17:20 | business | 2 | 同一个 verified bound session |
+| 100X 战略观察周报 | 每周日 17:20 | strategic | 2 | 同一个 verified bound session |
 
 两个 task 使用 [固定 delivery prompt](../prompts/cindy_wechat_delivery.md)，并分别使用：
 
