@@ -30,7 +30,36 @@ def render_wechat_card(
 
     ``content`` should be the ORIGINAL fetched article (not the preprocessed
     variant) so the verbatim-quote gate checks against the real source text.
+
+    The card must fit the 500-char delivery contract (URL excluded). A fully
+    loaded card with every section at cap overflows that budget (seen live on
+    2026-08-17), so the renderer progressively sheds optional mass: the second
+    bullets first, then the quote, then the next-step — never the required
+    markers or the first signal.
     """
+    # (experience limit, signal limit, keep quote, keep next action)
+    for exp_limit, sig_limit, keep_quote, keep_next in (
+        (2, 2, True, True),
+        (1, 2, True, True),
+        (1, 1, True, True),
+        (1, 1, False, True),
+        (1, 1, False, False),
+    ):
+        card = _assemble(score, extraction, content, exp_limit, sig_limit, keep_quote, keep_next)
+        if _body_chars(card) <= MAX_BODY_CHARS:
+            return card
+    return card  # minimal card still over budget; the contract flags it
+
+
+def _assemble(
+    score: ScoreResult,
+    extraction,
+    content: FetchedContent,
+    exp_limit: int,
+    sig_limit: int,
+    keep_quote: bool,
+    keep_next: bool,
+) -> str:
     parsed = extraction.parsed
     tier = score.signal_tier
     lines: list[str] = []
@@ -41,25 +70,25 @@ def render_wechat_card(
     lines.append("")
     lines.append(f"💡 {_clip(str(parsed.get('one_line_summary') or extraction.one_line_signal), MAX_SUMMARY_CHARS)}")
 
-    experiences = _string_items(parsed.get("experiences"), limit=2)
+    experiences = _string_items(parsed.get("experiences"), limit=exp_limit)
     if experiences:
         lines.append("")
         lines.append("🗣 经验萃取")
         lines.extend(f"▪️ {_clip(item, MAX_ITEM_CHARS)}" for item in experiences)
 
-    signals = _string_items(parsed.get("signals"), limit=2)
+    signals = _string_items(parsed.get("signals"), limit=sig_limit)
     if signals:
         lines.append("")
         lines.append("📡 信号萃取")
         lines.extend(f"▪️ {_clip(item, MAX_ITEM_CHARS)}" for item in signals)
 
-    quote = str(parsed.get("quote") or "")
+    quote = str(parsed.get("quote") or "") if keep_quote else ""
     if quote and _quote_in_source(quote, content.text):
         lines.append("")
         lines.append("💬 核心金句")
         lines.append(f"\"{_clip(quote, MAX_QUOTE_CHARS)}\"")
 
-    next_action = str(parsed.get("next_action") or "")
+    next_action = str(parsed.get("next_action") or "") if keep_next else ""
     if next_action:
         lines.append("")
         lines.append("🛠 下一步")
@@ -70,6 +99,16 @@ def render_wechat_card(
     lines.append("")
     lines.append(f"📊 评分: {score.score:.1f} · Tier {tier}")
     return "\n".join(lines)
+
+
+MAX_BODY_CHARS = 500  # matches brief_contract.MAX_BRIEF_CHARS (URL excluded)
+_URL_PATTERN = re.compile(r"https?://\S+")
+
+
+def _body_chars(card: str) -> int:
+    """Mirror the contract's length rule: URL excluded, spaces/newlines dropped."""
+    body = _URL_PATTERN.sub("", card)
+    return len(body.replace("\n", "").replace(" ", ""))
 
 
 def _string_items(value: object, *, limit: int) -> list[str]:

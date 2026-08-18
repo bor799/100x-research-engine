@@ -120,3 +120,32 @@ def test_quote_whitespace_normalisation_still_matches():
     score, extraction = _absorb(quote="Kimi K3 开启了 2T 参数预训练的新赛季。公开 benchmark 已经失真")
     card = render_wechat_card(score, extraction, text)
     assert "💬" in card
+
+
+def test_fully_loaded_card_fits_contract_budget():
+    """Worst case: every section maxed out. The renderer sheds mass in
+    priority order instead of tripping the 500-char contract (a live
+    business_push was withheld this way on 2026-08-17)."""
+    long_text = "原文里有一句足够长的金句可以逐字引用。" + "背景细节。" * 200
+    score, extraction = _absorb(
+        title="三十个字的标题三十个字的标题三十个字的标题三十个",
+        one_line_summary="这是一条八十个字的一句话归纳。" * 3,
+        experiences=["第一条满六十四个字符的经验教训条目。" * 3, "第二条满六十四个字符的经验教训条目。" * 3],
+        signals=["第一条满六十四个字符的信号洞察条目。" * 3, "第二条满六十四个字符的信号洞察条目。" * 3],
+        quote="原文里有一句足够长的金句可以逐字引用。",
+        next_action="一条满七十二个字符的具体下一步行动监控触发器。" * 2,
+    )
+    content = FetchedContent(
+        url="https://example.com/budget-test",
+        source="test",
+        source_type="web_article",
+        title="Budget test",
+        text=long_text,
+        fetched_at="2026-08-18T00:00:00+00:00",
+        content_hash="hash2",
+    )
+    card = render_wechat_card(score, extraction, content)
+    errors = validate_brief(card)
+    assert errors == [], errors
+    # Required markers survive the shedding.
+    assert "🎯" in card and "💡" in card and "📡 信号萃取" in card
