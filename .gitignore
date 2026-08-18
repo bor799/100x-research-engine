@@ -17,3 +17,8 @@ dist/
 build/
 *.egg-info/
 .DS_Store
+
+# Local-only docs and test staging output (never publish)
+ai-reading/
+.test-staging-*/
+pytest-of-murphy/
