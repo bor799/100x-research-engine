@@ -201,7 +201,7 @@ def test_strategic_item_uses_longer_ttl(tmp_path):
     assert (root / "pending" / "s.json").exists()
 
 
-def test_recover_stale_processing_nacks_and_records_reason(tmp_path):
+def test_recover_stale_processing_releases_without_burning_attempt(tmp_path):
     root = tmp_path / "ob"
     box = WechatOutbox(root)
     box.enqueue(_item("e1"))
@@ -211,9 +211,201 @@ def test_recover_stale_processing_nacks_and_records_reason(tmp_path):
     os.utime(path, (old, old))
     assert box.recover_stale_processing(stale_seconds=600) == 1
     payload = _read(root, "pending")
-    assert payload["attempts"] == 1
-    receipt = payload["delivery_attempts"][0]["receipt"]
-    assert receipt["error_code"] == "STALE_CLAIM_RECOVERED"
+    assert payload["attempts"] == 0
+    attempt = payload["delivery_attempts"][0]
+    assert attempt["status"] == "released"
+    assert attempt["receipt"]["error_code"] == "STALE_CLAIM_RECOVERED"
+
+
+def test_recover_stale_processing_skips_unreadable_file(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    box.enqueue(_item("e1"))
+    box.claim()
+    path = root / "processing" / "e1.json"
+    old = time.time() - 9_999
+    os.utime(path, (old, old))
+    path.write_text("{not json", encoding="utf-8")
+    assert box.recover_stale_processing(stale_seconds=600) == 0
+    assert path.exists()
+
+
+def test_release_returns_to_pending_without_consuming_attempt(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    box.enqueue(_item("e1"))
+    box.claim()
+    assert box.release("e1", _receipt(ok=False)) == "pending"
+    payload = _read(root, "pending")
+    assert payload["attempts"] == 0
+    attempt = payload["delivery_attempts"][0]
+    assert attempt["status"] == "released"
+    assert attempt["receipt"]["error_code"] == "SEND_FAILED"
+    assert payload["claimed_at"]  # retained for the timeline, like nack
+
+
+def test_release_missing_unknown_and_after_ack_return_missing(tmp_path):
+    box = WechatOutbox(tmp_path / "ob")
+    assert box.release("ghost", _receipt(ok=False)) == "missing"
+    box.enqueue(_item("e1"))
+    box.claim()
+    box.ack("e1", _receipt())
+    assert box.release("e1", _receipt(ok=False)) == "missing"
+    box.enqueue(_item("e2"))
+    box.claim()
+    assert box.release("e2", _receipt(ok=False)) == "pending"
+    assert box.release("e2", _receipt(ok=False)) == "missing"  # double release
+
+
+def test_release_then_reclaim_reuses_attempt_number(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    box.enqueue(_item("e1"))
+    box.claim()
+    box.release("e1", _receipt(ok=False))
+    claimed = box.claim()
+    assert claimed[0].attempts == 1
+    payload = _read(root, "processing")
+    assert [attempt["attempt"] for attempt in payload["delivery_attempts"]] == [1, 1]
+    assert payload["delivery_attempts"][0]["status"] == "released"
+    assert payload["delivery_attempts"][1]["status"] == "processing"
+
+
+def test_release_sanitizes_receipt(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    box.enqueue(_item("e1"))
+    box.claim()
+    box.release("e1", _receipt(ok=False))
+    receipt = _read(root, "pending")["delivery_attempts"][0]["receipt"]
+    assert receipt["raw_response"]["token"] == "[REDACTED]"
+    assert receipt["recipient_ref"].startswith("sha256:")
+
+
+def _three_strike_failure(box, event_id="e1", error_code="SEND_FAILED"):
+    box.enqueue(_item(event_id))
+    for _ in range(3):
+        box.claim()
+        receipt = _receipt(ok=False)
+        receipt["error_code"] = error_code
+        box.nack(event_id, receipt)
+
+
+def test_requeue_failed_resets_attempts_and_appends_marker(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    box.enqueue(_item("e1", expires_at="2026-08-21T00:00:00+00:00"))
+    for _ in range(3):
+        box.claim()
+        box.nack("e1", _receipt(ok=False))
+    before = _read(root, "failed")
+    summary = box.requeue_failed(reason="iLink outage; WeChat re-login completed")
+    assert summary.requeued == ("e1",)
+    assert summary.skipped == ()
+    payload = _read(root, "pending")
+    assert payload["attempts"] == 0
+    assert payload["state"] == "pending"
+    assert len(payload["delivery_attempts"]) == 3  # ledger preserved
+    assert payload["requeues"] == [{
+        "reason": "iLink outage; WeChat re-login completed",
+        "requeued_at": payload["requeues"][0]["requeued_at"],
+        "prior_failed_at": before["failed_at"],
+    }]
+    assert payload["expires_at"] > before["expires_at"]  # fresh TTL window
+
+
+def test_requeue_failed_skips_quality_gate_blocked_by_default(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    _three_strike_failure(box, "blocked", error_code="QUALITY_GATE_BLOCKED")
+    summary = box.requeue_failed(reason="post-outage catch-up")
+    assert summary.requeued == ()
+    assert summary.skipped == (("blocked", "content_blocked"),)
+    assert _read(root, "failed", "blocked")["state"] == "failed"
+
+
+def test_requeue_failed_event_id_override_requeues_content_blocked(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    _three_strike_failure(box, "blocked", error_code="QUALITY_GATE_BLOCKED")
+    summary = box.requeue_failed(reason="operator override", event_ids=("blocked",))
+    assert summary.requeued == ("blocked",)
+    assert _read(root, "pending", "blocked")["attempts"] == 0
+
+
+def test_requeue_failed_lane_filter(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    _three_strike_failure(box, "biz")
+    box.enqueue(_item("strat", lane=STRATEGIC_LANE))
+    for _ in range(3):
+        box.claim(lane=STRATEGIC_LANE)
+        box.nack("strat", _receipt(ok=False))
+    summary = box.requeue_failed(reason="post-outage", lane=STRATEGIC_LANE)
+    assert summary.requeued == ("strat",)
+    assert ("biz", "lane_mismatch") in summary.skipped
+    assert (root / "failed" / "biz.json").exists()
+
+
+def test_requeue_failed_refreshes_expired_ttl_and_can_keep_it(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    stale = (datetime.now(UTC) - timedelta(hours=48)).replace(microsecond=0).isoformat()
+    box.enqueue(_item("e1", created_at=stale, expires_at=stale))
+    for _ in range(3):
+        box.claim()
+        box.nack("e1", _receipt(ok=False))
+    kept = box.requeue_failed(reason="audit requeue", refresh_ttl=False)
+    assert kept.requeued == ("e1",)
+    assert _read(root, "pending")["expires_at"] == stale
+    # Fail it again to verify the default TTL refresh.
+    for _ in range(3):
+        box.claim()
+        box.nack("e1", _receipt(ok=False))
+    summary = box.requeue_failed(reason="real requeue")
+    assert summary.requeued == ("e1",)
+    assert _read(root, "pending")["expires_at"] > stale
+
+
+def test_requeue_failed_preserves_idempotency_marker_and_blocks_replay(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    _three_strike_failure(box)
+    markers_before = sorted(p.name for p in (root / "idempotency").glob("*.json"))
+    box.requeue_failed(reason="post-outage")
+    markers_after = sorted(p.name for p in (root / "idempotency").glob("*.json"))
+    assert markers_before == markers_after
+    assert box.enqueue(_item("e1")) is False
+
+
+def test_requeue_failed_skips_when_already_pending(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    _three_strike_failure(box, "dead")
+    # Hand-place a same-id pending item to simulate a concurrent requeue race.
+    dead = _read(root, "failed", "dead")
+    (root / "pending").mkdir(parents=True, exist_ok=True)
+    (root / "pending" / "dead.json").write_text(json.dumps(dead), encoding="utf-8")
+    summary = box.requeue_failed(reason="race check")
+    assert summary.requeued == ()
+    assert ("dead", "already_pending") in summary.skipped
+
+
+def test_requeue_failed_skips_unreadable_and_reports_unknown_ids(tmp_path):
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    (root / "failed").mkdir(parents=True, exist_ok=True)
+    (root / "failed" / "junk.json").write_text("{not json", encoding="utf-8")
+    summary = box.requeue_failed(reason="sweep", event_ids=("ghost",))
+    assert summary.requeued == ()
+    assert ("junk", "unreadable") in summary.skipped
+    assert ("ghost", "not_in_failed") in summary.skipped
+
+
+def test_requeue_failed_requires_reason(tmp_path):
+    box = WechatOutbox(tmp_path / "ob")
+    with pytest.raises(ValueError):
+        box.requeue_failed(reason="  ")
 
 
 def test_reap_sent_keeps_replay_blocked_by_idempotency_marker(tmp_path):

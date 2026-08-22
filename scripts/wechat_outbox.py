@@ -12,6 +12,8 @@ Usage::
     python scripts/wechat_outbox.py claim --lane business --limit 2
     python scripts/wechat_outbox.py ack <event_id> <receipt options>
     python scripts/wechat_outbox.py nack <event_id> <receipt options>
+    python scripts/wechat_outbox.py release <event_id> <receipt options>
+    python scripts/wechat_outbox.py requeue-failed --reason "channel recovered" [--lane business] [--event-id ID]...
     python scripts/wechat_outbox.py list --lane business
     python scripts/wechat_outbox.py status
 """
@@ -74,6 +76,35 @@ def cmd_nack(args) -> int:
         return 1
     print(result)  # "pending" or "failed"
     return 0
+
+
+def cmd_release(args) -> int:
+    box = _outbox(args)
+    result = box.release(args.event_id, _receipt(args))
+    if result == "missing":
+        print(f"event_id not found in processing: {args.event_id}", file=sys.stderr)
+        return 1
+    print(result)  # "pending"
+    return 0
+
+
+def cmd_requeue_failed(args) -> int:
+    box = _outbox(args)
+    summary = box.requeue_failed(
+        reason=args.reason,
+        lane=args.lane,
+        event_ids=tuple(args.event_id or ()),
+        refresh_ttl=not args.no_refresh_ttl,
+        include_all=args.all,
+    )
+    print(json.dumps({
+        "requeued": list(summary.requeued),
+        "skipped": [
+            {"event_id": event_id, "cause": cause}
+            for event_id, cause in summary.skipped
+        ],
+    }, ensure_ascii=False))
+    return 0 if summary.requeued else 2
 
 
 def cmd_list(args) -> int:
@@ -173,6 +204,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("event_id")
     add_receipt(p, success=False)
     p.set_defaults(func=cmd_nack)
+
+    p = sub.add_parser(
+        "release",
+        help="Return a claimed item without consuming an attempt (processing → pending)",
+    )
+    p.add_argument("event_id")
+    add_receipt(p, success=False)
+    p.set_defaults(func=cmd_release)
+
+    p = sub.add_parser(
+        "requeue-failed",
+        help="Move delivery-failed items back to pending (content rejections skipped by default)",
+    )
+    add_lane(p)
+    p.add_argument("--reason", required=True, help="Why the items are being requeued")
+    p.add_argument("--event-id", action="append", default=None, help="Requeue a specific id; overrides filters")
+    p.add_argument("--all", action="store_true", help="Include content-blocked and expired items")
+    p.add_argument("--no-refresh-ttl", action="store_true", help="Keep the original expires_at")
+    p.set_defaults(func=cmd_requeue_failed)
 
     p = sub.add_parser("list", help="List pending items")
     add_lane(p)

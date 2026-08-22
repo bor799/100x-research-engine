@@ -11,7 +11,9 @@ Layout::
       pending/       waiting for Cindy
       processing/    claimed by one Cindy run
       sent/          delivery ledger (retained for 14 days)
-      failed/        expired or exhausted after three attempts
+      failed/        expired, content-blocked, or exhausted after three
+                     attempts; delivery faults can be revived via
+                     ``requeue_failed`` once the channel recovers
       idempotency/   permanent event-id markers; never contain message text
 """
 
@@ -69,6 +71,8 @@ class OutboxItem:
     # Feed source name from sources.yaml; used by claim() to spread a digest
     # window across sources. Empty for legacy payloads and manual enqueues.
     source: str = ""
+    # Requeue audit trail: one entry per operator-driven failed → pending move.
+    requeues: tuple[dict[str, object], ...] = field(default_factory=tuple)
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -90,6 +94,7 @@ class OutboxItem:
             "updated_at": self.updated_at,
             "delivery_attempts": list(self.delivery_attempts),
             "source": self.source,
+            "requeues": list(self.requeues),
         }
 
     @classmethod
@@ -98,6 +103,10 @@ class OutboxItem:
         delivery_attempts = tuple(
             item for item in raw_attempts if isinstance(item, dict)
         ) if isinstance(raw_attempts, list) else ()
+        raw_requeues = data.get("requeues")
+        requeues = tuple(
+            item for item in raw_requeues if isinstance(item, dict)
+        ) if isinstance(raw_requeues, list) else ()
         return cls(
             event_id=str(data.get("event_id") or ""),
             lane=str(data.get("lane") or BUSINESS_LANE),
@@ -117,7 +126,16 @@ class OutboxItem:
             updated_at=str(data.get("updated_at") or ""),
             delivery_attempts=delivery_attempts,
             source=str(data.get("source") or ""),
+            requeues=requeues,
         )
+
+
+@dataclass(frozen=True)
+class RequeueSummary:
+    """Outcome of one operator-driven failed → pending sweep."""
+
+    requeued: tuple[str, ...] = ()
+    skipped: tuple[tuple[str, str], ...] = ()  # (event_id, cause)
 
 
 class WechatOutbox:
@@ -283,6 +301,26 @@ class WechatOutbox:
         self._move_with_payload(src, self.root / result_state / src.name, data)
         return result_state
 
+    def release(self, event_id: str, receipt: Mapping[str, object]) -> str:
+        """Return a claimed item to pending without consuming its attempt.
+
+        Channel-level failures only: the WeChat connector was down, so the
+        send never had a chance.  The attempt counter is rolled back to its
+        pre-claim value and the ledger entry is closed as ``released``.
+        """
+        src = self._find("processing", event_id)
+        if src is None:
+            return "missing"
+        data = self._load_payload(src)
+        if data.get("state") != "processing":
+            return "missing"
+        timestamp = _now()
+        self._finish_attempt(data, "released", sanitize_receipt(receipt), timestamp)
+        data["attempts"] = max(0, int(data.get("attempts") or 0) - 1)
+        data.update({"state": "pending", "updated_at": timestamp})
+        self._move_with_payload(src, self.root / "pending" / src.name, data)
+        return "pending"
+
     # -- inspection / maintenance ------------------------------------
 
     def find_state(self, event_id: str) -> str | None:
@@ -295,6 +333,91 @@ class WechatOutbox:
 
     def counts(self) -> dict[str, int]:
         return {state: len(self._list(state)) for state in STATES}
+
+    def requeue_failed(
+        self,
+        *,
+        reason: str,
+        lane: str | None = None,
+        event_ids: tuple[str, ...] | None = None,
+        refresh_ttl: bool = True,
+        include_all: bool = False,
+        now: datetime | None = None,
+    ) -> RequeueSummary:
+        """Move delivery-failed events back to pending with a fresh budget.
+
+        Content rejections (``QUALITY_GATE_BLOCKED``) and TTL deaths are
+        skipped by default; naming an event explicitly overrides every filter
+        because operator intent trumps heuristics.  Idempotency markers are
+        never created or deleted, so producer replays stay duplicate-safe.
+        """
+        if not reason.strip():
+            raise ValueError("reason must not be empty")
+        now = now or datetime.now(UTC)
+        timestamp = now.replace(microsecond=0).isoformat()
+        wanted = set(event_ids or ())
+        seen: set[str] = set()
+        requeued: list[str] = []
+        skipped: list[tuple[str, str]] = []
+
+        for path in sorted((self.root / "failed").glob("*.json")):
+            try:
+                data = self._load_payload(path)
+            except (OSError, json.JSONDecodeError, ValueError):
+                skipped.append((path.stem, "unreadable"))
+                continue
+            event_id = str(data.get("event_id") or path.stem)
+            seen.add(event_id)
+            explicit = event_id in wanted
+            cause = self._requeue_skip_cause(data, lane=lane)
+            if cause and not explicit and not include_all:
+                skipped.append((event_id, cause))
+                continue
+            if self._find("pending", event_id) is not None:
+                skipped.append((event_id, "already_pending"))
+                continue
+            item = OutboxItem.from_payload(data)
+            data.update({
+                "state": "pending",
+                "attempts": 0,
+                "updated_at": timestamp,
+                "requeues": [
+                    *(list(data.get("requeues") or [])),
+                    {
+                        "reason": reason,
+                        "requeued_at": timestamp,
+                        "prior_failed_at": str(data.get("failed_at") or ""),
+                    },
+                ],
+            })
+            if refresh_ttl:
+                data["expires_at"] = ttl_for_lane(item.lane, now=now)
+            src = self.root / "failed" / self._filename(item)
+            if not src.exists():
+                src = path
+            self._move_with_payload(src, self.root / "pending" / self._filename(item), data)
+            requeued.append(event_id)
+
+        for event_id in sorted(wanted - seen):
+            skipped.append((event_id, "not_in_failed"))
+        return RequeueSummary(requeued=tuple(requeued), skipped=tuple(skipped))
+
+    @staticmethod
+    def _requeue_skip_cause(data: Mapping[str, object], *, lane: str | None) -> str | None:
+        if lane and str(data.get("lane") or BUSINESS_LANE) != lane:
+            return "lane_mismatch"
+        attempts = data.get("delivery_attempts")
+        if isinstance(attempts, list) and attempts:
+            last = attempts[-1]
+            if isinstance(last, dict):
+                receipt = last.get("receipt")
+                code = str((receipt or {}).get("error_code") or "") if isinstance(receipt, dict) else ""
+                if code == "QUALITY_GATE_BLOCKED":
+                    return "content_blocked"
+        failure = data.get("failure")
+        if isinstance(failure, dict) and str(failure.get("code") or "") == "OUTBOX_EXPIRED":
+            return "expired"
+        return None
 
     def expire(self, now: datetime | None = None) -> int:
         """Move expired pending events to failed without losing their ledger."""
@@ -342,24 +465,27 @@ class WechatOutbox:
         return removed
 
     def recover_stale_processing(self, stale_seconds: int = 600) -> int:
-        """Nack abandoned claims, counting them as delivery attempts."""
+        """Release abandoned claims without consuming delivery attempts."""
         cutoff = time.time() - stale_seconds
         recovered = 0
         for path in list((self.root / "processing").glob("*.json")):
-            if path.stat().st_mtime >= cutoff:
+            try:
+                if path.stat().st_mtime >= cutoff:
+                    continue
+                data = self._load_payload(path)
+                event_id = str(data.get("event_id") or "")
+                started_at = str(data.get("claimed_at") or "")
+                result = self.release(event_id, {
+                    "agent_context": {"agent_kind": "recovery"},
+                    "tool": "wechat_outbox.recover_stale_processing",
+                    "started_at": started_at,
+                    "finished_at": _now(),
+                    "error_code": "STALE_CLAIM_RECOVERED",
+                    "error_message": "consumer did not ack or nack before stale timeout",
+                    "raw_response": "",
+                })
+            except (OSError, ValueError, json.JSONDecodeError):
                 continue
-            data = self._load_payload(path)
-            event_id = str(data.get("event_id") or "")
-            started_at = str(data.get("claimed_at") or "")
-            result = self.nack(event_id, {
-                "agent_context": {"agent_kind": "recovery"},
-                "tool": "wechat_outbox.recover_stale_processing",
-                "started_at": started_at,
-                "finished_at": _now(),
-                "error_code": "STALE_CLAIM_RECOVERED",
-                "error_message": "consumer did not ack or nack before stale timeout",
-                "raw_response": "",
-            })
             if result != "missing":
                 recovered += 1
         return recovered
