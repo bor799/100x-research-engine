@@ -1,217 +1,74 @@
-# Information Tracking Agent
+# 100X Research Engine
 
-A multi-platform knowledge extraction agent that captures decision-grade signals from the information flood — scored by LLM, written to Obsidian, pushed to Telegram.
+> **A production-oriented pipeline for turning noisy multi-source feeds into traceable knowledge.**
 
-[中文文档](README.md)
+[中文文档](./README.md)
 
----
+The problem is not a lack of information. It is the attention cost of filtering repeated, low-increment content. 100X organizes acquisition, scoring, extraction, queues, delivery, and runtime state into one durable research pipeline.
 
-## Why This Exists
+## What it does
 
-RSS readers are everywhere. They all do the same thing: dump everything on you and let you sort through it.
-
-The problem is you can't sort through it. 200 articles land, 190 are noise, and maybe 1 in the remaining 10 could change a decision. You spend more time filtering than reading the thing that matters.
-
-So this isn't another RSS reader. It's a tool for fighting information asymmetry — you tell it what you care about, it reads the 200 for you, and hands you the 1.
-
-The way it does this isn't through rule-matching. It's through a digital twin that, after reading hundreds of pieces, knows what you want to read next better than you do.
-
----
-
-## Design Philosophy
-
-This system went through three generations. The core difference between them isn't feature count — it's **who makes the decisions**.
-
-### V1: The Diligent But Stupid Calculator
-
-V1 was the product of traditional backend instincts — a deterministic pipeline, woken by Cron, blindly scanning 7 days of data, processing each item, pushing results.
-
-Its biggest problem wasn't slowness. It was **silent bleeding**. When the LLM API went down, the system didn't error out — it "smartly" scored articles by word count. 200 articles all passed the initial filter with 7.0+ scores, then silently failed in the analysis stage. The system appeared to be running at full speed. Actual output: zero.
-
-For AI systems, the scariest thing isn't a crash. It's failing when nobody notices.
-
-### V2: The Pivot From Script to Agent
-
-V2 had one core belief: **surrender micro-control**.
-
-Traditional programmer instincts want to handle every edge case. But that's exactly what limits AI's strength — adaptive capability. So V2 did three things:
-
-**Incremental perception.** The scheduler wakes up with memory — it knows what page it read last time and only fetches new items. The hardcoded `RSS_DAYS_LIMIT = 7` was eliminated entirely. With memory, it grabs increments. Without memory, it dynamically calculates the lookback window from the schedule interval.
-
-**Cognitive resource layering.** The flagship model no longer does coarse filtering. The system mimics human "fast intuition" vs "deep thinking" — coarse screening uses lightweight models (the admin assistant), deep extraction uses the flagship model (the advisory board). This isn't optimization — it's the philosophy of compute governance.
-
-**Fail Loudly.** The "score by word count when API fails" fallback was completely removed. When a model call fails, an alert fires immediately and the task enters the failure queue. The system would rather halt than let garbage pollute the knowledge base.
-
-### V3: A Digital Organism That Evolves
-
-V3 turns "evolution" itself into a system capability.
-
-**Memory layering.** Short-term focus captures your dense concerns over the past 1-2 weeks, automatically boosting extraction weight for related signals. The core persona carries your stable values and mental models. Neither is static configuration — both evolve continuously through your reading behavior.
-
-**From injection to evolution.** The system doesn't passively accept configuration. It infers your shifting interests from extraction history — articles you marked "worth re-reading", topics you repeatedly search — and proposes updates to your focus areas.
-
-**Skill internalization.** This is the most fundamental architectural change. In V2, WeChat scraping worked like a crayfish — the claws were bolted on externally. Every time it needed to grab something, it had to leave the room, start up a harvester machine, wait for it to spit out a page, then pick up the paper and read it. V3 injects scraping capability directly into the process — no longer a "foreman directing robots", but a digital organism that grows new organs. When scraping fails, it "hurts". When it hits anti-bot walls, it "finds another route". When the toolchain breaks, it "self-diagnoses".
-
----
-
-## How It Works
-
-```
-Sources (URL / RSS / IM)
-  |
-  v
-QueueStore  --------  Task queue, SQLite-backed
-  |
-  v
-RuntimeGuard  ------  Runtime isolation, rejects contaminated paths
-  |
-  v
-Fetch  -------------  Multi-platform, 9+ channels, adaptive routing
-  |
-  v
-Score  -------------  Four-layer scoring engine
-  |                     L1 signal strength x L2 source credibility x L3 timeliness
-  |                     = objective quality
-  |                     final = 70% objective + 30% personal fit (L4)
-  v
-Extract  ------------  LLM deep extraction, structured knowledge cards
-  |
-  v
-Output  -------------  Obsidian Markdown + Telegram push
+```text
+Multi-platform sources
+        ↓
+Fetch → Normalize → Deduplicate
+        ↓
+LLM Score → Deep Extraction → Route
+        ↓
+Durable Queue / Outbox
+        ↓
+Obsidian + Cindy / WeChat
+        ↓
+Run Log + Feedback
 ```
 
-Scoring contract:
+- **Reduce noise:** new material is evaluated for information gain before it reaches the reading queue.
+- **Keep evidence:** tasks, retries, outcomes, and delivery receipts have durable state.
+- **Reach multiple platforms:** RSS, Web, YouTube, Twitter/X, Reddit, V2EX, Hacker News, WeChat, and Xiaoyuzhou.
+- **Operate safely:** control scripts handle preflight, start, stop, recovery, diagnostics, and logs.
+- **Preserve human judgment:** AI fetches and extracts; a person decides what deserves long-term belief.
 
-```python
-objective_quality = L1 * L2 * L3
-final_score       = 0.70 * objective_quality + 0.30 * L4
-score             = final_score * 10  # 0-10 scale
+Runtime state is isolated under `~/.100x_v3`. `scripts/control.sh` is the production control surface; `scripts/run-v3.sh` exposes lower-level roles and preflight commands.
+
+## Verified
+
+Fresh local verification on 2026-08-24:
+
+```text
+332 passed in 3.40s
 ```
-
-Every failure point produces a typed outcome — `retry_scheduled`, `rejected`, or `failed_terminal`. Nothing gets marked as done when it isn't.
-
----
-
-## Supported Platforms
-
-| Platform | Method | Notes |
-|----------|--------|-------|
-| YouTube | yt-dlp | Video metadata and subtitles |
-| Twitter/X | xreach / MCP | Tweets and threads |
-| Reddit | Jina Reader | Posts and comments |
-| V2EX | Jina Reader | Discussions |
-| Hacker News | Jina Reader | Tech threads |
-| WeChat Official Accounts | Agent-Reach | Full article (built-in skill) |
-| Xiaoyuzhou FM | Jina Reader | Podcast metadata |
-| RSS/Atom | stdlib xml | Feed aggregation |
-| Web | Jina Reader | Any URL |
-
-**MCP extensibility:** The architecture supports plugging in external information source services via MCP protocol (e.g., Mindspace MCP) for search, channel management, and article retrieval — no core code changes needed.
-
-**Web search:** Supports Exa API direct calls or MCP mode, with category filters, domain restrictions, and recency filtering.
-
----
-
-## Quick Start
-
-### Install
 
 ```bash
-git clone https://github.com/bor799/information-tracking-agent.git
-cd information-tracking-agent
-pip install -e .
+uv sync --python 3.13 --extra dev
+uv run python -m compileall -q src tests scripts/v2_compare.py scripts/test_rss_fetch.py
+uv run pytest -q
 ```
 
-### Configure
+## Relationship to Reclaim Feed
 
-```bash
-cp config/config.example.yaml config/config.local.yaml
-cp .env.example .env
+- **100X** is the production research engine: acquisition, evaluation, queues, state, and reliable delivery.
+- **[Reclaim Feed](https://github.com/bor799/reclaim-feed)** is the product-layer experiment: reading, annotation, and reuse.
+
+They share one problem but evolve separately because operational reliability and product experience need different feedback loops.
+
+## Repository map
+
+```text
+src/       Core package and runtime logic
+tests/     Regression and contract tests
+scripts/   Control plane, operations, and migrations
+config/    Sources and runtime configuration
+docs/      Architecture, errors, and runbooks
+prompts/   Scoring, extraction, and output rules
 ```
 
-Edit `.env` with your API key (at least one LLM provider required). See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for full reference.
+## Boundaries
 
-### Run
+- It does not decide what a person should believe.
+- Multiple similar sources do not automatically become independent evidence.
+- External platform coverage depends on the corresponding tools and account environment.
+- Final promotion into the knowledge system remains a human responsibility.
 
-```bash
-# Enqueue a URL
-information-tracking-agent enqueue-url "https://example.com/article"
+## My role
 
-# Process pending tasks (staging mode)
-information-tracking-agent worker-once --limit 10
-
-# Check queue status
-scripts/control.sh status
-```
-
----
-
-## Project Structure
-
-```
-src/knowledge_extractor_v3/
-  __init__.py
-  shadow_runner.py       # CLI entry point
-  pipeline.py            # Processing pipeline orchestration
-  worker.py              # Queue consumer and batch processor
-  scheduler.py           # Scheduled source polling
-  queue_store.py         # SQLite task queue
-  runtime_guard.py       # Runtime isolation and fingerprinting
-  config_loader.py       # Layered config loading
-  models.py              # Data models
-  health.py              # Health monitoring
-  prompt_registry.py     # Prompt version management
-  prompt_parser.py       # LLM output parsing
-  llm/                   # LLM provider abstraction
-  fetchers/              # Multi-channel fetch adapters
-  sources/               # Source registry and deduplication
-  outputs/               # Obsidian + Telegram output
-```
-
-40 source files, 24 test files, 224+ test cases.
-
----
-
-## Testing
-
-```bash
-pip install -e ".[dev]"
-python -m pytest -q              # 224+ tests
-python -m compileall src tests   # Compile check
-```
-
-CI runs on Python 3.11 / 3.12 / 3.13.
-
----
-
-## Documentation
-
-| Doc | Description |
-|-----|-------------|
-| [Configuration Guide](docs/CONFIGURATION.md) | Environment variables, YAML config, safe defaults |
-| [Architecture](docs/architecture.md) | Data flow, queue contract, prompt contract |
-| [Error Architecture](docs/error-architecture.md) | 9 historical error types and V3 structural defenses |
-| [Search Capabilities](docs/SEARCH_CAPABILITIES.md) | Exa search, MCP mode |
-| [RSS Architecture Analysis](docs/RSS_FETCH_ARCHITECTURE_ANALYSIS.md) | RSS fetch failure analysis and optimization |
-
----
-
-## Command Reference
-
-```bash
-# Enqueue
-information-tracking-agent enqueue-url <URL>
-
-# Process
-information-tracking-agent worker-once --limit N --mode live|staging
-
-# System management
-scripts/control.sh status    # View status
-scripts/control.sh recover   # Recover resident services
-```
-
----
-
-## License
-
-MIT
+I defined the attention problem, information lifecycle, queue and delivery contracts, failure recovery, and the acceptance boundary for knowledge. AI handled much of the implementation, test expansion, and documentation work.
