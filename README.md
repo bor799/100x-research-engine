@@ -1,6 +1,12 @@
+<div align="center">
+
 # 100X 信息研究引擎
 
-> **A production-oriented research pipeline for turning noisy multi-source feeds into traceable knowledge.**
+**目标不是读得更多，而是让真正有增量的信息进入可追踪的知识系统。**
+
+*A production-oriented research pipeline for turning noisy multi-source feeds into traceable knowledge.*
+
+</div>
 
 真正的问题不是「信息不够」，而是注意力被大量重复、低增量内容占用。100X 把获取、筛选、萃取、排队、交付与运行状态组织成一条可以长期工作的研究管线。
 
@@ -12,6 +18,12 @@ flowchart LR
     D --> E[Obsidian / WeChat]
     E --> F[反馈与状态]
     F -.修正规则.-> C
+    style A fill:#E9F4F2,stroke:#A9CFC8,stroke-width:2px,color:#1C3B36
+    style B fill:#E9F4F2,stroke:#A9CFC8,stroke-width:2px,color:#1C3B36
+    style C fill:#DCEFEA,stroke:#37907F,stroke-width:2px,color:#0F3D33
+    style D fill:#E9F4F2,stroke:#A9CFC8,stroke-width:2px,color:#1C3B36
+    style E fill:#E9F4F2,stroke:#A9CFC8,stroke-width:2px,color:#1C3B36
+    style F fill:#DCEFEA,stroke:#37907F,stroke-width:2px,color:#0F3D33
 ```
 
 ## 系统解决什么
