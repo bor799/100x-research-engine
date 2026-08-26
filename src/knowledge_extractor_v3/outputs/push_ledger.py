@@ -9,13 +9,16 @@ week-based reading flow the user already reviews.
 
 Layout (root = ``outputs.obsidian_root``)::
 
-    <obsidian_root>/微信推送/微信推送-2026-08-W4.md   # one file per week
+    <obsidian_root>/2026-08-W4/微信推送 2026-08-W4.md   # one file per week
 
-Week labels follow the vault's existing ``YYYY-MM-WN`` month-week
-convention (W1..W5, ceil(day/7)) — the same pattern as the user's
-``信息源/2026-08-W4`` folders. Entries are append-only and idempotent by
-``event_id``; landing failures never raise (the WeChat receipt in the
-outbox stays the source of truth for delivery).
+The ledger lives INSIDE the week folder, alongside the user's curated
+articles and 《一周关注简报》, under the same name pattern. Week labels
+follow the vault's existing ``YYYY-MM-WN`` month-week convention
+(W1..W5, ceil(day/7)); missing week folders are created on first append
+(user-approved 2026-08-26: the pipeline keeps extending the week series).
+Entries are append-only and idempotent by ``event_id``; landing failures
+never raise (the WeChat receipt in the outbox stays the source of truth
+for delivery).
 """
 
 from __future__ import annotations
@@ -26,7 +29,6 @@ from pathlib import Path
 
 from .wechat_outbox import OutboxItem
 
-LEDGER_SUBDIR = "微信推送"
 LANE_LABELS = {"business": "商业故事", "strategic": "战略信号"}
 
 
@@ -52,11 +54,9 @@ class PushLedger:
         self,
         root: Path,
         *,
-        ledger_subdir: str = LEDGER_SUBDIR,
         notes_subdir: str = "AI进展",
     ) -> None:
         self.root = Path(root)
-        self.ledger_subdir = ledger_subdir
         self.notes_subdir = notes_subdir
 
     # -- public --------------------------------------------------------
@@ -75,10 +75,9 @@ class PushLedger:
             return LandOutcome(status="error", detail=str(exc))
 
     def path_for(self, item: OutboxItem) -> Path:
-        """Ledger file path derived from the item's send date."""
-        day = _entry_date(item)
-        name = f"微信推送-{week_label(day)}.md"
-        return self.root / self.ledger_subdir / name
+        """Ledger file path inside its week folder, derived from the send date."""
+        label = week_label(_entry_date(item))
+        return self.root / label / f"微信推送 {label}.md"
 
     # -- internals -----------------------------------------------------
 

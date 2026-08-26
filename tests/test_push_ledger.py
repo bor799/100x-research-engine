@@ -42,7 +42,7 @@ def test_land_creates_week_file_with_header_and_entry(tmp_path):
     ledger = PushLedger(tmp_path)
     outcome = ledger.land(_item())
     assert outcome.status == "landed"
-    path = tmp_path / "微信推送" / "微信推送-2026-08-W4.md"
+    path = tmp_path / "2026-08-W4" / "微信推送 2026-08-W4.md"
     assert outcome.path == path
     body = path.read_text(encoding="utf-8")
     assert body.startswith("---\n")
@@ -62,7 +62,7 @@ def test_land_links_full_extraction_note(tmp_path):
     note.write_text("---\ntitle: x\n---\nbody", encoding="utf-8")
     ledger = PushLedger(tmp_path)
     ledger.land(_item(event_id="abc123"))
-    body = (tmp_path / "微信推送" / "微信推送-2026-08-W4.md").read_text(encoding="utf-8")
+    body = (tmp_path / "2026-08-W4" / "微信推送 2026-08-W4.md").read_text(encoding="utf-8")
     assert "[[2026-08-25-headlong-agent-abc123]]" in body
 
 
@@ -71,7 +71,7 @@ def test_land_is_idempotent_by_event_id(tmp_path):
     assert ledger.land(_item()).status == "landed"
     second = ledger.land(_item())
     assert second.status == "duplicate"
-    body = (tmp_path / "微信推送" / "微信推送-2026-08-W4.md").read_text(encoding="utf-8")
+    body = (tmp_path / "2026-08-W4" / "微信推送 2026-08-W4.md").read_text(encoding="utf-8")
     assert body.count("(event:abc123)") == 1
 
 
@@ -79,14 +79,14 @@ def test_land_separates_weeks_by_send_date(tmp_path):
     ledger = PushLedger(tmp_path)
     ledger.land(_item(event_id="w3", sent_at="2026-08-17T10:00:00+00:00"))
     ledger.land(_item(event_id="w4", sent_at="2026-08-25T09:30:00+00:00"))
-    assert (tmp_path / "微信推送" / "微信推送-2026-08-W3.md").exists()
-    assert (tmp_path / "微信推送" / "微信推送-2026-08-W4.md").exists()
+    assert (tmp_path / "2026-08-W3" / "微信推送 2026-08-W3.md").exists()
+    assert (tmp_path / "2026-08-W4" / "微信推送 2026-08-W4.md").exists()
 
 
 def test_land_returns_error_without_raising(tmp_path, monkeypatch):
     ledger = PushLedger(tmp_path)
     # A file blocking the ledger directory name makes appends fail.
-    blocker = tmp_path / "微信推送"
+    blocker = tmp_path / "2026-08-W4"
     blocker.write_text("not a directory", encoding="utf-8")
     outcome = ledger.land(_item())
     assert outcome.status == "error"
@@ -136,7 +136,7 @@ def test_cli_ack_lands_card_in_ledger(tmp_path):
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout.strip().splitlines()[-1])
     assert payload["landed"] is True
-    week_files = sorted((ledger_dir / "微信推送").glob("微信推送-*.md"))
+    week_files = sorted(ledger_dir.glob("*/微信推送 *.md"))
     assert len(week_files) == 1  # ack stamps sent_at with the real clock
     assert "(event:ack1)" in week_files[0].read_text(encoding="utf-8")
 
