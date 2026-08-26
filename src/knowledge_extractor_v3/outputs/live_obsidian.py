@@ -52,6 +52,7 @@ class LiveObsidianWriter:
         provider_route: str = "",
         is_test_provider: bool = False,
         runtime_fingerprint: str = "",
+        wechat_lane: str = "",
     ) -> str | TypedError:
         output_dir = self.root / self.subdir
         try:
@@ -94,6 +95,7 @@ class LiveObsidianWriter:
             provider_route=provider_route,
             is_test_provider=is_test_provider,
             runtime_fingerprint=runtime_fingerprint,
+            wechat_lane=wechat_lane,
         )
 
         # Atomic write: temp file in same dir, then rename
@@ -218,6 +220,7 @@ class LiveOutputPort:
             provider_route=provider_route,
             is_test_provider=is_test_provider,
             runtime_fingerprint=runtime_fingerprint,
+            wechat_lane=wechat_lane or "",
         )
         if isinstance(output_path, TypedError):
             return OutputResult(ok=False, mode=self.mode, error=output_path)

@@ -225,6 +225,7 @@ def _render_markdown(
     provider_route: str = "",
     is_test_provider: bool = False,
     runtime_fingerprint: str = "",
+    wechat_lane: str = "",
 ) -> str:
     frontmatter = {
         "title": extraction.title,
@@ -246,6 +247,10 @@ def _render_markdown(
         frontmatter["runtime_mode"] = runtime_mode
     if provider_route:
         frontmatter["provider_route"] = provider_route
+    if wechat_lane:
+        # Marks push-lane items so they are distinguishable from archive-only
+        # notes; mirrors the lane recorded on the WeChat outbox event.
+        frontmatter["wechat_lane"] = wechat_lane
     frontmatter["is_test_provider"] = is_test_provider
     if runtime_fingerprint:
         frontmatter["runtime_fingerprint"] = runtime_fingerprint[:64]

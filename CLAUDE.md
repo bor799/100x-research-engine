@@ -57,3 +57,5 @@ Cindy 微信会话是本系统的默认交互入口（替代 Telegram）。当�
 2. 如果 `status` 为 `done`，告知用户结果已存入 Obsidian 并会通过微信推送
 
 这些命令输出确定性 JSON，不接触微信 connector 身份或 token。推送节奏由 Cindy schedule 控制（商业故事每天 8:30/11:30/17:20，战略周报每周日 17:20）。
+
+**推送本地落档**：`wechat_outbox.py ack` 在确认送达的同时，把卡片追加到 vault 周账本 `信息源/微信推送/微信推送-YYYY-MM-WN.md`（幂等，按 event_id 去重，并互链 `AI进展/` 完整萃取笔记）。回填历史用 `wechat_outbox.py land`。`--queue-dir` 沙箱模式不写真实 vault（除非设 `PUSH_LEDGER_DIR`）。细节见 `docs/CINDY_WECHAT_OPERATIONS.md` 的「本地落档」一节。

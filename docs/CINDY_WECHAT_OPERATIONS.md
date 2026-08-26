@@ -62,6 +62,18 @@ python scripts/cindy_control.py status --task-id 123
 
 CLI 输出 JSON，Cindy 可以原样压缩成微信回复。它不接触 connector 身份，也不需要 Telegram。
 
+## 本地落档（推送账本）
+
+每条实际送达微信的卡片在 `ack` 的同时会落进 vault 的周滚动账本，不依赖微信聊天记录：
+
+- 位置：`<obsidian_root>/微信推送/微信推送-YYYY-MM-WN.md`（如 `信息源/微信推送/微信推送-2026-08-W4.md`，周编号与用户手工周目录同款 month-week 约定）。
+- 条目：发送时间、车道、final_score、原文链接、卡片全文（blockquote），并按 `event_id = content_hash` 互链 `AI进展/` 下的完整萃取笔记（`[[...]]`）。
+- 幂等：按 `event_id` 去重，重复 ack / 回填不会产生重复条目。
+- 隔离：`ack` 失败不影响落档，反之落档失败只打 stderr 警告——outbox 回执仍是送达事实的唯一来源。sent ledger 14 天后清理，账本是更长期的本地记录。
+- 沙箱安全：`--queue-dir` 覆盖队列时（测试/演练）不解析真实 config、不写真实 vault；除非显式设 `PUSH_LEDGER_DIR`。
+
+历史回填（一次性或补账）：`python3 scripts/wechat_outbox.py land`——扫描 `sent/` 全部落档，输出 `{"landed": N, "duplicates": N, ...}`，无可落条目时 exit 2。frontmatter 侧同步：push 车道条目的 `AI进展` 笔记自 2026-08-26 起带 `wechat_lane` 字段，可与 archive-only 内容区分。
+
 ## 通道掉线 runbook
 
 已知故障模式：Cindy 微信连接器的 iLink 会话每隔几天被微信侧静默失效，所有发送（含短探针）返回 SEND_FAIL，Cindy 日志出现 `iLink rejected the message`，且无任何 logout/kick 事件。2026-08-18/19/20/22 均发生过。
@@ -80,7 +92,7 @@ CLI 输出 JSON，Cindy 可以原样压缩成微信回复。它不接触 connect
 
 ```bash
 scripts/control.sh start-tmux
-python -m pytest -q tests/test_wechat_outbox.py tests/test_wechat_queue.py tests/test_cindy_control.py
+python -m pytest -q tests/test_wechat_outbox.py tests/test_wechat_queue.py tests/test_cindy_control.py tests/test_push_ledger.py
 python scripts/wechat_outbox.py status
 python scripts/cindy_control.py status
 scripts/control.sh status
