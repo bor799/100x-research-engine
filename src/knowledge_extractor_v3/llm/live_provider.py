@@ -546,6 +546,30 @@ class LiveLLMProvider:
             next_retry_at=retry_at(15),
         )
 
+    def complete(self, content: str, prompt: str, *, stage: str = "review") -> str | TypedError:
+        """Run a free-form, user-triggered completion through the provider chain."""
+        last_error: TypedError | None = None
+        for provider_config in self._all_providers:
+            if not self._is_provider_available(provider_config):
+                continue
+            model = provider_config.get("extraction_model") or provider_config.get("scoring_model") or _DEFAULT_MODELS.get(
+                provider_config.get("provider", ""), "gpt-4o-mini"
+            )
+            result = self._call_llm(content, prompt, model, stage=stage, provider_config=provider_config)
+            if not isinstance(result, TypedError):
+                return result
+            last_error = result
+            if result.failure_kind not in (FailureKind.LLM_RATE_LIMIT, FailureKind.LLM_QUOTA_EXHAUSTED):
+                return result
+        return last_error or TypedError(
+            failure_kind=FailureKind.LLM_QUOTA_EXHAUSTED,
+            message="No LLM provider is available for review",
+            stage=stage,
+            retryable=True,
+            next_action=NextAction.RETRY_LATER,
+            next_retry_at=retry_at(15),
+        )
+
 
 
     def _call_llm(

@@ -11,7 +11,7 @@ scan (95+ RSS sources) -> fetch (multi-channel) -> absorb (1x GLM-5.2 call)
   -> code-weighted score (0.40 gain / 0.35 action / 0.25 relevance)
   -> route: spam or <4.0 drop | 4.0-7.4 archive | >=7.5 push
              (action_value >= 0.70 -> daily business lane, else weekly digest)
-  -> deterministic card render -> Obsidian archive + WeChat outbox
+  -> deterministic brief -> week-bucketed Obsidian article + weekly magazine
 ```
 
 - One prompt (`prompts/absorption.md`), one LLM call, code-owned scoring.
@@ -25,6 +25,8 @@ scan (95+ RSS sources) -> fetch (multi-channel) -> absorb (1x GLM-5.2 call)
 
 - `scripts/control.sh` starts, stops, recovers, diagnoses, and tails the V4 roles (`loop` + `health-monitor`).
 - The `loop` role runs `python -m knowledge_extractor_v3.daemon`: source scanning and queue working in one process.
+- The loop also serves `http://127.0.0.1:8765/`: one week-rolling HTML issue backed by durable reading/comment state.
+- Accepted articles live directly under `信息源/YYYY-MM-WN/`, with the compressed extraction before the fetched original. New articles no longer enqueue individual WeChat cards; existing cards can drain safely.
 - `scripts/run-v3.sh` exposes lower-level preflight, enqueue, worker, and log commands.
 - Runtime state is isolated under `~/.100x_v3` by default and guarded before live roles touch the queue.
 
@@ -81,6 +83,8 @@ python -m pytest -q
 ```
 
 V4 baseline on 2026-08-17: `275 passed` (single-call absorption core).
+
+See [Weekly Magazine](docs/WEEKLY_MAGAZINE.md) for the daily reading, carryover, comment, and AI review workflow.
 
 ## Documentation
 

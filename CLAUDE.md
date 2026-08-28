@@ -58,4 +58,4 @@ Cindy 微信会话是本系统的默认交互入口（替代 Telegram）。当�
 
 这些命令输出确定性 JSON，不接触微信 connector 身份或 token。推送节奏由 Cindy schedule 控制（商业故事每天 8:30/11:30/17:20，战略周报每周日 17:20）。
 
-**推送本地落档**：`wechat_outbox.py ack` 在确认送达的同时，把卡片追加到用户周文件夹内的周账本 `信息源/YYYY-MM-WN/微信推送 YYYY-MM-WN.md`（与《一周关注简报》同目录；幂等，按 event_id 去重，互链 `AI进展/` 完整萃取笔记；周文件夹缺失时按 `W=ceil(day/7)` 自动创建）。回填历史用 `wechat_outbox.py land`。`--queue-dir` 沙箱模式不写真实 vault（除非设 `PUSH_LEDGER_DIR`）。细节见 `docs/CINDY_WECHAT_OPERATIONS.md` 的「本地落档」一节。
+**周刊阅读闭环**：新萃取不再写 `AI进展/`，也不再产生逐篇微信卡片。每篇进入 `信息源/YYYY-MM-WN/`，结构固定为「压缩萃取 → 阅读反馈/AI 复核托管区 → 原文」。单周 HTML `知识萃取周刊 YYYY-MM-WN.html` 每日追加并重建；阅读、无需评论、评论、划线和 AI 复核状态持久化在同周 JSON。localhost 服务默认 `127.0.0.1:8765`，便携 HTML 离线时只读。旧 outbox 继续排空，旧 `微信推送` 周账本与历史 `AI进展/` 不迁移。细节见 `docs/WEEKLY_MAGAZINE.md`。

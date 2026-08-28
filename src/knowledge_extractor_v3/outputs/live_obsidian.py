@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import uuid
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from ..models import (
     ExtractionResult,
@@ -19,6 +22,9 @@ from ..models import (
 )
 from ..queue_store import FailureKind, NextAction
 from .obsidian import _filename, _render_markdown
+from .push_ledger import week_label
+
+SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 
 class LiveObsidianWriter:
@@ -54,7 +60,14 @@ class LiveObsidianWriter:
         runtime_fingerprint: str = "",
         wechat_lane: str = "",
     ) -> str | TypedError:
-        output_dir = self.root / self.subdir
+        processed_at = utc_now()
+        try:
+            local_processed = datetime.fromisoformat(processed_at).astimezone(SHANGHAI)
+            processed_day = local_processed.date()
+            processed_at = local_processed.isoformat(timespec="seconds")
+        except ValueError:
+            processed_day = datetime.now(SHANGHAI).date()
+        output_dir = self.root / week_label(processed_day)
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
@@ -67,8 +80,7 @@ class LiveObsidianWriter:
                 detail=str(exc),
             )
 
-        processed_at = utc_now()
-        filename = _filename(processed_at[:10], extraction.title, content.content_hash)
+        filename = _filename(processed_day.isoformat(), extraction.title, content.content_hash)
         final_path = output_dir / filename
 
         # Verify path safety: output stays under root
@@ -97,6 +109,13 @@ class LiveObsidianWriter:
             runtime_fingerprint=runtime_fingerprint,
             wechat_lane=wechat_lane,
         )
+        if final_path.exists():
+            try:
+                markdown = _preserve_managed_blocks(
+                    final_path.read_text(encoding="utf-8"), markdown
+                )
+            except OSError:
+                pass
 
         # Atomic write: temp file in same dir, then rename
         tmp_name = f".tmp-{content.content_hash}-{uuid.uuid4().hex[:8]}.md"
@@ -127,6 +146,15 @@ class LiveObsidianWriter:
                 runtime_mode=runtime_mode, provider_route=provider_route,
                 is_test_provider=is_test_provider, runtime_fingerprint=runtime_fingerprint,
             )
+
+        # The weekly HTML is derived from Markdown. Rebuild best-effort after
+        # each successful article so it never becomes another source of truth.
+        try:
+            from ..magazine import build_issue
+
+            build_issue(self.root, week_label(processed_day))
+        except Exception:
+            pass
 
         return str(final_path)
 
@@ -173,6 +201,18 @@ class LiveObsidianWriter:
             pass  # Manifest failure should not block output
 
 
+def _preserve_managed_blocks(existing: str, rendered: str) -> str:
+    """Keep user/AI feedback when an idempotent article is rendered again."""
+    for name in ("user-feedback", "ai-review"):
+        start = f"<!-- 100x:{name}:start -->"
+        end = f"<!-- 100x:{name}:end -->"
+        pattern = re.compile(re.escape(start) + r".*?" + re.escape(end), re.S)
+        old = pattern.search(existing)
+        if old and pattern.search(rendered):
+            rendered = pattern.sub(lambda _: old.group(0), rendered, count=1)
+    return rendered
+
+
 class LiveOutputPort:
     """Live output: atomic Obsidian write plus configured message delivery.
 
@@ -188,9 +228,11 @@ class LiveOutputPort:
         *,
         obsidian_writer: LiveObsidianWriter,
         wechat_queue: "WechatQueue | None" = None,
+        enqueue_individual_cards: bool = False,
     ) -> None:
         self.writer = obsidian_writer
         self.wechat_queue = wechat_queue
+        self.enqueue_individual_cards = enqueue_individual_cards
 
     def write(
         self,
@@ -233,7 +275,7 @@ class LiveOutputPort:
         # Only push routes (business / strategic lane) reach the WeChat outbox.
         # archive_only content is archived to Obsidian above and intentionally
         # kept out of the user's inbox.
-        if self.wechat_queue is not None and wechat_lane:
+        if self.wechat_queue is not None and wechat_lane and self.enqueue_individual_cards:
             queue_content = replace(
                 content,
                 metadata={
@@ -258,6 +300,8 @@ class LiveOutputPort:
                     error=delivery,
                 )
             wechat_status, wechat_preview = delivery
+        elif wechat_lane:
+            wechat_status = "magazine_only"
 
         return OutputResult(
             ok=True,

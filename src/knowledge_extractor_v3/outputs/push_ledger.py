@@ -95,24 +95,22 @@ class PushLedger:
         ]
         note = self._find_note(item.event_id)
         if note:
-            lines.append(f"- 完整萃取: [[{note.stem}]]")
+            relative = note.relative_to(self.root).with_suffix("").as_posix()
+            lines.append(f"- 完整萃取: [[{relative}]]")
         lines.append(f"- (event:{item.event_id})")
         lines.extend(["", "> " + item.text.replace("\n", "\n> "), ""])
         return "\n".join(lines)
 
     def _find_note(self, event_id: str) -> Path | None:
-        """Locate the AI进展 note whose filename ends with the event id.
-
-        The pipeline names notes ``<date>-<slug>-<content_hash>.md`` and the
-        outbox event_id is the content hash, so a suffix glob links the two.
-        """
+        """Locate the weekly article; fall back to a historical fixed folder."""
         if not event_id:
             return None
+        matches = sorted(self.root.glob(f"????-??-W?/* {event_id[:8]}.md"))
+        if matches:
+            return matches[-1]
         notes = self.root / self.notes_subdir
-        if not notes.is_dir():
-            return None
-        matches = sorted(notes.glob(f"*-{event_id}.md"))
-        return matches[-1] if matches else None
+        historical = sorted(notes.glob(f"*-{event_id}.md")) if notes.is_dir() else []
+        return historical[-1] if historical else None
 
     def ensure_header(self, item: OutboxItem) -> None:
         """Create the week file with frontmatter before the first append."""
@@ -129,8 +127,8 @@ class PushLedger:
             "\n"
             f"# 微信推送 {label}\n"
             "\n"
-            "本周实际送达微信的卡片，按发送时间落档；完整萃取笔记在"
-            f" [[{self.notes_subdir}]] 目录（各条目内有链接）。\n"
+            "本周实际送达微信的历史卡片，按发送时间落档；新内容改由同目录的"
+            "《知识萃取周刊》汇总，完整萃取链接随条目记录。\n"
         )
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(header, encoding="utf-8")

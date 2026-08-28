@@ -355,6 +355,7 @@ class QueueWorker:
             live_output = LiveOutputPort(
                 obsidian_writer=writer,
                 wechat_queue=wechat_queue,
+                enqueue_individual_cards=self._config.outputs.enqueue_individual_cards,
             )
 
             # Replace the pipeline's live output

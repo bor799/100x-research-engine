@@ -611,8 +611,8 @@ if __name__ == "__main__":
     sys.exit(0 if failed == 0 else 1)
 
 
-def test_worker_live_mode_wechat_channel_processes_and_queues_brief(tmp_path, monkeypatch):
-    """Regression: the live branch must build the WeChat queue from config.
+def test_worker_live_mode_wechat_channel_processes_into_weekly_magazine(tmp_path, monkeypatch):
+    """Live articles archive once and do not extend the legacy card queue.
 
     A past edit removed the `channel` variable while the WeChat branch still
     referenced it, crashing every live task with NameError (task 4793).
@@ -691,12 +691,9 @@ def test_worker_live_mode_wechat_channel_processes_and_queues_brief(tmp_path, mo
     assert result.tasks_failed == 0
     statuses = queue_store.count_by_status()
     assert statuses.get("done") == 1
-    import json as _json
-
     pending = list((tmp_path / "wechat" / "pending").glob("*.json"))
-    assert pending, "business push must reach the WeChat outbox"
-    payload = _json.loads(pending[0].read_text(encoding="utf-8"))
-    assert payload["lane"] == "business"
-    assert payload["text"].startswith("🎯 ")
-    assert "🧭" not in payload["text"]
-    assert "📊 评分: 8.0 · Tier A" in payload["text"]
+    assert pending == []
+    articles = list(obsidian_root.glob("????-??-W?/*.md"))
+    assert len(articles) == 1
+    assert "## 原文" in articles[0].read_text(encoding="utf-8")
+    assert list(obsidian_root.glob("????-??-W?/知识萃取周刊 *.html"))

@@ -84,8 +84,31 @@ def main(argv: list[str] | None = None) -> int:
 
     next_scan_at = 0.0  # scan immediately on start
     iterations = 0
+    magazine_server = None
     while True:
         try:
+            # Bring the magazine service up before the first scan so a stalled
+            # source fetch cannot delay localhost availability.
+            if magazine_server is None:
+                config = ConfigLoader(project_root=Path.cwd()).load()
+                if config.outputs.magazine_enabled and config.outputs.obsidian_root:
+                    from .magazine import MagazineServer, build_issue, build_reviewer
+
+                    loader = ConfigLoader(project_root=Path.cwd())
+                    root = loader.expand_path(config.outputs.obsidian_root)
+                    build_issue(root)
+                    try:
+                        magazine_server = MagazineServer(
+                            root,
+                            port=config.outputs.magazine_port,
+                            reviewer=build_reviewer(config, root),
+                        )
+                        magazine_server.start()
+                    except OSError as exc:
+                        print(f"[daemon] magazine service unavailable: {exc}", file=sys.stderr, flush=True)
+                        magazine_server = False
+                else:
+                    magazine_server = False
             scan = not args.no_scan and time.time() >= next_scan_at
             code = run_once(scan=scan, batch_size=args.limit)
             if scan:
@@ -93,6 +116,8 @@ def main(argv: list[str] | None = None) -> int:
             if code != 0:
                 print(f"[daemon] worker batch reported failures (exit={code})", flush=True)
         except KeyboardInterrupt:
+            if magazine_server not in (None, False):
+                magazine_server.close()
             print("[daemon] interrupted, exiting", flush=True)
             return 0
         except Exception as exc:  # keep the daemon alive; control.sh restarts are slow

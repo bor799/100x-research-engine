@@ -63,7 +63,17 @@ def test_land_links_full_extraction_note(tmp_path):
     ledger = PushLedger(tmp_path)
     ledger.land(_item(event_id="abc123"))
     body = (tmp_path / "2026-08-W4" / "微信推送 2026-08-W4.md").read_text(encoding="utf-8")
-    assert "[[2026-08-25-headlong-agent-abc123]]" in body
+    assert "[[AI进展/2026-08-25-headlong-agent-abc123]]" in body
+
+
+def test_land_prefers_week_article_link(tmp_path):
+    week = tmp_path / "2026-08-W4"
+    week.mkdir()
+    note = week / "2026-08-25 Headlong abc123fu.md"
+    note.write_text("---\ntype: knowledge-extract\n---\nbody", encoding="utf-8")
+    PushLedger(tmp_path).land(_item(event_id="abc123full"))
+    body = (week / "微信推送 2026-08-W4.md").read_text(encoding="utf-8")
+    assert "[[2026-08-W4/2026-08-25 Headlong abc123fu]]" in body
 
 
 def test_land_is_idempotent_by_event_id(tmp_path):

@@ -314,7 +314,7 @@ class TestObservability:
         )
         assert isinstance(output, str)
 
-        manifest_path = inbox / "manifest.jsonl"
+        manifest_path = Path(output).parent / "manifest.jsonl"
         assert manifest_path.exists()
         line = manifest_path.read_text().strip().split("\n")[-1]
         entry = json.loads(line)
@@ -342,7 +342,7 @@ class TestObservability:
             runtime_fingerprint="fp-123",
         )
         assert result.ok
-        files = list(inbox.glob("*.md"))
+        files = list(tmp_path.glob("????-??-W?/*.md"))
         assert len(files) == 1
         content = files[0].read_text()
         assert "runtime_mode:" in content

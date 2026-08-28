@@ -23,6 +23,7 @@ dev = [
 
 [project.scripts]
 100x-v4-daemon = "knowledge_extractor_v3.daemon:main"
+100x-v4-magazine = "knowledge_extractor_v3.magazine:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

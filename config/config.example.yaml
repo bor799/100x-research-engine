@@ -37,6 +37,11 @@ outputs:
   obsidian_root: ""
   obsidian_subdir: "inbox"
   write_manifest: true
+  # One week-rolling HTML issue with localhost-only reading/comments API.
+  magazine_enabled: true
+  magazine_port: 8765
+  # Old outbox cards can drain, but new articles enter the daily magazine only.
+  enqueue_individual_cards: false
   channel: "wechat"             # wechat | telegram | both
   wechat_queue_dir: "~/.100x_v3/wechat_queue"
   telegram_bot_token_env: "TELEGRAM_BOT_TOKEN"

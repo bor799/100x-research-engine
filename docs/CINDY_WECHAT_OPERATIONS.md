@@ -62,12 +62,14 @@ python scripts/cindy_control.py status --task-id 123
 
 CLI 输出 JSON，Cindy 可以原样压缩成微信回复。它不接触 connector 身份，也不需要 Telegram。
 
-## 本地落档（推送账本）
+## 历史兼容：本地落档（推送账本）
+
+> 周刊工作流启用后，新文章不再进入逐篇 outbox；本节只用于排空和追溯既有卡片。每日新交付见 `WEEKLY_MAGAZINE.md`。
 
 每条实际送达微信的卡片在 `ack` 的同时会落进 vault 的周滚动账本，不依赖微信聊天记录：
 
 - 位置：`<obsidian_root>/YYYY-MM-WN/微信推送 YYYY-MM-WN.md`，直接放在用户阅读的周文件夹内（如 `信息源/2026-08-W4/微信推送 2026-08-W4.md`，与《一周关注简报》同目录、同命名样式）。周编号为 month-week 约定 `W = ceil(day/7)`（W1..W5）；周文件夹不存在时自动创建（用户 2026-08-26 已确认由管道持续延长周序列）。
-- 条目：发送时间、车道、final_score、原文链接、卡片全文（blockquote），并按 `event_id = content_hash` 互链 `AI进展/` 下的完整萃取笔记（`[[...]]`）。
+- 条目：发送时间、车道、final_score、原文链接、卡片全文（blockquote）。链接优先指向周目录文章；历史条目才回退到 `AI进展/`。
 - 幂等：按 `event_id` 去重，重复 ack / 回填不会产生重复条目。
 - 隔离：`ack` 失败不影响落档，反之落档失败只打 stderr 警告——outbox 回执仍是送达事实的唯一来源。sent ledger 14 天后清理，账本是更长期的本地记录。
 - 沙箱安全：`--queue-dir` 覆盖队列时（测试/演练）不解析真实 config、不写真实 vault；除非显式设 `PUSH_LEDGER_DIR`。

@@ -84,7 +84,8 @@ class TestLiveObsidianWriter:
         assert isinstance(result, str)
         output = Path(result)
         assert output.exists()
-        assert output.parent == tmp_path / "inbox"
+        assert output.parent.name.startswith("2026-08-W")
+        assert output.parent.parent == tmp_path
         assert output.name.endswith(".md")
         assert ".tmp-" not in output.name
         # No temp files remain
@@ -106,6 +107,8 @@ class TestLiveObsidianWriter:
         assert "Test Extraction Title" in content
         assert "final_score:" in content
         assert "# Brief" in content
+        assert content.index("# Brief") < content.index("## 原文")
+        assert "Body text of the article" in content
 
     def test_stays_under_root(self, tmp_path):
         writer = LiveObsidianWriter(tmp_path, subdir="inbox")
@@ -130,7 +133,7 @@ class TestLiveObsidianWriter:
             task_id=42,
         )
         assert isinstance(result, str)
-        manifest_path = tmp_path / "inbox" / "manifest.jsonl"
+        manifest_path = Path(result).parent / "manifest.jsonl"
         assert manifest_path.exists()
         lines = manifest_path.read_text(encoding="utf-8").strip().splitlines()
         assert len(lines) == 1
@@ -149,10 +152,10 @@ class TestLiveObsidianWriter:
             prompt_hash="hash",
         )
         assert isinstance(result, str)
-        manifest_path = tmp_path / "inbox" / "manifest.jsonl"
+        manifest_path = Path(result).parent / "manifest.jsonl"
         assert not manifest_path.exists()
 
-    def test_creates_subdirectory(self, tmp_path):
+    def test_ignores_legacy_fixed_subdirectory_and_creates_week(self, tmp_path):
         writer = LiveObsidianWriter(tmp_path, subdir="deep/nested/path")
         result = writer.write(
             _fetched(),
@@ -162,7 +165,8 @@ class TestLiveObsidianWriter:
             prompt_hash="hash",
         )
         assert isinstance(result, str)
-        assert (tmp_path / "deep" / "nested" / "path").exists()
+        assert Path(result).parent.parent == tmp_path
+        assert not (tmp_path / "deep" / "nested" / "path").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +179,7 @@ class TestLiveOutputPort:
         port = LiveOutputPort(
             obsidian_writer=writer,
             wechat_queue=WechatQueue(queue_dir),
+            enqueue_individual_cards=True,
         )
 
         result = port.write(
@@ -203,6 +208,7 @@ class TestLiveOutputPort:
         port = LiveOutputPort(
             obsidian_writer=writer,
             wechat_queue=WechatQueue(queue_path),
+            enqueue_individual_cards=True,
         )
 
         result = port.write(
@@ -225,3 +231,18 @@ class TestLiveOutputPort:
         writer = LiveObsidianWriter(tmp_path, subdir="inbox", write_manifest=False)
         port = LiveOutputPort(obsidian_writer=writer)
         assert port.mode is RuntimeMode.LIVE
+
+    def test_default_routes_push_articles_to_magazine_without_new_card(self, tmp_path):
+        queue_dir = tmp_path / "wechat"
+        port = LiveOutputPort(
+            obsidian_writer=LiveObsidianWriter(tmp_path, write_manifest=False),
+            wechat_queue=WechatQueue(queue_dir),
+        )
+        result = port.write(
+            _fetched(), _score(), _extraction(), "legacy card",
+            prompt_bundle="test", prompt_hash="hash", task_id=1,
+            wechat_lane="business",
+        )
+        assert result.ok is True
+        assert result.wechat_status == "magazine_only"
+        assert not list(queue_dir.glob("pending/*.json"))

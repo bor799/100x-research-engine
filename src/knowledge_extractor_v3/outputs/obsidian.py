@@ -228,6 +228,8 @@ def _render_markdown(
     wechat_lane: str = "",
 ) -> str:
     frontmatter = {
+        "type": "knowledge-extract",
+        "article_id": content.content_hash,
         "title": extraction.title,
         "prompt_bundle": prompt_bundle,
         "prompt_hash": prompt_hash,
@@ -257,14 +259,37 @@ def _render_markdown(
     lines = ["---"]
     for key, value in frontmatter.items():
         lines.append(f"{key}: {_yaml_value(value)}")
-    lines.extend(["---", "", extraction.obsidian_brief_markdown.strip(), ""])
+    lines.extend(
+        [
+            "---",
+            "",
+            extraction.obsidian_brief_markdown.strip(),
+            "",
+            "<!-- 100x:user-feedback:start -->",
+            "## 阅读反馈",
+            "",
+            "尚未提交评论。",
+            "<!-- 100x:user-feedback:end -->",
+            "",
+            "<!-- 100x:ai-review:start -->",
+            "<!-- 提交评论后，由 100X 定向萃取服务写入。 -->",
+            "<!-- 100x:ai-review:end -->",
+            "",
+            "## 原文",
+            "",
+            content.text.strip(),
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
 def _filename(date_prefix: str, title: str, content_hash: str) -> str:
-    safe_title = re.sub(r"[^A-Za-z0-9._-]+", "-", title.strip()).strip("-").lower()
-    safe_title = safe_title[:80] or "untitled"
-    return f"{date_prefix}-{safe_title}-{content_hash}.md"
+    # Keep readable Unicode titles. Only characters that are invalid or
+    # troublesome on common filesystems are replaced.
+    safe_title = re.sub(r'[\\/:*?"<>|\x00-\x1f]+', "-", title.strip())
+    safe_title = re.sub(r"\s+", " ", safe_title).strip(" .-")[:80] or "未命名"
+    return f"{date_prefix} {safe_title} {content_hash[:8]}.md"
 
 
 def _yaml_value(value: object) -> str:

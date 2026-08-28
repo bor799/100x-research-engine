@@ -109,8 +109,11 @@ llm:
 ```yaml
 outputs:
   obsidian_root: ""                   # Obsidian vault path (empty = disabled)
-  obsidian_subdir: "inbox"            # Subdirectory within vault
+  obsidian_subdir: "inbox"            # Legacy only; live articles use YYYY-MM-WN
   write_manifest: true                # Write processing manifest
+  magazine_enabled: true              # localhost reading/comment service
+  magazine_port: 8765
+  enqueue_individual_cards: false      # keep false after legacy outbox drains
   telegram_bot_token_env: "TELEGRAM_BOT_TOKEN"
   telegram_admin_chat_id_env: "TELEGRAM_ADMIN_CHAT_ID"
   telegram_enabled: true              # Enable Telegram output (requires token)

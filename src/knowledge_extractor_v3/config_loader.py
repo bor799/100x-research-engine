@@ -73,6 +73,9 @@ class OutputsConfig:
     telegram_bot_token: str = ""  # 直接配置 token（优先于环境变量，兼容 V2）
     telegram_admin_chat_id: str = ""  # 直接配置 chat_id（优先于环境变量，兼容 V2）
     telegram_enabled: bool = False
+    magazine_enabled: bool = True
+    magazine_port: int = 8765
+    enqueue_individual_cards: bool = False
 
 
 @dataclass(frozen=True)
@@ -540,6 +543,9 @@ def _build_outputs(raw: dict[str, object]) -> OutputsConfig:
         telegram_bot_token=str(raw.get("telegram_bot_token", "")),
         telegram_admin_chat_id=str(raw.get("telegram_admin_chat_id", "")),
         telegram_enabled=bool(raw.get("telegram_enabled", False)),
+        magazine_enabled=bool(raw.get("magazine_enabled", True)),
+        magazine_port=int(raw.get("magazine_port", 8765)),
+        enqueue_individual_cards=bool(raw.get("enqueue_individual_cards", False)),
     )
 
 
