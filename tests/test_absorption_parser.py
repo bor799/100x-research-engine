@@ -61,14 +61,13 @@ def test_exact_weighted_math():
 
 
 def test_tier_boundaries():
-    # A >= 7.5, B >= 5.0, C >= 4.0, else Reject — probed via uniform dims.
+    # A >= 7.5, B >= 6.0, else Reject — probed via uniform dims
+    # (aligned with routing.REJECT_FINAL_SCORE_MAX since 2026-08-30).
     for dims, tier in (
         ((0.75, 0.75, 0.75), "A"),
         ((0.74, 0.74, 0.74), "B"),
-        ((0.50, 0.50, 0.50), "B"),
-        ((0.49, 0.49, 0.49), "C"),
-        ((0.40, 0.40, 0.40), "C"),
-        ((0.39, 0.39, 0.39), "Reject"),
+        ((0.60, 0.60, 0.60), "B"),
+        ((0.59, 0.59, 0.59), "Reject"),
     ):
         gain, action, relevance = dims
         score, _ = _parse(

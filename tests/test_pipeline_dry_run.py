@@ -101,8 +101,8 @@ class AbsorptionProvider(StubLLMProvider):
 
 
 def test_pipeline_archives_band_content_and_drops_below_floor(tmp_path):
-    """0.40-0.74 is archive material: absorbed once (a single LLM call),
-    archived to Obsidian, never pushed. Below 0.40 drops at routing."""
+    """0.60-0.74 is archive material: absorbed once (a single LLM call),
+    archived to Obsidian, never pushed. Below 0.60 drops at routing."""
     # 0.69 dims -> 0.69 final: archive band -> absorbed, done, no push lane.
     store = QueueStore(tmp_path / ".100x_v3" / "queue.db", runtime_fingerprint="test-fp")
     llm = AbsorptionProvider(gain=0.69, action=0.69, relevance=0.69)
@@ -119,9 +119,9 @@ def test_pipeline_archives_band_content_and_drops_below_floor(tmp_path):
     assert route_stage.detail.get("route") == "archive_only"
     assert result.route == "archive_only"
 
-    # 0.35 dims -> 0.35 final: below the 0.40 floor -> rejected.
+    # 0.55 dims -> 0.55 final: below the 0.60 floor -> rejected.
     store2 = QueueStore(tmp_path / ".100x_v3b" / "queue.db", runtime_fingerprint="test-fp")
-    llm2 = AbsorptionProvider(gain=0.35, action=0.35, relevance=0.35)
+    llm2 = AbsorptionProvider(gain=0.55, action=0.55, relevance=0.55)
     pipeline2 = Pipeline(
         store2, llm_provider=llm2, staging_root=tmp_path / "staging2", allow_test_provider=True
     )

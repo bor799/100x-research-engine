@@ -79,6 +79,16 @@ class OutputsConfig:
 
 
 @dataclass(frozen=True)
+class DedupConfig:
+    """写入时去重 + 同源增量合并 + 定期清理的开关与阈值。"""
+
+    enabled: bool = True
+    update_similarity_threshold: float = 0.98
+    refetch_cooldown_days: int = 3
+    dedup_interval_hours: int = 24
+
+
+@dataclass(frozen=True)
 class PromptsConfig:
     registry: str = "prompts/registry.json"
     active_bundle: str = "v3_business_stories"
@@ -187,6 +197,7 @@ class V3Config:
     telegram_bot: TelegramBotConfig = field(default_factory=TelegramBotConfig)
     agent_reach: AgentReachConfig = field(default_factory=AgentReachConfig)
     daily_reports: DailyReportsConfig = field(default_factory=DailyReportsConfig)
+    dedup: DedupConfig = field(default_factory=DedupConfig)
 
 
 # ---------------------------------------------------------------------------
@@ -549,6 +560,19 @@ def _build_outputs(raw: dict[str, object]) -> OutputsConfig:
     )
 
 
+def _build_dedup(raw: dict[str, object]) -> DedupConfig:
+    try:
+        similarity_threshold = float(raw.get("update_similarity_threshold", 0.98))
+    except (TypeError, ValueError):
+        similarity_threshold = 0.98
+    return DedupConfig(
+        enabled=bool(raw.get("enabled", True)),
+        update_similarity_threshold=max(0.5, min(1.0, similarity_threshold)),
+        refetch_cooldown_days=int(raw.get("refetch_cooldown_days", 3)),
+        dedup_interval_hours=int(raw.get("dedup_interval_hours", 24)),
+    )
+
+
 def _build_prompts(raw: dict[str, object]) -> PromptsConfig:
     ptb = raw.get("parallel_test_bundles", [])
     return PromptsConfig(
@@ -772,6 +796,7 @@ class ConfigLoader:
             telegram_bot=_build_telegram_bot(self._section(raw, "telegram_bot")),
             agent_reach=_build_agent_reach(self._section(raw, "agent_reach")),
             daily_reports=_build_daily_reports(self._section(raw, "daily_reports")),
+            dedup=_build_dedup(self._section(raw, "dedup")),
         )
 
     def resolve_env(self, env_var_name: str) -> str:

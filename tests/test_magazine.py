@@ -92,6 +92,31 @@ def test_weekly_html_is_portable_but_uses_local_api_for_edits(tmp_path, monkeypa
     assert "localStorage" not in body
 
 
+def test_archive_band_stays_on_disk_but_out_of_the_issue(tmp_path, monkeypatch):
+    """Operator decision 2026-08-30: only push-band content (>= 0.75) enters
+    the magazine. A 6.0-7.4 archive-band extraction is still written to the
+    week folder, but the issue and reading state never track it."""
+    _write(tmp_path, monkeypatch)  # abc123def456, final_score 0.8 (push band)
+    mid = tmp_path / "2026-08-W4" / "2026-08-28 中段内容 fed654cba321.md"
+    mid.write_text(
+        "---\n"
+        'type: "knowledge-extract"\n'
+        'article_id: "fed654cba321"\n'
+        "title: 中段内容\n"
+        "url: https://example.com/mid\n"
+        "final_score: 0.68\n"
+        'signal_tier: "B"\n'
+        "---\n\n压缩萃取正文。\n\n## 原文\n\n原文正文。\n",
+        encoding="utf-8",
+    )
+    payload = issue_payload(tmp_path, "2026-08-W4")
+    ids = [a["article_id"] for a in payload["articles"]]
+    assert ids == ["abc123def456"]  # 0.68 never shows up
+    state = json.loads((tmp_path / "2026-08-W4" / "阅读状态 2026-08-W4.json").read_text("utf-8"))
+    assert "fed654cba321" not in state["articles"]
+    assert mid.exists()  # …but the cold archive file is intact on disk
+
+
 def test_unfinished_article_rolls_into_later_issue(tmp_path, monkeypatch):
     path = _write(tmp_path, monkeypatch)
     later = issue_payload(tmp_path, "2026-09-W1")
@@ -142,3 +167,49 @@ def test_repeat_write_preserves_user_feedback(tmp_path, monkeypatch):
     MagazineStore(tmp_path).update("abc123def456", {"read": True, "comment": "不要覆盖我"})
     _write(tmp_path, monkeypatch)
     assert "不要覆盖我" in path.read_text(encoding="utf-8")
+
+
+def test_pending_update_reshelves_completed_article(tmp_path, monkeypatch):
+    """A completed old-week article re-enters later issues when a same-URL
+    update lands, shows its latest delta, and leaves once disposed again."""
+    _write(tmp_path, monkeypatch)
+    store = MagazineStore(tmp_path)
+    store.update("abc123def456", {"read": True, "disposition": "no_comment"})
+    assert issue_payload(tmp_path, "2026-09-W1")["articles"] == []  # complete and shelved away
+
+    store.record_update(
+        "abc123def456",
+        {"content_hash": "newhash1", "summary": "B 轮融资 2 亿美元落地", "date": "2026-09-01"},
+    )
+    later = issue_payload(tmp_path, "2026-09-W1")
+    assert len(later["articles"]) == 1
+    article = later["articles"][0]
+    assert article["carryover"] is True
+    assert article["update_pending"] is True
+    assert article["latest_update"]["summary"] == "B 轮融资 2 亿美元落地"
+    assert later["counts"]["updates_pending"] == 1
+    # unfinished/unread semantics are untouched: the article stays "complete"
+    # so the 17:20 digest consumer is unaffected by pending updates.
+    assert later["counts"]["unfinished"] == 0
+    assert later["counts"]["unread"] == 0
+
+    # Disposing of the merged content clears the flag and shelves it again.
+    store.update("abc123def456", {"disposition": "no_comment"})
+    final = issue_payload(tmp_path, "2026-09-W1")
+    assert final["articles"] == []
+    assert final["counts"]["updates_pending"] == 0
+
+
+def test_issue_html_renders_update_badge_and_backlog(tmp_path, monkeypatch):
+    _write(tmp_path, monkeypatch)
+    store = MagazineStore(tmp_path)
+    store.update("abc123def456", {"read": True, "disposition": "no_comment"})
+    store.record_update(
+        "abc123def456",
+        {"content_hash": "newhash2", "summary": "裁员 30%", "date": "2026-09-02"},
+    )
+    issue = build_issue(tmp_path, "2026-09-W1")
+    body = issue.read_text(encoding="utf-8")
+    assert "有更新" in body  # card meta badge + update-note template
+    assert "update_pending" in body  # the JS consumes the flag for the shelf
+    assert "未完阅读架" in body  # backlog shelf keeps completed-but-updated items

@@ -60,6 +60,30 @@ def run_once(*, scan: bool = True, batch_size: int = 10) -> int:
     return 0 if result.tasks_failed == 0 else 1
 
 
+def _run_periodic_dedup() -> float:
+    """One vault-dedup pass; returns the seconds until the next pass."""
+    interval_hours = 24
+    try:
+        loader = ConfigLoader(project_root=Path.cwd())
+        config = loader.load()
+        dedup = config.dedup
+        interval_hours = max(1, int(dedup.dedup_interval_hours))
+        if dedup.enabled and config.outputs.obsidian_root:
+            from .outputs.dedupe import dedupe_vault
+
+            root = loader.expand_path(config.outputs.obsidian_root)
+            report = dedupe_vault(root)
+            if report.merged_groups or report.restored or report.errors:
+                print(
+                    f"[daemon] vault dedup: {report.merged_groups} groups merged, "
+                    f"{len(report.restored)} restored, {len(report.errors)} errors",
+                    file=sys.stderr, flush=True,
+                )
+    except Exception as exc:  # dedup must never kill the daemon loop
+        print(f"[daemon] vault dedup failed: {exc}", file=sys.stderr, flush=True)
+    return interval_hours * 3600.0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="V4 single daemon (scan + work)")
     parser.add_argument("--loop", action="store_true", help="Run forever (default: one pass)")
@@ -72,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--limit", type=int, default=10, help="Worker batch size")
     parser.add_argument("--no-scan", action="store_true", help="Worker only (manual scans)")
+    parser.add_argument("--no-dedup", action="store_true", help="Disable periodic vault dedupe")
     parser.add_argument("--max-iter", type=int, default=0, help="Stop after N loops (0 = forever)")
     args = parser.parse_args(argv)
 
@@ -83,6 +108,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     next_scan_at = 0.0  # scan immediately on start
+    # Startup grace: never dedupe in the first minutes — loop tests load the
+    # real config, and an immediate trigger would touch the real vault.
+    next_dedup_at = time.time() + 300
     iterations = 0
     magazine_server = None
     while True:
@@ -115,6 +143,8 @@ def main(argv: list[str] | None = None) -> int:
                 next_scan_at = time.time() + args.scan_interval
             if code != 0:
                 print(f"[daemon] worker batch reported failures (exit={code})", flush=True)
+            if not args.no_dedup and time.time() >= next_dedup_at:
+                next_dedup_at = time.time() + _run_periodic_dedup()
         except KeyboardInterrupt:
             if magazine_server not in (None, False):
                 magazine_server.close()

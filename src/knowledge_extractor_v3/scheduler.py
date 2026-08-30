@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from .config_loader import ConfigLoader, V3Config
 from .models import utc_now
-from .queue_store import QueueStore, QueueTask
+from .queue_store import QueueStore, QueueTask, QueueStatus
 from .runtime_guard import RuntimeGuard, RuntimeGuardError, resolve_runtime_paths
 from .sources import (
     RSSAdapter,
@@ -118,32 +118,33 @@ class Scheduler:
                 skipped_limit += len(all_items) - idx
                 break
 
-            # Check for duplicates
-            if self._deduper.is_seen(item.url):
-                skipped_duplicate += 1
-                events.append(SchedulerEvent(
-                    timestamp=utc_now(),
-                    source_id=item.source_id,
-                    event_type="skipped",
-                    message="Duplicate URL",
-                    detail={"url": item.url},
-                ))
+            # Enqueue. The in-memory seen-set is only an accounting hint now:
+            # the queue row is authoritative, and a done task past its
+            # refetch cooldown re-enters so same-URL updates can flow.
+            task = self._enqueue_item(item)
+            if task is None:
+                if self._deduper.is_seen(item.url):
+                    skipped_duplicate += 1
+                    events.append(SchedulerEvent(
+                        timestamp=utc_now(),
+                        source_id=item.source_id,
+                        event_type="skipped",
+                        message="Duplicate URL",
+                        detail={"url": item.url},
+                    ))
                 continue
 
-            # Enqueue
-            task = self._enqueue_item(item)
-            if task:
-                enqueued += 1
-                self._deduper.mark_seen(item.url)
+            enqueued += 1
+            self._deduper.mark_seen(item.url)
 
-                events.append(SchedulerEvent(
-                    timestamp=utc_now(),
-                    source_id=item.source_id,
-                    event_type="discovered",
-                    count=1,
-                    message=f"Enqueued: {item.title[:50]}",
-                    detail={"url": item.url, "task_id": task.id},
-                ))
+            events.append(SchedulerEvent(
+                timestamp=utc_now(),
+                source_id=item.source_id,
+                event_type="discovered",
+                count=1,
+                message=f"Enqueued: {item.title[:50]}",
+                detail={"url": item.url, "task_id": task.id},
+            ))
 
         # Write log
         self._write_events(events)
@@ -338,7 +339,11 @@ class Scheduler:
             # Check if already in queue
             existing = self._queue.find_by_url(item.url)
             if existing is not None:
-                return None
+                if not self._refetch_allowed(existing):
+                    return None
+                # A done task past its cooldown re-enters the queue so the
+                # pipeline can detect same-URL updates; enqueue() upserts the
+                # row back to pending.
 
             # Enqueue new task
             task = self._queue.enqueue(
@@ -351,6 +356,32 @@ class Scheduler:
             return task
         except Exception:
             return None
+
+    def _refetch_allowed(self, task: QueueTask) -> bool:
+        """Same-URL refetch gate: done tasks only, once per cooldown window.
+
+        Re-enqueueing rejected rows would re-run full absorption every window
+        for permanently low-quality URLs; failed_terminal keeps its manual
+        reset path. In-flight and queued rows are never touched.
+        """
+        dedup = getattr(self._config, "dedup", None)
+        if dedup is None or not dedup.enabled or dedup.refetch_cooldown_days <= 0:
+            return False
+        if task.status is not QueueStatus.DONE:
+            return False
+        stamp = task.processed_at or task.updated_at
+        if not stamp:
+            return False
+        try:
+            processed = datetime.fromisoformat(stamp)
+        except ValueError:
+            return False
+        # Queue stamps are naive local ISO strings; stay naive-vs-naive (a
+        # mixed subtraction raises TypeError, which _enqueue_item would
+        # swallow into a silent permanent skip).
+        now = datetime.now(processed.tzinfo)
+        elapsed_days = (now - processed).total_seconds() / 86400
+        return elapsed_days >= dedup.refetch_cooldown_days
 
     def _write_events(self, events: list[SchedulerEvent]) -> None:
         """Write events to JSONL log."""

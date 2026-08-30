@@ -48,6 +48,17 @@ outputs:
   telegram_admin_chat_id_env: "TELEGRAM_ADMIN_CHAT_ID"
   telegram_enabled: false
 
+# 写入时去重 + 同源增量合并 + 定期清理。
+dedup:
+  enabled: true
+  # 同 URL 重抓时，两个版本归一化文本相似度达到该值且长度差很小，即视为
+  # 同一内容（源页计数器微变），不再调用增量比对 LLM。
+  update_similarity_threshold: 0.98
+  # 已完成(done)任务的同 URL 重新入队冷却天数；0 表示永不重抓。
+  refetch_cooldown_days: 3
+  # daemon 定期清理重复文件的间隔小时数。
+  dedup_interval_hours: 24
+
 daily_reports:
   us_ai_market:
     enabled: false

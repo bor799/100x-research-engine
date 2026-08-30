@@ -135,13 +135,16 @@ def test_skipped_limit_does_not_double_count_duplicates(tmp_path):
     assert result.items_skipped_limit == 7
     assert result.items_skipped_duplicate == 0
 
-    # Now seed 4 duplicates directly in the deduper so they are skipped BEFORE
-    # the limit is reached. The old code computed skipped_limit as
-    # len(all_items) - enqueued (= 10 - 3 = 7), which double-counted the 4
-    # duplicates already passed over. The fix counts only items never reached.
+    # Now seed 4 duplicates: queue rows plus the in-memory seen-set (the
+    # state a previous tick leaves behind). The queue row is authoritative
+    # for skipping; the seen-set drives the duplicate accounting. The old
+    # code computed skipped_limit as len(all_items) - enqueued (= 10 - 3 =
+    # 7), which double-counted the 4 duplicates already passed over. The
+    # fix counts only items never reached.
     sched2 = _scheduler(tmp_path)
     sched2._registry = StubRegistry()  # type: ignore[assignment]
     for i in range(4):
+        sched2._queue.enqueue(f"https://s/a-{i}", source="s")
         sched2._deduper.mark_seen(f"https://s/a-{i}")
 
     result2 = sched2.run_once(max_total_items=3)

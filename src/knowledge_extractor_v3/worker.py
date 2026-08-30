@@ -319,6 +319,23 @@ class QueueWorker:
 
     def _process_task_impl(self, task: QueueTask, owner: str, mode: RuntimeMode) -> ProcessResult:
         """Inner processing logic for a single task."""
+        # LIVE-only vault dedup: same index feeds the pipeline early exit and
+        # the writer guard, so one task sees one consistent vault view.
+        vault_dedup = None
+        if mode is RuntimeMode.LIVE and self._config.dedup.enabled:
+            from .config_loader import ConfigLoader
+            from .outputs.vault_index import VaultDedupService, VaultIndex
+
+            live_loader = ConfigLoader(project_root=Path.cwd())
+            live_root = live_loader.expand_path(self._config.outputs.obsidian_root)
+            vault_index = VaultIndex(live_root)
+            vault_index.rebuild()
+            vault_dedup = VaultDedupService(
+                vault_index,
+                complete_fn=self._llm.complete,
+                similarity_threshold=self._config.dedup.update_similarity_threshold,
+            )
+
         # Build pipeline with appropriate output port
         pipeline = Pipeline(
             queue_store=self._queue,
@@ -327,6 +344,7 @@ class QueueWorker:
             staging_root=self._queue.db_path.parent / "staging",
             source_preferences=self._config.routing.source_preferences,
             live_output=None,  # Will be set by mode if needed
+            vault_dedup=vault_dedup,
         )
 
         # For live mode, the pipeline needs a live output port
@@ -344,6 +362,8 @@ class QueueWorker:
                 root=obsidian_root,
                 subdir=self._config.outputs.obsidian_subdir,
                 write_manifest=self._config.outputs.write_manifest,
+                vault_index=vault_dedup.index if vault_dedup is not None else None,
+                dedup_guard=self._config.dedup.enabled,
             )
 
             wechat_queue = None
@@ -442,6 +462,7 @@ class QueueWorker:
             "is_spam": result.score_result.is_spam if result.score_result else None,
             "route": result.route,
             "brief_contract_failed": result.brief_contract_failed,
+            "dedup_outcome": result.dedup_outcome,
             "stage_count": len(result.stage_results),
             # Per-stage timing for cost/latency accounting.
             "stage_timings_ms": {

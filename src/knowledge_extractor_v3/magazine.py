@@ -29,10 +29,15 @@ from .config_loader import ConfigLoader
 from .llm.live_provider import create_live_provider
 from .models import TypedError
 from .outputs.push_ledger import week_label
+from .routing import PUSH_FINAL_SCORE_MIN
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 STATE_NAME = "阅读状态 {week}.json"
 ISSUE_NAME = "知识萃取周刊 {week}.html"
+# Operator decision 2026-08-30: the magazine is the reading surface for
+# push-band content only. The 6.0-7.4 archive band stays on disk in the week
+# folder (searchable in Obsidian) but never enters the issue or reading state.
+MAGAZINE_MIN_FINAL_SCORE = PUSH_FINAL_SCORE_MIN
 MAX_BODY_BYTES = 128 * 1024
 FEEDBACK_START = "<!-- 100x:user-feedback:start -->"
 FEEDBACK_END = "<!-- 100x:user-feedback:end -->"
@@ -135,6 +140,10 @@ def _empty_article_state(article: Article) -> dict[str, object]:
         "disposition": None,
         "comment": "",
         "annotations": [],
+        # Same-URL increment history; update_pending re-shelves a completed
+        # article into the current issue until the reader disposes again.
+        "updates": [],
+        "update_pending": False,
         "review": {"revision": 0, "status": "idle", "result": "", "error": ""},
     }
 
@@ -219,11 +228,14 @@ class MagazineStore:
                 if disposition not in (None, "commented", "no_comment"):
                     raise ValueError("invalid disposition")
                 state["disposition"] = disposition
+                if disposition is not None:
+                    state["update_pending"] = False
             if "comment" in patch:
                 comment = str(patch["comment"]).strip()[:20_000]
                 state["comment"] = comment
                 if comment:
                     state["disposition"] = "commented"
+                    state["update_pending"] = False
             self.save_week(article.week, week_data)
             if article.managed:
                 self._write_feedback(article, state)
@@ -251,9 +263,34 @@ class MagazineStore:
                 }
             )
             state["disposition"] = "commented"
+            state["update_pending"] = False
             self.save_week(article.week, week_data)
             if article.managed:
                 self._write_feedback(article, state)
+            return state
+
+    def record_update(self, article_id: str, entry: dict[str, object]) -> dict[str, object]:
+        """Append a same-URL increment entry and re-shelve the article.
+
+        Idempotent per the new content hash: a retried increment merge never
+        doubles the entry. The markdown write belongs to the updater; this
+        only owns state.
+        """
+        with self._lock:
+            article, state, week_data = self.find(article_id)
+            updates = state.get("updates")
+            if not isinstance(updates, list):
+                updates = []
+                state["updates"] = updates
+            content_hash = str(entry.get("content_hash") or "")
+            if content_hash and any(
+                isinstance(item, dict) and item.get("content_hash") == content_hash
+                for item in updates
+            ):
+                return state
+            updates.append(entry)
+            state["update_pending"] = True
+            self.save_week(article.week, week_data)
             return state
 
     def mark_review(self, article_id: str, *, status: str, result: str = "", error: str = "") -> dict[str, object]:
@@ -316,17 +353,26 @@ def issue_payload(root: Path, week: str | None = None) -> dict[str, object]:
     root = Path(root).resolve()
     selected_week = week or current_week()
     articles = scan_articles(root)
+    # Push-band only (operator decision 2026-08-30): managed extractions below
+    # the magazine line stay on disk in the week folder but never enter the
+    # issue or reading state. Unmanaged/legacy files carry no score and are
+    # left untouched by this filter.
+    articles = [a for a in articles if not a.managed or a.final_score >= MAGAZINE_MIN_FINAL_SCORE]
     store = MagazineStore(root)
     states = store.ensure_articles(articles)
     included: list[dict[str, object]] = []
     for article in articles:
         state = states[article.article_id]
         complete = bool(state.get("read_at")) and state.get("disposition") in {"commented", "no_comment"}
-        if article.week == selected_week or (article.week < selected_week and not complete):
+        pending = bool(state.get("update_pending"))
+        if article.week == selected_week or (article.week < selected_week and (not complete or pending)):
             row = asdict(article)
             row["state"] = state
             row["carryover"] = article.week != selected_week
             row["complete"] = complete
+            row["update_pending"] = pending
+            updates = state.get("updates")
+            row["latest_update"] = updates[-1] if isinstance(updates, list) and updates else None
             row["obsidian_url"] = "obsidian://open?" + urllib.parse.urlencode(
                 {"vault": root.parent.name, "file": article.path.removesuffix(".md")}
             )
@@ -341,6 +387,7 @@ def issue_payload(root: Path, week: str | None = None) -> dict[str, object]:
             "unread": sum(not bool(a["state"].get("read_at")) for a in included),
             "unfinished": sum(not bool(a["complete"]) for a in included),
             "carryover": sum(bool(a["carryover"]) for a in included),
+            "updates_pending": sum(bool(a["update_pending"]) for a in included),
         },
     }
 
@@ -366,7 +413,7 @@ button,textarea{{font:inherit}} a{{color:inherit}} .page{{width:min(1180px,calc(
 .day-label{{font-size:13px;padding-bottom:10px}} h2{{font-size:clamp(32px,5vw,56px);line-height:1;margin:0 0 8px}}
 .article{{display:grid;grid-template-columns:80px minmax(0,1fr) 280px;gap:26px;padding:34px 0;border-bottom:1px solid #b8b0a1}}
 .rank{{font-size:54px;line-height:1;color:#b1a99b;font-style:italic}} .source{{font-size:11px;color:var(--red)}} h3{{font-size:clamp(25px,3vw,40px);line-height:1.16;margin:7px 0 15px;text-wrap:balance}}
-.brief{{font-size:17px;white-space:pre-wrap;text-wrap:pretty}} .brief h1,.brief h2{{font-size:20px;margin:18px 0 6px}} .brief h3{{font-size:18px;margin:14px 0 4px}} .brief p{{margin:8px 0}}
+.brief{{font-size:17px;white-space:pre-wrap;text-wrap:pretty}} .brief h1,.brief h2{{font-size:20px;margin:18px 0 6px}} .brief h3{{font-size:18px;margin:14px 0 4px}} .brief p{{margin:8px 0}} .update-note{{color:var(--red);margin-top:6px;font-size:15px}}
 .controls{{border-left:1px solid var(--rule);padding-left:22px;font-family:"PingFang SC",sans-serif;font-size:14px}}
 .status-row{{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}} button,.link{{min-height:44px;border:1px solid var(--ink);background:transparent;padding:9px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}}
 button.active{{background:var(--ink);color:var(--paper)}} textarea{{width:100%;min-height:100px;background:rgba(255,255,255,.28);border:1px solid #8e877b;padding:10px;resize:vertical;font-size:16px}}
@@ -391,10 +438,10 @@ function render(){{
  $('#generated').textContent='更新 '+ISSUE.generated_at.replace('T',' ');
  const c=ISSUE.counts;$('#summary').innerHTML=`<div><b>本周阅读判断</b><br><span class="meta">萃取在前，原文在后；未完成自动结转。</span></div><div><span class="number">${{c.total}}</span><br>进入周刊</div><div><span class="number">${{c.unread}}</span><br>尚未阅读</div><div><span class="number">${{c.carryover}}</span><br>往日结转</div>`;
  const groups=group();$('#timeline').innerHTML=Object.keys(groups).map(d=>`<a href="#d-${{d}}">${{d.slice(5)}}</a>`).join('');
- const carry=ISSUE.articles.filter(a=>a.carryover&&!done(a));const b=$('#backlog');if(carry.length){{b.classList.add('show');b.innerHTML=`<b>未完阅读架</b> · ${{carry.length}} 篇从此前日期结转<br>${{carry.slice(0,5).map(a=>esc(a.title)).join('　/　')}}`;}}
+ const carry=ISSUE.articles.filter(a=>a.carryover&&(!done(a)||a.state.update_pending));const pend=ISSUE.articles.filter(a=>a.state.update_pending).length;const b=$('#backlog');if(carry.length){{b.classList.add('show');b.innerHTML=`<b>未完阅读架</b> · ${{carry.length}} 篇从此前日期结转${{pend?` · ${{pend}} 篇有更新`:''}}<br>${{carry.slice(0,5).map(a=>esc(a.title)).join('　/　')}}`;}}
  $('#days').innerHTML=Object.entries(groups).map(([day,arts])=>`<section class="day" id="d-${{day}}"><header class="day-head"><div class="day-label">${{day}}</div><h2>${{arts.filter(a=>!a.carryover).length}} 篇新增 · ${{arts.filter(a=>!done(a)).length}} 篇待完成</h2></header>${{arts.map(card).join('')}}</section>`).join('');
 }}
-function card(a,i){{const anns=Array.isArray(a.state.annotations)?a.state.annotations:[];return `<article class="article" data-id="${{esc(a.article_id)}}"><div class="rank">${{String(i+1).padStart(2,'0')}}</div><div><div class="source">${{esc(a.source)}} · TIER ${{esc(a.signal_tier)}} · ${{Number(a.final_score).toFixed(2)}}${{a.carryover?' · 结转':''}}</div><h3>${{esc(a.title)}}</h3><div class="brief">${{md(a.brief)}}</div></div><aside class="controls"><div class="status-row"><button class="${{a.state.read_at?'active':''}}" onclick="setRead('${{a.article_id}}',${{!a.state.read_at}})">已阅读</button><button class="${{a.state.disposition==='no_comment'?'active':''}}" onclick="noComment('${{a.article_id}}')">无需评论</button></div><button class="secondary" onclick="highlight('${{a.article_id}}')">保存当前划线</button><div>${{anns.map(x=>`<div class="annotation">「${{esc(x.quote)}}」${{x.comment?'<br>'+esc(x.comment):''}}</div>`).join('')}}</div><textarea id="comment-${{a.article_id}}" placeholder="留下你的判断、疑问或反例……">${{esc(a.state.comment||'')}}</textarea><div class="status-row"><button onclick="saveComment('${{a.article_id}}')">保存评论</button><button onclick="submitReview('${{a.article_id}}')">交给 AI</button></div><a class="link secondary" href="${{esc(a.obsidian_url)}}">回到 Obsidian 原文</a><div class="review">AI：${{esc(a.state.review?.status||'idle')}}${{a.state.review?.result?'<br>'+esc(a.state.review.result):''}}</div></aside></article>`}}
+function card(a,i){{const anns=Array.isArray(a.state.annotations)?a.state.annotations:[];return `<article class="article" data-id="${{esc(a.article_id)}}"><div class="rank">${{String(i+1).padStart(2,'0')}}</div><div><div class="source">${{esc(a.source)}} · TIER ${{esc(a.signal_tier)}} · ${{Number(a.final_score).toFixed(2)}}${{a.carryover?' · 结转':''}}${{a.state.update_pending?' · 有更新':''}}</div><h3>${{esc(a.title)}}</h3><div class="brief">${{md(a.brief)}}</div>${{a.latest_update?`<div class="brief update-note">有更新 ${{esc(a.latest_update.date)}}：${{esc(a.latest_update.summary||'')}}</div>`:''}}</div><aside class="controls"><div class="status-row"><button class="${{a.state.read_at?'active':''}}" onclick="setRead('${{a.article_id}}',${{!a.state.read_at}})">已阅读</button><button class="${{a.state.disposition==='no_comment'?'active':''}}" onclick="noComment('${{a.article_id}}')">无需评论</button></div><button class="secondary" onclick="highlight('${{a.article_id}}')">保存当前划线</button><div>${{anns.map(x=>`<div class="annotation">「${{esc(x.quote)}}」${{x.comment?'<br>'+esc(x.comment):''}}</div>`).join('')}}</div><textarea id="comment-${{a.article_id}}" placeholder="留下你的判断、疑问或反例……">${{esc(a.state.comment||'')}}</textarea><div class="status-row"><button onclick="saveComment('${{a.article_id}}')">保存评论</button><button onclick="submitReview('${{a.article_id}}')">交给 AI</button></div><a class="link secondary" href="${{esc(a.obsidian_url)}}">回到 Obsidian 原文</a><div class="review">AI：${{esc(a.state.review?.status||'idle')}}${{a.state.review?.result?'<br>'+esc(a.state.review.result):''}}</div></aside></article>`}}
 async function patch(id,p){{try{{const s=await api('/api/articles/'+id,{{method:'PATCH',body:JSON.stringify(p)}});Object.assign(ISSUE.articles.find(a=>a.article_id===id).state,s);render();toast('已保存')}}catch(e){{toast(e.message)}}}}
 function setRead(id,v){{patch(id,{{read:v}})}} function noComment(id){{patch(id,{{read:true,disposition:'no_comment'}})}}
 function saveComment(id){{patch(id,{{read:true,comment:$('#comment-'+CSS.escape(id)).value}})}}
@@ -563,12 +610,32 @@ def _configured_root() -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build and serve the 100X weekly reading magazine")
-    parser.add_argument("command", choices=["build", "digest", "serve"])
+    parser.add_argument("command", choices=["build", "digest", "serve", "dedupe"])
     parser.add_argument("--root", default="")
     parser.add_argument("--week", default="")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--dry-run", action="store_true", help="dedupe: report only, touch nothing")
+    parser.add_argument("--restore", action="store_true", help="dedupe: only restore orphans from .trash-dedup")
     args = parser.parse_args(argv)
     root = Path(args.root).expanduser() if args.root else _configured_root()
+    if args.command == "dedupe":
+        from .outputs.dedupe import dedupe_vault, restore_orphans
+
+        if args.restore:
+            restored = restore_orphans(root, dry_run=args.dry_run)
+            print(json.dumps({"restored": [str(p) for p in restored], "dry_run": args.dry_run}, ensure_ascii=False))
+            return 0
+        report = dedupe_vault(root, dry_run=args.dry_run)
+        print(json.dumps({
+            "dry_run": args.dry_run,
+            "restored": report.restored,
+            "merged_groups": report.merged_groups,
+            "trashed_files": report.trashed_files,
+            "state_migrations": report.state_migrations,
+            "weeks_rebuilt": report.weeks_rebuilt,
+            "errors": report.errors,
+        }, ensure_ascii=False, indent=2))
+        return 1 if report.errors else 0
     if args.command in {"build", "digest"}:
         path = build_issue(root, args.week or None)
         payload = issue_payload(root, args.week or None)

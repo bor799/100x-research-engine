@@ -3,13 +3,18 @@
 The score is a prioritiser, not a gate: every dimension comes from a single
 absorption call and the weighted final_score ranks content into lanes. Only
 two things drop an item entirely — marketing/spam verdicts and content below
-the 4.0/10 floor. Everything else is at least archived to Obsidian.
+the 6.0/10 floor. Everything else is at least archived to Obsidian.
 
   business_push    — score >= 7.5 with action_value >= 0.70 (daily WeChat lane)
   strategic_digest — score >= 7.5 that is "worth knowing" rather than "usable"
                      (weekly digest lane)
-  archive_only     — 4.0 <= score < 7.5: archived, no push
-  reject           — spam, or score < 4.0: dropped without an archive
+  archive_only     — 6.0 <= score < 7.5: archived to the week folder but kept
+                     OUT of the weekly magazine (cold storage, searchable only)
+  reject           — spam, or score < 6.0: dropped without an archive
+
+The 6.0 floor (raised from 4.0 on 2026-08-30, operator decision) cuts the
+mid-band that was never read: the magazine only carries push-band content, and
+the 6.0-7.4 archive band exists purely as recallable cold storage.
 
 Sources the operator explicitly favours (config ``routing.source_preferences``,
 e.g. Elsewhere) get the push on a lower floor. The old business-story-fit /
@@ -34,7 +39,7 @@ class Route(str, Enum):
 
 # V4 thresholds on final_score (0-1; score 0-10 is final_score * 10).
 # Centralised so tests can pin them; each is a single tunable constant.
-REJECT_FINAL_SCORE_MAX = 0.40  # below this (strictly) the item is dropped
+REJECT_FINAL_SCORE_MAX = 0.60  # below this (strictly) the item is dropped
 PUSH_FINAL_SCORE_MIN = 0.75
 # Within the push band, action_value decides the lane: content the reader can
 # act on goes to the daily push; "worth knowing" signal goes to the weekly digest.

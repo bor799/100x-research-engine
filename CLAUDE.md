@@ -4,8 +4,8 @@ This repository is the V4 implementation of the 100X knowledge extraction system
 
 ## Current State
 
-- V4 core: single absorption call (`prompts/absorption.md`, 14-field JSON), code-owned weighted score `0.40×information_gain + 0.35×action_value + 0.25×relevance`, code-owned tier (A>=7.5 / B>=5.0 / C>=4.0 / Reject), spam hard-reject.
-- Routing: `<0.40 or spam -> reject`; `0.40-0.74 -> archive_only`; `>=0.75 -> push` (action_value>=0.70 business lane, else strategic). Favored channels ride `routing.source_preferences` with a 400-char content floor.
+- V4 core: single absorption call (`prompts/absorption.md`, 14-field JSON), code-owned weighted score `0.40×information_gain + 0.35×action_value + 0.25×relevance`, code-owned tier (A>=7.5 / B>=6.0 / Reject), spam hard-reject.
+- Routing: `<0.60 or spam -> reject`; `0.60-0.74 -> archive_only` (cold storage: stays in the week folder, never enters the weekly magazine); `>=0.75 -> push` (action_value>=0.70 business lane, else strategic). The weekly magazine only carries push-band content (2026-08-30 operator decision; floor raised from 0.40). Favored channels ride `routing.source_preferences` with a 400-char content floor.
 - All LLM roles run GLM-5.2. One daemon role (`loop` = scan + work); Cindy owns WeChat delivery.
 - Published scope intentionally excludes `.env`, `config/config.local.yaml`, cache files, `.DS_Store`, `ai-reading/`, and local staging output.
 
@@ -24,7 +24,7 @@ bash -n scripts/*.sh
 python -m pytest -q
 ```
 
-V4 baseline on 2026-08-17: `275 passed` after the single-call rewrite.
+V4 baseline on 2026-08-17: `275 passed` after the single-call rewrite; on 2026-08-30 with the vault dedup layer (write guard, same-URL increments, periodic cleanup): `359 passed`.
 
 ## Runtime And Config
 

@@ -63,6 +63,7 @@ class Pipeline:
         allow_test_provider: bool = False,
         source_preferences: Mapping[str, SourcePreference] | None = None,
         absorption_prompt: AbsorptionPrompt | None = None,
+        vault_dedup=None,
     ) -> None:
         project_root = Path(__file__).resolve().parents[2]
         self.queue_store = queue_store
@@ -76,6 +77,9 @@ class Pipeline:
         self._source_preferences = dict(source_preferences or {})
         self._live_output = live_output
         self.allow_test_provider = allow_test_provider
+        # LIVE-only vault dedup service (outputs.vault_index.VaultDedupService);
+        # typed loosely to keep the pipeline free of an outputs import edge.
+        self.vault_dedup = vault_dedup
         self.dry_run_output = DryRunOutputPort()
         self.staging_output = StagingOutputPort(self.staging_root)
 
@@ -172,6 +176,59 @@ class Pipeline:
             return self._fail(
                 task, validation, source=source, current_stage="validate", stage_results=stage_results
             )
+
+        # Vault-layer dedup early exit: an archived duplicate or a same-URL
+        # update never reaches the absorption call, so reprocessed tasks and
+        # source-page micro-changes cost at most one fetch.
+        if self.vault_dedup is not None:
+            lookup = _run_stage(
+                stage_results,
+                "dedup_check",
+                lambda: self.vault_dedup.lookup(content_hash=fetched.content_hash, url=fetched.url),
+            )
+            if lookup.by_hash is not None and lookup.by_hash.path.exists():
+                _append_stage(stage_results, "dedup_check", detail={
+                    "outcome": "duplicate_hash",
+                    "canonical": lookup.by_hash.path.name,
+                })
+                done = self.queue_store.mark_done(
+                    task.id,
+                    result_title=lookup.by_hash.title,
+                    output_path=str(lookup.by_hash.path),
+                )
+                return self._result_from_task(
+                    done,
+                    source=source,
+                    current_stage="dedup_check",
+                    stage_results=stage_results,
+                    dedup_outcome="duplicate_hash",
+                )
+            if lookup.by_url is not None and lookup.by_url.path.exists():
+                outcome = _run_stage(
+                    stage_results,
+                    "increment",
+                    lambda: self.vault_dedup.merge_update(lookup.by_url, fetched),
+                )
+                if isinstance(outcome, TypedError):
+                    return self._fail(
+                        task, outcome, source=source, current_stage="increment", stage_results=stage_results
+                    )
+                done = self.queue_store.mark_done(
+                    task.id,
+                    result_title=lookup.by_url.title,
+                    output_path=outcome.path,
+                )
+                return self._result_from_task(
+                    done,
+                    source=source,
+                    current_stage="increment",
+                    stage_results=stage_results,
+                    dedup_outcome={
+                        "duplicate": "duplicate_similar",
+                        "merged": "merged_update",
+                        "no_update": "no_update",
+                    }[outcome.kind],
+                )
 
         absorbed = self._absorb_and_parse(fetched, stage_results)
         if isinstance(absorbed, TypedError):
@@ -489,6 +546,7 @@ class Pipeline:
         wechat_status: str = "",
         route: str = "",
         brief_contract_failed: bool = False,
+        dedup_outcome: str = "",
         error: TypedError | None = None,
     ) -> ProcessResult:
         return ProcessResult(
@@ -506,6 +564,7 @@ class Pipeline:
             wechat_status=wechat_status,
             route=route,
             brief_contract_failed=brief_contract_failed,
+            dedup_outcome=dedup_outcome,
             stage_results=stage_results,
             score_result=score_result,
             extraction_result=extraction_result,

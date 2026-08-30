@@ -23,8 +23,12 @@ from ..models import (
 from ..queue_store import FailureKind, NextAction
 from .obsidian import _filename, _render_markdown
 from .push_ledger import week_label
+from .updates import UPDATES_END, UPDATES_START, record_manifest_event
+from .vault_index import VaultIndex
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
+
+_UPDATES_BLOCK_RE = re.compile(re.escape(UPDATES_START) + r".*?" + re.escape(UPDATES_END), re.S)
 
 
 class LiveObsidianWriter:
@@ -40,10 +44,14 @@ class LiveObsidianWriter:
         *,
         subdir: str = "inbox",
         write_manifest: bool = True,
+        vault_index: VaultIndex | None = None,
+        dedup_guard: bool = True,
     ) -> None:
         self.root = Path(root)
         self.subdir = subdir
         self.write_manifest = write_manifest
+        self.vault_index = vault_index
+        self.dedup_guard = dedup_guard
 
     def write(
         self,
@@ -82,6 +90,28 @@ class LiveObsidianWriter:
 
         filename = _filename(processed_day.isoformat(), extraction.title, content.content_hash)
         final_path = output_dir / filename
+
+        # Write-time dedup guard: an identical article_id already archived
+        # anywhere in the vault means this is a reprocessed task (queue race,
+        # manual re-run). Suppress the second file instead of forking the
+        # article into two titles, and report the canonical path so the task
+        # still completes pointing at the one true file.
+        if self.dedup_guard:
+            index = self.vault_index or VaultIndex(self.root)
+            index.rebuild()
+            hit = index.lookup(content_hash=content.content_hash, url=content.url).by_hash
+            if hit is not None and hit.path.exists() and hit.path != final_path.resolve():
+                record_manifest_event(
+                    hit.path.parent,
+                    {
+                        "kind": "write_suppressed",
+                        "filename": filename,
+                        "article_id": content.content_hash,
+                        "url": content.url,
+                        "task_id": task_id,
+                    },
+                )
+                return str(hit.path)
 
         # Verify path safety: output stays under root
         try:
@@ -210,6 +240,10 @@ def _preserve_managed_blocks(existing: str, rendered: str) -> str:
         old = pattern.search(existing)
         if old and pattern.search(rendered):
             rendered = pattern.sub(lambda _: old.group(0), rendered, count=1)
+    # A fresh render has no updates block; carry the archived one over whole.
+    updates = _UPDATES_BLOCK_RE.search(existing)
+    if updates and _UPDATES_BLOCK_RE.search(rendered) is None:
+        rendered = rendered.rstrip() + "\n\n" + updates.group(0) + "\n"
     return rendered
 
 

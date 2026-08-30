@@ -45,9 +45,9 @@ def test_push_band_boundaries():
 
 
 def test_reject_floor_boundaries():
-    # 0.40 archives, 0.399 rejects — the only score-based drop
-    assert decide_route(final_score=0.40, action_value=0.0).route is Route.ARCHIVE_ONLY
-    assert decide_route(final_score=0.399, action_value=0.9).route is Route.REJECT
+    # 0.60 archives, 0.599 rejects — the only score-based drop
+    assert decide_route(final_score=0.60, action_value=0.0).route is Route.ARCHIVE_ONLY
+    assert decide_route(final_score=0.599, action_value=0.9).route is Route.REJECT
 
 
 def test_push_band_splits_by_action_value():
@@ -107,7 +107,7 @@ def test_preference_blocked_by_fetch_skeleton_guard():
 
     # Same skeleton at an archive-band score still never pushes.
     archive = decide_route(
-        final_score=0.55,
+        final_score=0.65,
         action_value=0.5,
         source="elsewhere",
         url="https://elsewhere.news/zh/article",
@@ -131,7 +131,7 @@ def test_preference_respects_custom_floor():
 
 def test_no_preference_for_unknown_source():
     decision = decide_route(
-        final_score=0.50,
+        final_score=0.65,
         action_value=0.5,
         source="some-other-feed",
         url="https://example.com/a",
@@ -155,7 +155,7 @@ def test_route_from_score_maps_score_result_fields():
 
 
 def test_threshold_constants_are_pinned():
-    assert REJECT_FINAL_SCORE_MAX == 0.40
+    assert REJECT_FINAL_SCORE_MAX == 0.60
     assert PUSH_FINAL_SCORE_MIN == 0.75
     assert ACTION_VALUE_BUSINESS_MIN == 0.70
     assert PREFERENCE_MIN_CONTENT_CHARS == 400

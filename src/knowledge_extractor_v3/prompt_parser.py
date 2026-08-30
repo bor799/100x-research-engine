@@ -15,11 +15,11 @@ from .queue_store import FailureKind, NextAction
 # curates sources by hand and trusts them, so credibility is not an evaluation
 # target.
 ABSORPTION_WEIGHTS = {"information_gain": 0.40, "action_value": 0.35, "relevance": 0.25}
-# Tier thresholds on final_score (0-1); anything below C's floor rejects.
+# Tier thresholds on final_score (0-1); anything below B's floor rejects
+# (aligned with routing.REJECT_FINAL_SCORE_MAX = 0.60 since 2026-08-30).
 ABSORPTION_TIER_THRESHOLDS: tuple[tuple[str, float], ...] = (
     ("A", 0.75),
-    ("B", 0.50),
-    ("C", 0.40),
+    ("B", 0.60),
 )
 ABSORPTION_REQUIRED_FIELDS = (
     "information_gain",

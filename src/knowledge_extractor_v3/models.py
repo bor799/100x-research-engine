@@ -135,6 +135,9 @@ class ProcessResult:
     # True when a push route's brief failed the hard contract. The Obsidian
     # archive still succeeded; the item was withheld from the WeChat outbox.
     brief_contract_failed: bool = False
+    # Vault-layer dedup verdict (duplicate_hash | duplicate_similar |
+    # merged_update | no_update). Empty means the normal absorb path ran.
+    dedup_outcome: str = ""
     stage_results: list[StageResult] = field(default_factory=list)
     score_result: ScoreResult | None = None
     extraction_result: ExtractionResult | None = None

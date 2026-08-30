@@ -43,6 +43,20 @@ class StubLLMProvider:
             return '{"information_gain": 0.8, "action_value": 0.8, "relevance": 0.8, "is_spam": false, "title": "broken json"'
         return _json(_absorption_payload(content, scenario=scenario))
 
+    def complete(self, content: str, prompt: str, *, stage: str = "review") -> str | TypedError:
+        """Free-form completion for non-absorption calls (increment, review).
+
+        Deterministically reports "no update" so LIVE-style wiring can call
+        complete() on the stub without attributes errors; tests that drive
+        the increment path override this method the way they override score().
+        """
+        return _json({
+            "has_update": False,
+            "delta_summary": "",
+            "new_points": [],
+            "changed_facts": [],
+        })
+
 
 def _scenario(content: FetchedContent) -> str:
     value = content.metadata.get("fixture_scenario")
