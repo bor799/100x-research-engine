@@ -15,7 +15,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -26,6 +28,44 @@ from .queue_store import QueueStore
 from .runtime_guard import RuntimeGuard, RuntimeGuardError, resolve_runtime_paths
 from .scheduler import Scheduler
 from .worker import QueueWorker, WorkerConfig
+
+_shutdown_requested = False
+
+
+class SingletonContended(RuntimeError):
+    """Another loop daemon already holds the singleton lock."""
+
+
+def _handle_shutdown(signum: int, frame) -> None:  # type: ignore
+    global _shutdown_requested
+    _shutdown_requested = True
+
+
+def _acquire_singleton_lock() -> int | None:
+    """Best-effort exclusive flock so one loop daemon runs per queue DB.
+
+    The lock lives in its own sidecar file next to the database — NEVER on
+    the database itself: on macOS an flock on the db file collides with
+    SQLite's fcntl byte-range locks and deadlocks the daemon's own queries
+    ("database is locked" in production, 2026-08-30). Returns the fd to hold
+    for the process lifetime. Raises SingletonContended when another daemon
+    already holds it; returns None when the lock cannot even be attempted —
+    the queue CAS still protects tasks then.
+    """
+    try:
+        loader = ConfigLoader(project_root=Path.cwd())
+        config = loader.load()
+        db_path = loader.expand_path(config.runtime.queue_db_path)
+        lock_path = db_path.parent / (db_path.name + ".loop.lock")
+        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    except Exception:
+        return None
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        raise SingletonContended(str(lock_path))
+    return fd
 
 
 def _setup(project_root: Path) -> tuple[V3Config, QueueStore]:
@@ -54,6 +94,10 @@ def run_once(*, scan: bool = True, batch_size: int = 10) -> int:
         processing_stale_after_minutes=30,
         log_jsonl=True,
         mode=mode,
+        # The loop owns signal handling: the worker must not overwrite the
+        # daemon's SIGTERM handler every batch.
+        manage_signals=False,
+        shutdown_check=lambda: _shutdown_requested,
     )
     worker = QueueWorker(config, queue_store=queue_store, worker_config=worker_cfg)
     result = worker.run_once()
@@ -107,56 +151,89 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Runtime guard check failed: {exc}", file=sys.stderr)
             return 1
 
+    global _shutdown_requested
+    _shutdown_requested = False
+    signal.signal(signal.SIGTERM, _handle_shutdown)
+
+    try:
+        lock_fd = _acquire_singleton_lock()
+    except SingletonContended as exc:
+        print(f"[daemon] another loop daemon already holds {exc}; exiting", file=sys.stderr, flush=True)
+        return 0
+
     next_scan_at = 0.0  # scan immediately on start
     # Startup grace: never dedupe in the first minutes — loop tests load the
     # real config, and an immediate trigger would touch the real vault.
     next_dedup_at = time.time() + 300
     iterations = 0
     magazine_server = None
-    while True:
-        try:
-            # Bring the magazine service up before the first scan so a stalled
-            # source fetch cannot delay localhost availability.
-            if magazine_server is None:
-                config = ConfigLoader(project_root=Path.cwd()).load()
-                if config.outputs.magazine_enabled and config.outputs.obsidian_root:
-                    from .magazine import MagazineServer, build_issue, build_reviewer
+    magazine_retry_at = 0.0  # bind failures back off instead of disabling for life
+    try:
+        while True:
+            try:
+                # Bring the magazine service up before the first scan so a
+                # stalled source fetch cannot delay localhost availability. A
+                # bind failure (port held by a stale process) retries on its
+                # own schedule instead of disabling the service for life.
+                if magazine_server is None and time.time() >= magazine_retry_at:
+                    config = ConfigLoader(project_root=Path.cwd()).load()
+                    if config.outputs.magazine_enabled and config.outputs.obsidian_root:
+                        from .magazine import MagazineServer, build_issue, build_reviewer
 
-                    loader = ConfigLoader(project_root=Path.cwd())
-                    root = loader.expand_path(config.outputs.obsidian_root)
-                    build_issue(root)
-                    try:
-                        magazine_server = MagazineServer(
-                            root,
-                            port=config.outputs.magazine_port,
-                            reviewer=build_reviewer(config, root),
-                        )
-                        magazine_server.start()
-                    except OSError as exc:
-                        print(f"[daemon] magazine service unavailable: {exc}", file=sys.stderr, flush=True)
+                        loader = ConfigLoader(project_root=Path.cwd())
+                        root = loader.expand_path(config.outputs.obsidian_root)
+                        build_issue(root)
+                        try:
+                            server = MagazineServer(
+                                root,
+                                port=config.outputs.magazine_port,
+                                reviewer=build_reviewer(config, root),
+                            )
+                            server.start()
+                            magazine_server = server
+                        except OSError as exc:
+                            print(
+                                f"[daemon] magazine service unavailable: {exc}; retrying in 300s",
+                                file=sys.stderr, flush=True,
+                            )
+                            magazine_retry_at = time.time() + 300
+                    else:
                         magazine_server = False
-                else:
-                    magazine_server = False
-            scan = not args.no_scan and time.time() >= next_scan_at
-            code = run_once(scan=scan, batch_size=args.limit)
-            if scan:
-                next_scan_at = time.time() + args.scan_interval
-            if code != 0:
-                print(f"[daemon] worker batch reported failures (exit={code})", flush=True)
-            if not args.no_dedup and time.time() >= next_dedup_at:
-                next_dedup_at = time.time() + _run_periodic_dedup()
-        except KeyboardInterrupt:
-            if magazine_server not in (None, False):
-                magazine_server.close()
-            print("[daemon] interrupted, exiting", flush=True)
-            return 0
-        except Exception as exc:  # keep the daemon alive; control.sh restarts are slow
-            print(f"[daemon] loop error: {exc}", file=sys.stderr, flush=True)
+                scan = not args.no_scan and time.time() >= next_scan_at
+                code = run_once(scan=scan, batch_size=args.limit)
+                # The worker no longer installs its own handlers inside the
+                # loop, but re-assert ours in case anything overwrote them.
+                signal.signal(signal.SIGTERM, _handle_shutdown)
+                if scan:
+                    next_scan_at = time.time() + args.scan_interval
+                if code != 0:
+                    print(f"[daemon] worker batch reported failures (exit={code})", flush=True)
+                if not _shutdown_requested and not args.no_dedup and time.time() >= next_dedup_at:
+                    next_dedup_at = time.time() + _run_periodic_dedup()
+            except KeyboardInterrupt:
+                print("[daemon] interrupted, exiting", flush=True)
+                return 0
+            except Exception as exc:  # keep the daemon alive; control.sh restarts are slow
+                print(f"[daemon] loop error: {exc}", file=sys.stderr, flush=True)
 
-        iterations += 1
-        if args.max_iter and iterations >= args.max_iter:
-            return 0
-        time.sleep(max(1, args.poll))
+            if _shutdown_requested:
+                print("[daemon] shutdown requested, exiting", flush=True)
+                return 0
+            iterations += 1
+            if args.max_iter and iterations >= args.max_iter:
+                return 0
+            try:
+                for _ in range(max(1, args.poll)):
+                    if _shutdown_requested:
+                        break
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                return 0
+    finally:
+        if magazine_server not in (None, False):
+            magazine_server.close()
+        if lock_fd is not None:
+            os.close(lock_fd)
 
 
 if __name__ == "__main__":

@@ -16,11 +16,13 @@ import json
 import os
 import signal
 import sys
+import threading
 import time
+import uuid
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Protocol
+from typing import Callable, Protocol
 
 from .config_loader import ConfigLoader, V3Config
 from .fetchers.base import Fetcher
@@ -31,7 +33,7 @@ from .live_gate import LiveGate
 from .llm.provider import LLMProvider, StubLLMProvider
 from .models import FetchedContent, ProcessResult, QueueStatus, RuntimeMode, TypedError, retry_at, utc_now
 from .pipeline import Pipeline
-from .queue_store import FailureKind, NextAction, QueueStore, QueueTask
+from .queue_store import FailureKind, NextAction, QueueClaimConflict, QueueStore, QueueTask
 from .runtime_guard import RuntimeGuard, RuntimeGuardError, RuntimePaths, resolve_runtime_paths
 
 
@@ -89,8 +91,14 @@ class WorkerConfig:
     batch_size: int = 10
     max_consecutive_failures: int = 5
     processing_stale_after_minutes: int = 30
+    heartbeat_interval_seconds: float = 20.0
     log_jsonl: bool = True
     mode: RuntimeMode = RuntimeMode.STAGING
+    # When the daemon drives the worker it owns signal handling itself, so the
+    # worker must not overwrite the daemon's handlers; the daemon instead polls
+    # shutdown_check between tasks to cut a batch short.
+    manage_signals: bool = True
+    shutdown_check: Callable[[], bool] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -122,10 +130,12 @@ class QueueWorker:
         self._worker_cfg = worker_config or WorkerConfig()
         self._log_path = log_path
 
-        # Setup signal handlers for graceful shutdown
+        # Setup signal handlers for graceful shutdown (unless the embedding
+        # daemon manages signals itself and passes a shutdown_check instead).
         self._state = WorkerState()
-        signal.signal(signal.SIGINT, self._handle_shutdown)
-        signal.signal(signal.SIGTERM, self._handle_shutdown)
+        if self._worker_cfg.manage_signals:
+            signal.signal(signal.SIGINT, self._handle_shutdown)
+            signal.signal(signal.SIGTERM, self._handle_shutdown)
 
         # Track provider availability for rate limiting
         self._providers_exhausted_until = 0.0
@@ -172,10 +182,15 @@ class QueueWorker:
             if self._state.shutdown_requested:
                 break
 
+            if self._worker_cfg.shutdown_check is not None and self._worker_cfg.shutdown_check():
+                break
+
             if self._state.consecutive_failures >= self._worker_cfg.max_consecutive_failures:
                 break
 
             result = self._process_task(task)
+            if result is None:
+                continue  # claim race lost — another worker owns this task
             if result.final_status in (QueueStatus.DONE, QueueStatus.REJECTED):
                 self._state.record_success()
             else:
@@ -245,8 +260,12 @@ class QueueWorker:
 
     # -- Task processing -----------------------------------------------------
 
-    def _process_task(self, task: QueueTask) -> ProcessResult:
-        """Process a single task through the pipeline."""
+    def _process_task(self, task: QueueTask) -> ProcessResult | None:
+        """Process a single task through the pipeline.
+
+        Returns ``None`` when the atomic claim loses the race — the task is
+        another worker's, so it is neither a success nor a failure here.
+        """
         import socket
 
         # Determine mode first (may raise LiveModeUnavailable)
@@ -258,64 +277,93 @@ class QueueWorker:
             from .llm.live_provider import create_live_provider
             self._llm = create_live_provider(self._config.llm, env=os.environ)
 
-        # Now that we know the mode is valid, claim the task
-        owner = f"{socket.gethostname()}-{os.getpid()}"
+        # Now that we know the mode is valid, claim the task. The owner is
+        # unique per claim so a rebooted pid can never collide with a lease
+        # written before the reboot.
+        owner = f"{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
         provider_route = str(getattr(self._llm, "model_route", ""))
-        task = self._queue.mark_processing(task.id, owner=owner, provider_route=provider_route)
-
         try:
-            return self._process_task_impl(task, owner, mode)
-        except LiveModeUnavailable:
-            # This should not happen since we checked mode above, but handle it
-            # Release the lease and keep task in retry_scheduled
-            self._queue.schedule_retry(
-                task.id,
-                failure_kind=FailureKind.RUNTIME_GUARD,
-                last_error="Live mode became unavailable after initial check",
-                next_retry_at=retry_at(5),
-                detail="",
-                provider_route=provider_route,
-            )
-            raise
-        except Exception as exc:
-            # Unhandled exception - recover task to retry_scheduled
-            import traceback
-            error_msg = f"Unhandled exception: {exc}"
-            detail = traceback.format_exc()[-500:]
+            task = self._queue.mark_processing(task.id, owner=owner, provider_route=provider_route)
+        except QueueClaimConflict as exc:
+            print(f"[worker] {exc}", file=sys.stderr, flush=True)
+            return None
 
+        # A background heartbeat keeps the lease fresh while the pipeline
+        # fetches and absorbs, so the 30-minute stale recovery can only ever
+        # reclaim tasks of genuinely dead workers.
+        stop_heartbeat = threading.Event()
+        heartbeat_thread = threading.Thread(
+            target=self._heartbeat_loop,
+            args=(task.id, owner, stop_heartbeat),
+            daemon=True,
+        )
+        heartbeat_thread.start()
+        try:
             try:
+                return self._process_task_impl(task, owner, mode)
+            except LiveModeUnavailable:
+                # This should not happen since we checked mode above, but handle it
+                # Release the lease and keep task in retry_scheduled
                 self._queue.schedule_retry(
                     task.id,
-                    failure_kind=FailureKind.UNKNOWN,
-                    last_error=error_msg,
+                    failure_kind=FailureKind.RUNTIME_GUARD,
+                    last_error="Live mode became unavailable after initial check",
                     next_retry_at=retry_at(5),
-                    detail=detail,
+                    detail="",
                     provider_route=provider_route,
                 )
-            except Exception:
-                pass  # Best effort recovery
+                raise
+            except Exception as exc:
+                # Unhandled exception - recover task to retry_scheduled
+                import traceback
+                error_msg = f"Unhandled exception: {exc}"
+                detail = traceback.format_exc()[-500:]
 
-            return ProcessResult(
-                url=task.url,
-                source=task.source,
-                queue_task_id=task.id,
-                current_stage="processing",
-                final_status=QueueStatus.RETRY_SCHEDULED,
-                retryable=True,
-                failure_kind=FailureKind.UNKNOWN,
-                next_action=NextAction.RETRY_LATER,
-                output_path="",
-                telegram_status="",
-                prompt_bundle="",
-                error=TypedError(
-                    failure_kind=FailureKind.UNKNOWN,
-                    message=error_msg,
-                    stage="processing",
+                try:
+                    self._queue.schedule_retry(
+                        task.id,
+                        failure_kind=FailureKind.UNKNOWN,
+                        last_error=error_msg,
+                        next_retry_at=retry_at(5),
+                        detail=detail,
+                        provider_route=provider_route,
+                    )
+                except Exception:
+                    pass  # Best effort recovery
+
+                return ProcessResult(
+                    url=task.url,
+                    source=task.source,
+                    queue_task_id=task.id,
+                    current_stage="processing",
+                    final_status=QueueStatus.RETRY_SCHEDULED,
                     retryable=True,
+                    failure_kind=FailureKind.UNKNOWN,
                     next_action=NextAction.RETRY_LATER,
-                    detail=detail,
-                ),
-            )
+                    output_path="",
+                    telegram_status="",
+                    prompt_bundle="",
+                    error=TypedError(
+                        failure_kind=FailureKind.UNKNOWN,
+                        message=error_msg,
+                        stage="processing",
+                        retryable=True,
+                        next_action=NextAction.RETRY_LATER,
+                        detail=detail,
+                    ),
+                )
+        finally:
+            stop_heartbeat.set()
+            heartbeat_thread.join(timeout=max(2.0, self._worker_cfg.heartbeat_interval_seconds))
+
+    def _heartbeat_loop(self, task_id: int, owner: str, stop: threading.Event) -> None:
+        """Refresh the claimed task's lease until told to stop."""
+        interval = max(1.0, float(self._worker_cfg.heartbeat_interval_seconds))
+        while not stop.wait(interval):
+            try:
+                self._queue.update_heartbeat(task_id, owner=owner)
+            except Exception:
+                pass  # best effort; stale recovery covers the gaps
 
     def _process_task_impl(self, task: QueueTask, owner: str, mode: RuntimeMode) -> ProcessResult:
         """Inner processing logic for a single task."""

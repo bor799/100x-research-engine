@@ -217,6 +217,12 @@ def cmd_recover(args) -> int:
     return 0
 
 
+def cmd_expire(args) -> int:
+    box = _outbox(args)
+    print(box.expire())
+    return 0
+
+
 def _receipt(args) -> dict[str, object]:
     agent_context = {
         key: value
@@ -328,6 +334,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("recover", help="Nack stale processing claims")
     p.add_argument("--stale-seconds", type=int, default=600)
     p.set_defaults(func=cmd_recover)
+
+    p = sub.add_parser(
+        "expire",
+        help="Dead-letter pending items past their delivery TTL (claim does this automatically)",
+    )
+    p.set_defaults(func=cmd_expire)
 
     return parser
 

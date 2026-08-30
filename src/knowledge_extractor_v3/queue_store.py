@@ -8,6 +8,7 @@ without touching V2 runtime state.
 from __future__ import annotations
 
 import sqlite3
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -23,6 +24,11 @@ class QueueStoreError(RuntimeError):
 
 class QueueStoreSchemaError(QueueStoreError):
     """Raised when an existing queue database does not match the V3 schema."""
+
+
+class QueueClaimConflict(QueueStoreError):
+    """Raised when an atomic claim loses the race: the task is no longer
+    pending/retry_scheduled, so another worker owns it."""
 
 
 class QueueStatus(str, Enum):
@@ -139,15 +145,29 @@ class QueueStore:
     REQUIRED_COLUMNS = QUEUE_REQUIRED_COLUMNS
     STATUS_VALUES = _enum_values(QueueStatus)
 
+    # Connections are opened per call (thread-safe by construction); the
+    # 30s busy timeout lets the heartbeat thread and task transactions queue
+    # behind each other instead of failing with "database is locked".
+    _BUSY_TIMEOUT_SECONDS = 30.0
+
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(self.db_path, timeout=self._BUSY_TIMEOUT_SECONDS)
+
     def __init__(self, db_path: Path, *, runtime_fingerprint: str = "") -> None:
         self.db_path = Path(db_path).expanduser()
         self.runtime_fingerprint = runtime_fingerprint
         if _contains_v2_marker(self.db_path):
             raise ValueError(f"Refusing to use V2 queue path: {self.db_path}")
+        # Lease established by the last successful mark_processing on THIS
+        # instance. Terminal transitions for the leased task are owner-guarded
+        # so a zombie worker (whose lease expired and was recovered) can never
+        # overwrite the outcome of the worker that legitimately re-claimed it.
+        self._lease_task_id: int | None = None
+        self._lease_owner: str = ""
 
     def initialize(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS queue (
@@ -184,7 +204,7 @@ class QueueStore:
         # Migrate legacy schema before creating indexes that depend on new columns
         self._migrate_legacy_schema()
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             # Create indexes after migration to ensure all columns exist
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_queue_status_retry "
@@ -201,7 +221,7 @@ class QueueStore:
     def schema_columns(self) -> set[str]:
         if not self.db_path.exists():
             return set()
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             rows = conn.execute("PRAGMA table_info(queue)").fetchall()
         return {row[1] for row in rows}
 
@@ -219,7 +239,7 @@ class QueueStore:
         if not new_columns:
             return
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             for col in new_columns:
                 try:
                     conn.execute(f"ALTER TABLE queue ADD COLUMN {col} TEXT DEFAULT ''")
@@ -243,7 +263,7 @@ class QueueStore:
         if not normalized_url:
             raise ValueError("Queue URL cannot be empty")
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO queue (
@@ -290,17 +310,23 @@ class QueueStore:
 
     def get_task(self, task_id: int) -> QueueTask:
         self.initialize()
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             row = conn.execute("SELECT * FROM queue WHERE id=?", (task_id,)).fetchone()
         if row is None:
             raise KeyError(f"Queue task not found: {task_id}")
         return self._row_to_task(row)
 
     def mark_processing(self, task_id: int, *, owner: str = "", provider_route: str = "") -> QueueTask:
+        """Atomically claim a task: pending/retry_scheduled -> processing.
+
+        The status guard makes the claim a compare-and-swap — under concurrent
+        stacks exactly one UPDATE wins, losers raise QueueClaimConflict instead
+        of silently re-processing the same task (the P0-1 duplicate root cause).
+        """
         self.initialize()
         now = _utc_now()
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
+        with self._connect() as conn:
+            cursor = conn.execute(
                 """
                 UPDATE queue
                 SET status=?,
@@ -316,25 +342,47 @@ class QueueStore:
                     processing_heartbeat_at=?,
                     provider_route=?,
                     updated_at=?
-                WHERE id=?
+                WHERE id=? AND status IN (?, ?)
                 """,
-                (QueueStatus.PROCESSING.value, owner, now, now, provider_route, now, task_id),
+                (
+                    QueueStatus.PROCESSING.value, owner, now, now, provider_route, now, task_id,
+                    QueueStatus.PENDING.value, QueueStatus.RETRY_SCHEDULED.value,
+                ),
             )
+            if cursor.rowcount != 1:
+                conn.commit()
+                current = self.get_task(task_id)
+                raise QueueClaimConflict(
+                    f"task {task_id} is {current.status.value}; claim lost to another worker"
+                )
             conn.commit()
+        self._lease_task_id = task_id
+        self._lease_owner = owner
         return self.get_task(task_id)
 
     def update_heartbeat(self, task_id: int, *, owner: str = "") -> QueueTask:
-        """Update processing heartbeat to keep task lease alive."""
+        """Update processing heartbeat to keep task lease alive.
+
+        Falls back to this instance's lease owner when not given, so the
+        worker's heartbeat thread only needs the task id. Only processing
+        rows are refreshed — a recovered task must not be resurrected by a
+        late heartbeat.
+        """
         self.initialize()
-        with sqlite3.connect(self.db_path) as conn:
+        effective_owner = owner or self._lease_owner
+        with self._connect() as conn:
             conn.execute(
                 """
                 UPDATE queue
                 SET processing_heartbeat_at=?,
                     updated_at=?
-                WHERE id=? AND (processing_owner=? OR processing_owner='')
+                WHERE id=? AND status=?
+                    AND (processing_owner=? OR (processing_owner='' AND ?=''))
                 """,
-                (_utc_now(), _utc_now(), task_id, owner),
+                (
+                    _utc_now(), _utc_now(), task_id, QueueStatus.PROCESSING.value,
+                    effective_owner, effective_owner,
+                ),
             )
             conn.commit()
         return self.get_task(task_id)
@@ -342,7 +390,7 @@ class QueueStore:
     def find_stale_leases(self, heartbeat_before: str) -> list[QueueTask]:
         """Find tasks with stale processing leases for recovery."""
         self.initialize()
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             rows = conn.execute(
                 """
                 SELECT * FROM queue
@@ -468,7 +516,7 @@ class QueueStore:
 
         now = _utc_now()
         runtime_fingerprint = self.runtime_fingerprint or current.runtime_fingerprint
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             cursor = conn.execute(
                 """
                 UPDATE queue
@@ -522,7 +570,7 @@ class QueueStore:
     ) -> QueueTask:
         self.initialize()
         now = _utc_now()
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             # Build SET clause dynamically to preserve provider_route and last_reply_status
             # when empty values are passed (only update when explicitly provided)
             set_clauses = [
@@ -579,13 +627,42 @@ class QueueStore:
                 ])
 
             set_clause = ", ".join(set_clauses)
+            # Owner guard: while this instance holds the lease for the task,
+            # terminal transitions must still own it. A zombie whose lease was
+            # recovered (owner cleared or re-claimed) loses the row here and
+            # cannot knock a DONE task back to retry_scheduled.
+            guard_owner = ""
+            if (
+                status is not QueueStatus.PROCESSING
+                and self._lease_owner
+                and self._lease_task_id == task_id
+            ):
+                guard_owner = self._lease_owner
+                where_clause = "id=? AND (? = '' OR processing_owner = ?)"
+            else:
+                where_clause = "id=?"
             params.append(task_id)
+            if guard_owner:
+                params.extend((guard_owner, guard_owner))
 
-            conn.execute(
-                f"UPDATE queue SET {set_clause} WHERE id=?",
+            cursor = conn.execute(
+                f"UPDATE queue SET {set_clause} WHERE {where_clause}",
                 params,
             )
-            conn.commit()
+            if guard_owner and cursor.rowcount != 1:
+                conn.commit()  # lease lost: keep the winner's state untouched
+                current = self.get_task(task_id)
+                print(
+                    f"[queue] task {task_id} lease lost "
+                    f"(now {current.status.value}/{current.processing_owner or 'unowned'}); "
+                    f"ignoring {status.value} from stale owner",
+                    file=sys.stderr, flush=True,
+                )
+            else:
+                conn.commit()
+            if self._lease_task_id == task_id:
+                self._lease_task_id = None
+                self._lease_owner = ""
         return self.get_task(task_id)
 
     @staticmethod
@@ -632,7 +709,7 @@ class QueueStore:
         self.initialize()
         now_ts = now or _utc_now()
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             # pending tasks (no retry time check needed)
             ready_query = """
                 SELECT * FROM queue
@@ -662,7 +739,7 @@ class QueueStore:
         self.initialize()
         now = _utc_now()
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             # First recover tasks with stale heartbeat (preferred for new schema)
             cursor = conn.execute(
                 """
@@ -705,7 +782,7 @@ class QueueStore:
         """Return count of tasks by status."""
         self.initialize()
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             rows = conn.execute(
                 "SELECT status, COUNT(*) FROM queue GROUP BY status"
             ).fetchall()
@@ -722,7 +799,7 @@ class QueueStore:
         self.initialize()
         from datetime import timedelta
         since = (datetime.now(UTC) - timedelta(hours=window_hours)).isoformat()
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             rows = conn.execute(
                 "SELECT status, COUNT(*) FROM queue "
                 "WHERE updated_at >= ? GROUP BY status",
@@ -734,7 +811,7 @@ class QueueStore:
         """Find task by normalized URL."""
         self.initialize()
 
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             row = conn.execute("SELECT * FROM queue WHERE url=?", (url.strip(),)).fetchone()
 
         if row is None:
@@ -745,7 +822,7 @@ class QueueStore:
         """Update only last_reply_status and updated_at without changing task state."""
         self.initialize()
         now = _utc_now()
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute(
                 """
                 UPDATE queue

@@ -223,10 +223,25 @@ stop_role() {
     launchctl unload "$plist" >/dev/null 2>&1 || true
   fi
   if [ -f "$pid_file" ]; then
-    local pid
+    local pid pgid my_pgid waited
     pid="$(cat "$pid_file")"
     if kill -0 "$pid" >/dev/null 2>&1; then
-      kill "$pid" || true
+      # Kill the whole process group: the supervisor's `bash -lc` child never
+      # forwards SIGTERM to the python grandchild, so a supervisor-only kill
+      # leaves orphaned daemons holding the queue and port 8765.
+      pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+      my_pgid="$(ps -o pgid= -p $$ 2>/dev/null | tr -d '[:space:]')"
+      if [ -n "$pgid" ] && [ "$pgid" != "$my_pgid" ]; then
+        kill -TERM -- "-$pgid" >/dev/null 2>&1 || kill "$pid" || true
+        waited=0
+        while kill -0 "$pid" >/dev/null 2>&1 && [ "$waited" -lt 10 ]; do
+          sleep 1
+          waited=$((waited + 1))
+        done
+        kill -KILL -- "-$pgid" >/dev/null 2>&1 || true
+      else
+        kill "$pid" || true
+      fi
     fi
     rm -f "$pid_file"
   fi

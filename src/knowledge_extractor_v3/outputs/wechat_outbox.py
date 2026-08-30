@@ -207,7 +207,11 @@ class WechatOutbox:
         are fewer distinct sources than slots. Items without a source fall back
         to their URL as the grouping key, so legacy/manual entries never
         collide.
+
+        Expired items are dead-lettered first: a push window must never drain
+        news that outlived its delivery TTL during a channel outage.
         """
+        self.expire()
         pending = self._list("pending")
         if lane:
             pending = [item for item in pending if item.lane == lane]

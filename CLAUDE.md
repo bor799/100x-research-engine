@@ -24,7 +24,7 @@ bash -n scripts/*.sh
 python -m pytest -q
 ```
 
-V4 baseline on 2026-08-17: `275 passed` after the single-call rewrite; on 2026-08-30 with the vault dedup layer (write guard, same-URL increments, periodic cleanup): `359 passed`.
+V4 baseline on 2026-08-17: `275 passed` after the single-call rewrite; on 2026-08-30 with the vault dedup layer (write guard, same-URL increments, periodic cleanup): `359 passed`; same evening with the reliability invariants (queue claim CAS + lease heartbeat + owner-guarded terminals, daemon singleton flock + SIGTERM, process-group stop, magazine bind retry, outbox TTL dead-letter on claim): `375 passed`. See `docs/RELIABILITY_INVARIANTS.md`.
 
 ## Runtime And Config
 

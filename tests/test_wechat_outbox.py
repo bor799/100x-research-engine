@@ -294,7 +294,8 @@ def _three_strike_failure(box, event_id="e1", error_code="SEND_FAILED"):
 def test_requeue_failed_resets_attempts_and_appends_marker(tmp_path):
     root = tmp_path / "ob"
     box = WechatOutbox(root)
-    box.enqueue(_item("e1", expires_at="2026-08-21T00:00:00+00:00"))
+    early = (datetime.now(UTC) + timedelta(hours=1)).replace(microsecond=0).isoformat()
+    box.enqueue(_item("e1", expires_at=early))  # unexpired but short of the 24h TTL
     for _ in range(3):
         box.claim()
         box.nack("e1", _receipt(ok=False))
@@ -351,13 +352,14 @@ def test_requeue_failed_refreshes_expired_ttl_and_can_keep_it(tmp_path):
     root = tmp_path / "ob"
     box = WechatOutbox(root)
     stale = (datetime.now(UTC) - timedelta(hours=48)).replace(microsecond=0).isoformat()
-    box.enqueue(_item("e1", created_at=stale, expires_at=stale))
+    early = (datetime.now(UTC) + timedelta(hours=1)).replace(microsecond=0).isoformat()
+    box.enqueue(_item("e1", created_at=stale, expires_at=early))
     for _ in range(3):
         box.claim()
         box.nack("e1", _receipt(ok=False))
     kept = box.requeue_failed(reason="audit requeue", refresh_ttl=False)
     assert kept.requeued == ("e1",)
-    assert _read(root, "pending")["expires_at"] == stale
+    assert _read(root, "pending")["expires_at"] == early
     # Fail it again to verify the default TTL refresh.
     for _ in range(3):
         box.claim()
@@ -427,3 +429,22 @@ def test_receipt_reports_missing_connector_observability_without_guessing():
     assert clean["recipient_ref"] == ""
     assert clean["session_ref"] == ""
     assert clean["observability_gaps"] == ["recipient_ref", "session_ref"]
+
+
+def test_claim_dead_letters_expired_items_before_selecting(tmp_path):
+    """The arrears invariant: a push window drains fresh news only — anything
+    that outlived its TTL during a channel outage dies without a send."""
+    root = tmp_path / "ob"
+    box = WechatOutbox(root)
+    stale = (datetime.now(UTC) - timedelta(hours=48)).replace(microsecond=0).isoformat()
+    box.enqueue(_item("stale", created_at=stale, expires_at=stale, final_score=9.0))
+    fresh = ttl_for_lane(BUSINESS_LANE)
+    box.enqueue(_item("fresh", expires_at=fresh, final_score=1.0))
+
+    claimed = box.claim(limit=1)
+
+    assert [item.event_id for item in claimed] == ["fresh"]  # score order would pick stale first
+    assert box.find_state("stale") == "failed"
+    dead = json.loads((root / "failed" / "stale.json").read_text(encoding="utf-8"))
+    assert dead["failure"]["code"] == "OUTBOX_EXPIRED"
+    assert box.counts() == {"pending": 0, "processing": 1, "sent": 0, "failed": 1}
