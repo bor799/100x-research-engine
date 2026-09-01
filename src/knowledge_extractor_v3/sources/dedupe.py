@@ -1,11 +1,35 @@
 """URL deduplication utilities for scheduler.
 
-Provides normalization and deduplication of discovered URLs.
+Provides normalization and deduplication of discovered URLs. Normalization
+is a dedup KEY only — the queue stores the normalized form so the UNIQUE(url)
+constraint collapses transport variants (tracking parameters, fragments,
+default ports) of the same location into one task.
 """
 
 from __future__ import annotations
 
 from urllib.parse import urlparse, urlunparse
+
+# Analytics/click-through parameters that never identify content. utm_* is a
+# prefix family; the rest are the well-known click IDs and share trackers.
+_TRACKING_PARAM_PREFIXES = ("utm_",)
+_TRACKING_PARAM_NAMES = frozenset({
+    "gclid", "fbclid", "mc_cid", "mc_eid", "igshid", "spm", "spm_id_from",
+    "vd_source", "ref_src", "ref_url", "scid", "cmpid", "share_id",
+})
+
+
+def _clean_query(query: str) -> str:
+    """Drop tracking parameters and sort the remainder (order-insensitive)."""
+    kept = []
+    for part in query.split("&"):
+        if not part:
+            continue
+        key = part.split("=", 1)[0].lower()
+        if key.startswith(_TRACKING_PARAM_PREFIXES) or key in _TRACKING_PARAM_NAMES:
+            continue
+        kept.append(part)
+    return "&".join(sorted(kept))
 
 
 def normalize_url(url: str) -> str:
@@ -14,6 +38,7 @@ def normalize_url(url: str) -> str:
     - Lowercase scheme and netloc
     - Remove default ports
     - Remove fragment
+    - Strip tracking parameters (utm_*, gclid, ...) and sort the rest
     - Strip trailing slash
     """
     url = url.strip()
@@ -33,13 +58,13 @@ def normalize_url(url: str) -> str:
     elif netloc.endswith(":443") and scheme == "https":
         netloc = netloc[:-4]
 
-    # Reconstruct without fragment
+    # Reconstruct without fragment, with a cleaned query
     normalized = urlunparse((
         scheme,
         netloc,
         parsed.path,
         parsed.params,
-        parsed.query,
+        _clean_query(parsed.query),
         "",  # Remove fragment
     ))
 

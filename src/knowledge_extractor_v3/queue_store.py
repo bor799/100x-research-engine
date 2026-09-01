@@ -259,7 +259,12 @@ class QueueStore:
     ) -> QueueTask:
         self.initialize()
         now = _utc_now()
-        normalized_url = url.strip()
+        # Transport variants (utm_* mirrors, fragments, default ports) share
+        # one queue row: normalize_url is the dedup key of the UNIQUE(url)
+        # constraint, exactly like the scheduler's in-memory seen-set.
+        from .sources.dedupe import normalize_url
+
+        normalized_url = normalize_url(url)
         if not normalized_url:
             raise ValueError("Queue URL cannot be empty")
 

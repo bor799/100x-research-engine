@@ -7,6 +7,7 @@ This repository is the V4 implementation of the 100X knowledge extraction system
 - V4 core: single absorption call (`prompts/absorption.md`, 14-field JSON), code-owned weighted score `0.40×information_gain + 0.35×action_value + 0.25×relevance`, code-owned tier (A>=7.5 / B>=6.0 / Reject), spam hard-reject.
 - Routing: `<0.60 or spam -> reject`; `0.60-0.74 -> archive_only` (cold storage: stays in the week folder, never enters the weekly magazine); `>=0.75 -> push` (action_value>=0.70 business lane, else strategic). The weekly magazine only carries push-band content (2026-08-30 operator decision; floor raised from 0.40). Favored channels ride `routing.source_preferences` with a 400-char content floor.
 - All LLM roles run GLM-5.2. One daemon role (`loop` = scan + work); Cindy owns WeChat delivery.
+- Story-identity dedup (2026-09-01): same story arriving via different transports (original RSS + aggregator digest + tracking-param mirrors) is deduplicated on the absorption card, not on URL/bytes. Three layers: URL-normalized queue `UNIQUE`, a post-absorption write-time gate (`dedup_outcome="duplicate_story"`, no second file), and a whole-vault self-healing pass in `dedupe_vault` (losers → `.trash-dedup/story/`, reading state re-keyed, manifest audit). Evidence-tier rule, precision-first; knobs under `dedup.story_*`. See `docs/STORY_IDENTITY_DEDUP.md`.
 - Published scope intentionally excludes `.env`, `config/config.local.yaml`, cache files, `.DS_Store`, `ai-reading/`, and local staging output.
 
 ## Safety Rules
@@ -24,7 +25,7 @@ bash -n scripts/*.sh
 python -m pytest -q
 ```
 
-V4 baseline on 2026-08-17: `275 passed` after the single-call rewrite; on 2026-08-30 with the vault dedup layer (write guard, same-URL increments, periodic cleanup): `359 passed`; same evening with the reliability invariants (queue claim CAS + lease heartbeat + owner-guarded terminals, daemon singleton flock + SIGTERM, process-group stop, magazine bind retry, outbox TTL dead-letter on claim): `375 passed`. See `docs/RELIABILITY_INVARIANTS.md`.
+V4 baseline on 2026-08-17: `275 passed` after the single-call rewrite; on 2026-08-30 with the vault dedup layer (write guard, same-URL increments, periodic cleanup): `359 passed`; same evening with the reliability invariants (queue claim CAS + lease heartbeat + owner-guarded terminals, daemon singleton flock + SIGTERM, process-group stop, magazine bind retry, outbox TTL dead-letter on claim): `375 passed`; on 2026-09-01 with story-identity dedup (card-based cross-transport matching, write-time gate, whole-vault reconciliation, restore resurrection guard): `396 passed`. See `docs/RELIABILITY_INVARIANTS.md` and `docs/STORY_IDENTITY_DEDUP.md`.
 
 ## Runtime And Config
 

@@ -116,10 +116,21 @@ def _run_periodic_dedup() -> float:
             from .outputs.dedupe import dedupe_vault
 
             root = loader.expand_path(config.outputs.obsidian_root)
-            report = dedupe_vault(root)
-            if report.merged_groups or report.restored or report.errors:
+            report = dedupe_vault(
+                root,
+                story=dedup.story_dedup,
+                story_rare_min=dedup.story_rare_tokens,
+                story_mass_min=dedup.story_mass_tokens,
+                story_strong_min=dedup.story_strong_tokens,
+                story_overlap_min=dedup.story_overlap_min,
+                story_strong_jaccard=dedup.story_strong_jaccard,
+                story_title_min=dedup.story_title_min,
+                story_max_df=dedup.story_max_df,
+            )
+            if report.merged_groups or report.story_groups or report.restored or report.errors:
                 print(
                     f"[daemon] vault dedup: {report.merged_groups} groups merged, "
+                    f"{report.story_groups} story groups merged, "
                     f"{len(report.restored)} restored, {len(report.errors)} errors",
                     file=sys.stderr, flush=True,
                 )

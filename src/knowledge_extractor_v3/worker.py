@@ -370,6 +370,7 @@ class QueueWorker:
         # LIVE-only vault dedup: same index feeds the pipeline early exit and
         # the writer guard, so one task sees one consistent vault view.
         vault_dedup = None
+        story_dedup = None
         if mode is RuntimeMode.LIVE and self._config.dedup.enabled:
             from .config_loader import ConfigLoader
             from .outputs.vault_index import VaultDedupService, VaultIndex
@@ -383,6 +384,23 @@ class QueueWorker:
                 complete_fn=self._llm.complete,
                 similarity_threshold=self._config.dedup.update_similarity_threshold,
             )
+            # Story-identity dedup: cross-transport duplicates (aggregator
+            # digests of an already-archived article) complete at the
+            # canonical file instead of forking a second article.
+            if self._config.dedup.story_dedup:
+                from .outputs.story_identity import StoryDedupService
+
+                story_dedup = StoryDedupService(
+                    live_root,
+                    rare_min=self._config.dedup.story_rare_tokens,
+                    mass_min=self._config.dedup.story_mass_tokens,
+                    strong_min=self._config.dedup.story_strong_tokens,
+                    overlap_min=self._config.dedup.story_overlap_min,
+                    strong_jaccard=self._config.dedup.story_strong_jaccard,
+                    title_min=self._config.dedup.story_title_min,
+                    window_weeks=self._config.dedup.story_window_weeks,
+                    max_df=self._config.dedup.story_max_df,
+                )
 
         # Build pipeline with appropriate output port
         pipeline = Pipeline(
@@ -393,6 +411,7 @@ class QueueWorker:
             source_preferences=self._config.routing.source_preferences,
             live_output=None,  # Will be set by mode if needed
             vault_dedup=vault_dedup,
+            story_dedup=story_dedup,
         )
 
         # For live mode, the pipeline needs a live output port

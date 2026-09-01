@@ -58,6 +58,18 @@ dedup:
   refetch_cooldown_days: 3
   # daemon 定期清理重复文件的间隔小时数。
   dedup_interval_hours: 24
+  # 故事同源性去重：同一内容经不同传输渠道（原文 RSS、聚合器摘要、带
+  # utm 参数的镜像）两次入队时，用吸收卡片的稀有实体重叠识别为同一
+  # 故事，第二个任务直接指向既有文章，不再产生重复文件。
+  story_dedup: true
+  story_rare_tokens: 3        # 共享稀有词元数下限（与包含度联用的前置门）
+  story_mass_tokens: 12       # 共享稀有词元达到该数量即视为重复（证据规模路径）
+  story_strong_tokens: 2      # 共享强词元（数字/长度>=5的英文实体）数下限
+  story_overlap_min: 0.15     # 包含度下限（交集/较小词集，与稀有门控联用）
+  story_strong_jaccard: 0.60  # 词元 Jaccard 单独判定为重复的强阈值
+  story_title_min: 0.20       # 标题 Jaccard 下限（需至少 1 个强词元佐证）
+  story_window_weeks: 2       # 只与最近 N 个周文件夹比对
+  story_max_df: 2             # 词元在窗口内出现 <= N 篇才算稀有
 
 daily_reports:
   us_ai_market:

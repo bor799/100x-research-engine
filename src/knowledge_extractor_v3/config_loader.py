@@ -80,12 +80,24 @@ class OutputsConfig:
 
 @dataclass(frozen=True)
 class DedupConfig:
-    """写入时去重 + 同源增量合并 + 定期清理的开关与阈值。"""
+    """写入时去重 + 同源增量合并 + 定期清理 + 故事同源性去重的开关与阈值。"""
 
     enabled: bool = True
     update_similarity_threshold: float = 0.98
     refetch_cooldown_days: int = 3
     dedup_interval_hours: int = 24
+    # 故事同源性去重（跨传输重复：同一内容经原文 RSS 与聚合器摘要/镜像
+    # 两次入队）。以吸收卡片为规范化表示做稀有实体门控匹配；见
+    # outputs/story_identity.py。
+    story_dedup: bool = True
+    story_rare_tokens: int = 3
+    story_mass_tokens: int = 12
+    story_strong_tokens: int = 2
+    story_overlap_min: float = 0.15
+    story_strong_jaccard: float = 0.60
+    story_title_min: float = 0.20
+    story_window_weeks: int = 2
+    story_max_df: int = 2
 
 
 @dataclass(frozen=True)
@@ -565,11 +577,32 @@ def _build_dedup(raw: dict[str, object]) -> DedupConfig:
         similarity_threshold = float(raw.get("update_similarity_threshold", 0.98))
     except (TypeError, ValueError):
         similarity_threshold = 0.98
+    try:
+        overlap_min = float(raw.get("story_overlap_min", 0.15))
+    except (TypeError, ValueError):
+        overlap_min = 0.15
+    try:
+        strong_jaccard = float(raw.get("story_strong_jaccard", 0.60))
+    except (TypeError, ValueError):
+        strong_jaccard = 0.60
+    try:
+        title_min = float(raw.get("story_title_min", 0.20))
+    except (TypeError, ValueError):
+        title_min = 0.20
     return DedupConfig(
         enabled=bool(raw.get("enabled", True)),
         update_similarity_threshold=max(0.5, min(1.0, similarity_threshold)),
         refetch_cooldown_days=int(raw.get("refetch_cooldown_days", 3)),
         dedup_interval_hours=int(raw.get("dedup_interval_hours", 24)),
+        story_dedup=bool(raw.get("story_dedup", True)),
+        story_rare_tokens=int(raw.get("story_rare_tokens", 3)),
+        story_mass_tokens=int(raw.get("story_mass_tokens", 12)),
+        story_strong_tokens=int(raw.get("story_strong_tokens", 2)),
+        story_overlap_min=max(0.0, min(1.0, overlap_min)),
+        story_strong_jaccard=max(0.0, min(1.0, strong_jaccard)),
+        story_title_min=max(0.0, min(1.0, title_min)),
+        story_window_weeks=int(raw.get("story_window_weeks", 2)),
+        story_max_df=int(raw.get("story_max_df", 2)),
     )
 
 

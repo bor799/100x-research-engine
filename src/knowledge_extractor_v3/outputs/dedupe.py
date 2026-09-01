@@ -1,10 +1,20 @@
 """Periodic vault dedup: merge duplicate article files, restore orphans.
 
-Groups are keyed by frontmatter ``article_id`` (the content hash). The
-oldest path-sorted copy is canonical — the same file ``MagazineStore.find``
-has always written user feedback to — and losers move into the per-week
-``.trash-dedup/`` directory that ``scan_articles``' glob never sees. A group
-is the guarantee that the last copy of an article is never trashed.
+Two kinds of groups:
+
+- ``article_id`` groups (the content hash): byte-identical reprocessings.
+- story groups (``outputs.story_identity``): cross-transport duplicates —
+  the same editorial artifact that arrived via another URL (aggregator
+  digest, tracking mirror) and slipped past every transport identity.
+
+In both the oldest path-sorted copy is canonical — the same file
+``MagazineStore.find`` has always written user feedback to — and losers
+move into the per-week ``.trash-dedup/`` tree that ``scan_articles``' glob
+never sees. Story losers go one level deeper, into ``.trash-dedup/story/``,
+because ``restore_orphans`` would otherwise resurrect them (their
+``article_id`` has no live copy under that id — the canonical carries a
+different one). A group is the guarantee that the last copy of an article
+is never trashed.
 """
 
 from __future__ import annotations
@@ -15,11 +25,13 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from .story_identity import StoryArticle, StoryIdentityIndex
 from .updates import UPDATES_END, UPDATES_START, record_manifest_event
 from .vault_index import VaultIndex, _read_frontmatter
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 TRASH_DIRNAME = ".trash-dedup"
+STORY_TRASH_SUBDIR = f"{TRASH_DIRNAME}/story"
 PLACEHOLDER_FEEDBACK = {"尚未提交评论。", "已读，无评论。", ""}
 # The default ai-review block ships with a single HTML comment placeholder.
 PLACEHOLDER_REVIEW_MARKER = "提交评论后，由 100X 定向萃取服务写入"
@@ -39,11 +51,21 @@ class DedupeGroup:
 
 
 @dataclass
+class StoryGroup:
+    """Cross-transport duplicate cluster; losers carry different article_ids."""
+
+    canonical: StoryArticle
+    losers: list[StoryArticle]
+    shared_rare: tuple[str, ...]
+
+
+@dataclass
 class DedupeReport:
     """Mutable accumulator: dedupe_vault folds per-group results in as it goes."""
 
     restored: list[str] = field(default_factory=list)
     merged_groups: int = 0
+    story_groups: int = 0
     trashed_files: list[str] = field(default_factory=list)
     state_migrations: int = 0
     weeks_rebuilt: list[str] = field(default_factory=list)
@@ -61,6 +83,58 @@ def scan_groups(root: Path) -> list[DedupeGroup]:
                 canonical=refs[0].path,
                 losers=[ref.path for ref in refs[1:]],
             ))
+    return groups
+
+
+def scan_story_groups(
+    root: Path,
+    *,
+    rare_min: int = 3,
+    mass_min: int = 12,
+    strong_min: int = 2,
+    overlap_min: float = 0.15,
+    strong_jaccard: float = 0.60,
+    title_min: float = 0.20,
+    max_df: int = 2,
+    window_weeks: int | None = None,
+) -> list[StoryGroup]:
+    """Cluster cross-transport duplicates across the vault with the story rule.
+
+    Articles fold oldest-first: each either starts/joins the kept set or
+    clusters under the kept article it matches (chained digests resolve to
+    the group head). The whole vault is scanned by default — this is the
+    self-healing pass for duplicates that predate the write-time gate.
+    """
+    index = StoryIdentityIndex(root, window_weeks=window_weeks, max_df=max_df)
+    index.rebuild()
+    kept: list[StoryArticle] = []
+    alias: dict[Path, StoryArticle] = {}
+    groups: list[StoryGroup] = []
+    by_head: dict[Path, StoryGroup] = {}
+    for art in index.articles:
+        match = index.match_article(
+            art,
+            against=kept,
+            rare_min=rare_min,
+            mass_min=mass_min,
+            strong_min=strong_min,
+            overlap_min=overlap_min,
+            strong_jaccard=strong_jaccard,
+            title_min=title_min,
+        )
+        if match is None:
+            kept.append(art)
+            alias[art.path] = art
+            continue
+        head = alias.get(match.canonical.path, match.canonical)
+        group = by_head.get(head.path)
+        if group is None:
+            group = StoryGroup(canonical=head, losers=[], shared_rare=match.shared_rare)
+            by_head[head.path] = group
+            groups.append(group)
+        group.losers.append(art)
+        alias[art.path] = head
+        kept.append(art)  # chained digests may match this loser, not the head
     return groups
 
 
@@ -128,6 +202,113 @@ def _trash_path(loser: Path) -> Path:
         target = trash_dir / f"{loser.stem}-{suffix}{loser.suffix}"
         suffix += 1
     return target
+
+
+def _story_trash_path(loser: Path) -> Path:
+    """One level below the by-id trash: ``restore_orphans``' single-level
+    glob must never resurrect a story loser (its article_id has no live copy
+    under that id — the canonical carries a different one)."""
+    trash_dir = loser.parent / STORY_TRASH_SUBDIR
+    trash_dir.mkdir(parents=True, exist_ok=True)
+    target = trash_dir / loser.name
+    suffix = 1
+    while target.exists():
+        target = trash_dir / f"{loser.stem}-{suffix}{loser.suffix}"
+        suffix += 1
+    return target
+
+
+def _remap_story_state(root: Path, group: StoryGroup) -> int:
+    """Fold each loser's reading state onto the canonical's article_id.
+
+    Unlike the by-id migration, ids DIFFER here, so the loser's state entry
+    is re-keyed onto the canonical id (merging when both have state).
+    """
+    from ..magazine import MagazineStore
+
+    store = MagazineStore(root)
+    canonical_week = group.canonical.week
+    canonical_data = store.load_week(canonical_week)
+    canonical_entries = canonical_data.setdefault("articles", {})
+    if not isinstance(canonical_entries, dict):
+        canonical_entries = {}
+        canonical_data["articles"] = canonical_entries
+    migrated = 0
+    for loser in group.losers:
+        if loser.week == canonical_week:
+            loser_entries = canonical_entries
+        else:
+            foreign = store.load_week(loser.week)
+            loser_entries = foreign.setdefault("articles", {})
+            if not isinstance(loser_entries, dict):
+                loser_entries = {}
+                foreign["articles"] = loser_entries
+        loser_state = loser_entries.get(loser.article_id)
+        if isinstance(loser_state, dict):
+            existing = canonical_entries.get(group.canonical.article_id)
+            if isinstance(existing, dict):
+                canonical_entries[group.canonical.article_id] = _merge_state_fields(existing, loser_state)
+            else:
+                loser_state["week"] = canonical_week
+                canonical_entries[group.canonical.article_id] = loser_state
+        loser_entries.pop(loser.article_id, None)
+        if loser.week != canonical_week:
+            store.save_week(loser.week, foreign)
+        migrated += 1
+    store.save_week(canonical_week, canonical_data)
+    return migrated
+
+
+def _merge_story_group(root: Path, group: StoryGroup, report: DedupeReport, *, dry_run: bool) -> None:
+    """Fold one story cluster into its canonical article file."""
+    try:
+        texts = {p.path: p.path.read_text(encoding="utf-8") for p in [group.canonical, *group.losers]}
+    except OSError as exc:
+        report.errors.append(f"story {group.canonical.article_id}: unreadable file: {exc}")
+        return
+
+    canonical_text = texts[group.canonical.path]
+    replacements: dict[tuple[str, str], str] = {}
+    for _name, start, end, feedback_style in _MANAGED_BLOCKS:
+        canonical_inner = _block_inner(canonical_text, start, end)
+        loser_inner = ""
+        for loser in group.losers:
+            candidate = _block_inner(texts[loser.path], start, end)
+            if _is_placeholder(candidate, feedback_style=feedback_style):
+                continue
+            loser_inner = _merge_block_inner(loser_inner, candidate)
+        if not loser_inner:
+            continue
+        if _is_placeholder(canonical_inner, feedback_style=feedback_style):
+            replacements[(start, end)] = loser_inner
+        else:
+            replacements[(start, end)] = _merge_block_inner(canonical_inner, loser_inner)
+
+    if replacements:
+        updated = _rewrite_with_blocks(group.canonical.path, canonical_text, replacements)
+        if not dry_run:
+            _atomic_write(group.canonical.path, updated)
+
+    if not dry_run:
+        report.state_migrations += _remap_story_state(root, group)
+
+    report.story_groups += 1
+    for loser in group.losers:
+        if dry_run:
+            report.trashed_files.append(str(loser.path))
+            continue
+        target = _story_trash_path(loser.path)
+        os.replace(loser.path, target)
+        record_manifest_event(loser.path.parent, {
+            "kind": "story_merged",
+            "filename": loser.path.name,
+            "article_id": loser.article_id,
+            "url": loser.url,
+            "canonical": group.canonical.path.relative_to(root).as_posix(),
+            "canonical_id": group.canonical.article_id,
+            "shared_rare": list(group.shared_rare[:8]),
+        })
+        report.trashed_files.append(str(target))
 
 
 def _merge_state_across_weeks(root: Path, group: DedupeGroup) -> int:
@@ -208,15 +389,28 @@ def _merge_state_fields(canonical: dict[str, object], foreign: dict[str, object]
 
 
 def restore_orphans(root: Path, *, dry_run: bool = False) -> list[Path]:
-    """Move trashed files whose article_id has no live copy back to the week."""
+    """Move trashed files whose article_id has no live copy back to the week.
+
+    Ids present in the story trash (``.trash-dedup/story/``) are excluded:
+    a story merge removes the last live copy of a loser id, and an OLDER
+    by-id trash entry with the same id would otherwise look like an orphan
+    and resurrect the duplicate the story pass just merged (observed on the
+    real vault 2026-09-01: the garymarcus loser's id had a stale by-id
+    trash sibling).
+    """
     root = Path(root).resolve()
     index = VaultIndex(root)
     index.rebuild()
+    story_trashed_ids: set[str] = set()
+    for path in sorted(root.glob(f"????-??-W?/{STORY_TRASH_SUBDIR}/*.md")):
+        story_id = str(_read_frontmatter(path).get("article_id") or "").strip()
+        if story_id:
+            story_trashed_ids.add(story_id)
     restored: list[Path] = []
     for path in sorted(root.glob(f"????-??-W?/{TRASH_DIRNAME}/*.md")):
         metadata = _read_frontmatter(path)
         article_id = str(metadata.get("article_id") or "").strip()
-        if not article_id or article_id in index.by_id:
+        if not article_id or article_id in index.by_id or article_id in story_trashed_ids:
             continue
         target = path.parent.parent / path.name
         if target.exists():
@@ -233,7 +427,20 @@ def restore_orphans(root: Path, *, dry_run: bool = False) -> list[Path]:
     return restored
 
 
-def dedupe_vault(root: Path, *, dry_run: bool = False) -> DedupeReport:
+def dedupe_vault(
+    root: Path,
+    *,
+    dry_run: bool = False,
+    story: bool = True,
+    story_rare_min: int = 3,
+    story_mass_min: int = 12,
+    story_strong_min: int = 2,
+    story_overlap_min: float = 0.15,
+    story_strong_jaccard: float = 0.60,
+    story_title_min: float = 0.20,
+    story_max_df: int = 2,
+    story_window_weeks: int | None = None,
+) -> DedupeReport:
     root = Path(root).resolve()
     report = DedupeReport()
     report.restored.extend(str(p) for p in restore_orphans(root, dry_run=dry_run))
@@ -289,6 +496,28 @@ def dedupe_vault(root: Path, *, dry_run: bool = False) -> DedupeReport:
             })
             report.trashed_files.append(str(target))
         weeks_rebuilt.add(group.canonical.parent.name)
+
+    # Cross-transport reconciliation: same rule as the write-time gate, over
+    # the whole vault, so duplicates that predate the gate self-heal.
+    if story:
+        try:
+            story_groups = scan_story_groups(
+                root,
+                rare_min=story_rare_min,
+                mass_min=story_mass_min,
+                strong_min=story_strong_min,
+                overlap_min=story_overlap_min,
+                strong_jaccard=story_strong_jaccard,
+                title_min=story_title_min,
+                max_df=story_max_df,
+                window_weeks=story_window_weeks,
+            )
+        except Exception as exc:  # the story pass must never kill the by-id pass
+            report.errors.append(f"story scan: {exc}")
+            story_groups = []
+        for group in story_groups:
+            _merge_story_group(root, group, report, dry_run=dry_run)
+            weeks_rebuilt.update(art.week for art in [group.canonical, *group.losers])
 
     weeks_rebuilt.add(_current_week_safe())
     if not dry_run:

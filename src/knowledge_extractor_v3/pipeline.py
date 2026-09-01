@@ -64,6 +64,7 @@ class Pipeline:
         source_preferences: Mapping[str, SourcePreference] | None = None,
         absorption_prompt: AbsorptionPrompt | None = None,
         vault_dedup=None,
+        story_dedup=None,
     ) -> None:
         project_root = Path(__file__).resolve().parents[2]
         self.queue_store = queue_store
@@ -80,6 +81,9 @@ class Pipeline:
         # LIVE-only vault dedup service (outputs.vault_index.VaultDedupService);
         # typed loosely to keep the pipeline free of an outputs import edge.
         self.vault_dedup = vault_dedup
+        # LIVE-only story-identity dedup (outputs.story_identity.StoryDedupService);
+        # same loose-typing rationale.
+        self.story_dedup = story_dedup
         self.dry_run_output = DryRunOutputPort()
         self.staging_output = StagingOutputPort(self.staging_root)
 
@@ -284,6 +288,52 @@ class Pipeline:
                 score_result=score_result,
                 error=error,
             )
+
+        # Story-identity gate (post-absorption, pre-write): the same editorial
+        # artifact arriving through another transport — an aggregator digest of
+        # the article we already archived, a tracking-parameter mirror — must
+        # not fork into a second article file. The absorption card is the
+        # canonical editorial representation, so identity is decided on it.
+        # Cost: the absorption call is already spent; the vault stays
+        # one-article-per-story and the task completes at the canonical path.
+        if self.story_dedup is not None:
+            story_match = self.story_dedup.check(
+                url=task_url,
+                title=extraction_result.title,
+                brief_markdown=extraction_result.obsidian_brief_markdown,
+            )
+            if story_match is not None:
+                _append_stage(stage_results, "story_dedup", detail={
+                    "outcome": "duplicate_story",
+                    "canonical": story_match.canonical.path.name,
+                    "shared_rare": list(story_match.shared_rare[:6]),
+                    "containment": round(story_match.containment, 3),
+                    "jaccard": round(story_match.jaccard, 3),
+                    "title_jaccard": round(story_match.title_jaccard, 3),
+                })
+                try:
+                    self.story_dedup.record_suppression(
+                        story_match,
+                        url=task_url,
+                        task_id=task.id,
+                        final_score=score_result.final_score,
+                    )
+                except Exception:
+                    pass  # audit trail is best-effort; the dedup decision stands
+                done = self.queue_store.mark_done(
+                    task.id,
+                    result_title=story_match.canonical.title,
+                    output_path=str(story_match.canonical.path),
+                )
+                return self._result_from_task(
+                    done,
+                    source=source,
+                    current_stage="story_dedup",
+                    stage_results=stage_results,
+                    score_result=score_result,
+                    extraction_result=extraction_result,
+                    dedup_outcome="duplicate_story",
+                )
 
         # Deterministic card render against the ORIGINAL fetched text so the
         # verbatim-quote gate cannot be fooled by preprocessing truncation.

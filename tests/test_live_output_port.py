@@ -84,7 +84,13 @@ class TestLiveObsidianWriter:
         assert isinstance(result, str)
         output = Path(result)
         assert output.exists()
-        assert output.parent.name.startswith("2026-08-W")
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from knowledge_extractor_v3.outputs.push_ledger import week_label
+
+        current_week = week_label(datetime.now(ZoneInfo("Asia/Shanghai")).date())
+        assert output.parent.name == current_week  # calendar-proof
         assert output.parent.parent == tmp_path
         assert output.name.endswith(".md")
         assert ".tmp-" not in output.name

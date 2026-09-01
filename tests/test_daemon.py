@@ -171,7 +171,7 @@ def test_periodic_dedup_honours_configured_interval(monkeypatch):
         def expand_path(self, value) -> Path:
             return Path(str(value))
 
-    def _fake_dedupe_vault(root):
+    def _fake_dedupe_vault(root, **kwargs):
         calls.append(root)
         from knowledge_extractor_v3.outputs.dedupe import DedupeReport
 
