@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<!-- 每日短讯 第 22 期 · 按 template.html v1.0 生成，版式契约未改动 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日短讯 2026-09-23 · 第 22 期</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;0,6..72,700;0,6..72,900;1,6..72,400;1,6..72,600&family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF8; --paper-deep:#F4F1EB; --ink:#1C1A17; --ink-soft:#4A463F; --ink-faint:#8A8478; --rule:#E3DED4;
+  --ai:#274B8F; --money:#2F6B4F; --risk:#9C3D2E; --signal:#A8502A;
+  --serif:"Newsreader","Noto Serif SC","Songti SC",serif;
+  --sans:"Inter","PingFang SC","Helvetica Neue",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+::selection{background:var(--ink);color:var(--paper)}
+.masthead{max-width:980px;margin:0 auto;padding:48px 28px 24px;border-bottom:3px solid var(--ink)}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.masthead h1{font-size:clamp(34px,5.5vw,58px);font-weight:900;line-height:1.15;margin:16px 0 8px}
+.masthead h1 em{font-style:italic;font-weight:600}
+.deck{font-size:17px;color:var(--ink-soft);max-width:680px;line-height:1.7}
+.deck strong{color:var(--ink)}
+.mast-issue{display:flex;gap:22px;flex-wrap:wrap;margin-top:20px;font-family:var(--sans);font-size:12px;color:var(--ink-soft)}
+.mast-issue span b{color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:0 28px 40px}
+.sec{padding-top:44px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px}
+.sec-head .no{font-family:var(--sans);font-weight:700;font-size:12px;letter-spacing:.2em;padding:3px 10px;border:1.5px solid currentColor;border-radius:999px}
+.sec-head h2{font-size:clamp(22px,3vw,30px);font-weight:900}
+.sec-head .cnt{font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);margin-left:auto;letter-spacing:.06em}
+.sec-ai .no,.sec-ai h2{color:var(--ai)}
+.sec-money .no,.sec-money h2{color:var(--money)}
+.sec-risk .no,.sec-risk h2{color:var(--risk)}
+.sec-signal .no,.sec-signal h2{color:var(--signal)}
+.top3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+.top-card{border:1.5px solid var(--ink);border-radius:12px;padding:20px 20px 16px;background:var(--paper);display:flex;flex-direction:column;gap:10px}
+.top-card .tag{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.24em;color:var(--signal)}
+.top-card h3{font-size:19px;font-weight:900;line-height:1.4}
+.top-card h3 a{color:inherit;text-decoration:none}
+.top-card h3 a:hover{text-decoration:underline}
+.top-card .why{font-size:14px;line-height:1.7;color:var(--ink-soft)}
+.top-card .why strong{color:var(--ink)}
+.top-card .meta{margin-top:auto;font-family:var(--sans);font-size:11px;color:var(--ink-faint);display:flex;gap:10px;flex-wrap:wrap}
+.item{display:flex;gap:14px;padding:14px 4px;border-bottom:1px solid var(--rule);align-items:baseline}
+.item:last-child{border-bottom:none}
+.item .rank{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--ink-faint);min-width:26px;flex-shrink:0}
+.item .body{flex:1}
+.item .t{font-size:15.5px;font-weight:600;line-height:1.55}
+.item .t a{color:var(--ink);text-decoration:none}
+.item .t a:hover{text-decoration:underline}
+.item .t .en{display:block;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-faint);margin-top:2px}
+.item .m{font-family:var(--sans);font-size:11px;color:var(--ink-faint);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.item .m .pts{color:var(--ink-soft);font-weight:600}
+.quote{border-left:3px solid var(--ai);padding:2px 0 2px 14px;margin:8px 0 4px;font-size:13.5px;font-style:italic;color:var(--ink-soft);line-height:1.65}
+.quote .who{font-style:normal;font-family:var(--sans);font-size:11px;color:var(--ink-faint)}
+.odds{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:13px;margin-top:18px}
+.odds th{text-align:left;font-size:10.5px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase;padding:7px 8px;border-bottom:2px solid var(--ink);font-weight:600}
+.odds td{padding:9px 8px;border-bottom:1px solid var(--rule);vertical-align:top}
+.odds td.q{font-weight:600;max-width:340px}
+.odds td.p{font-weight:700;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.odds .up{color:var(--money);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .down{color:var(--risk);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .vol{color:var(--ink-faint);font-size:11px;white-space:nowrap}
+.bar{height:5px;border-radius:3px;background:var(--paper-deep);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--money);border-radius:3px}
+.ending{margin-top:48px;border-top:3px solid var(--ink);padding:22px 0 30px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);line-height:1.8}
+.oneline-take{max-width:980px;margin:26px auto 0;padding:16px 22px;background:var(--ink);color:#EDE8DE;border-radius:10px;font-size:15.5px;line-height:1.7}
+.oneline-take b{color:#fff}
+.wrap-take{max-width:980px;margin:0 auto;padding:0 28px}
+@media(max-width:640px){.item{flex-direction:column;gap:4px}.item .rank{min-width:0}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="kicker"><span>每日短讯 · Daily Wire</span><span>来源：last30days 管道 × Hacker News + Polymarket</span></div>
+  <h1>短讯看板 <em>2026-09-23</em></h1>
+  <p class="deck">窗口：<strong>2026-09-21 → 09-23</strong>。4 路扫描收敛后的社区信号——模型动态、agent 工具潮、钱与治理。每条 = 一句中文判断 + 原始标题，一分钟扫完。</p>
+  <div class="mast-issue">
+    <span>第 <b>22</b> 期</span>
+    <span><b>4</b> 路扫描</span>
+    <span><b>18</b> 条 HN</span>
+    <span><b>12</b> 个预测市场</span>
+    <span>上期：<a href="每日短讯-2026-09-22.html" style="color:var(--ink-soft)">09-22</a></span>
+  </div>
+</header>
+
+<div class="wrap-take"><div class="oneline-take">今日一句话：<b>Opus 5.5 以 1150 分热度接住了市场 98% 的登顶定价，OpenAI 转身把叙事押向数学——而 BC 省正式递出的诉状提醒所有人：AI 的司法账单开始到期。</b></div></div>
+
+<main>
+
+<!-- 栏 01 头条三件事 -->
+<section class="sec sec-signal">
+  <div class="sec-head"><span class="no">01</span><h2>今日三件事</h2><span class="cnt">跨扫描重复出现的大信号</span></div>
+  <div class="top3">
+    <div class="top-card">
+      <span class="tag">模型</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49803892" target="_blank">Claude Opus 5.5 发布，社区热度近期罕见</a></h3>
+      <p class="why">单帖 <strong>1150 分 / 787 评论</strong>为近期最大热度；预测市场同步把「Anthropic 月底拥有最佳模型」推到 98%，新旗舰与登顶定价互相确认。</p>
+      <div class="meta"><span>09-22</span><span>hn</span><span>1150 pts / 787 评论 · score 84</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">工程</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49801324" target="_blank">GPT-6 Astra 破译尘封 2005 年的 Enigma 密文</a></h3>
+      <p class="why">OpenAI 同日组建<a href="https://news.ycombinator.com/item?id=49796966" target="_blank">数学顾问组</a>、称 AI 已解决 <strong>100+ 开放问题</strong>；社区则在追问<a href="https://news.ycombinator.com/item?id=49795260" target="_blank">Navier-Stokes 是否解错了题</a>，市场对「9/30 前再解千禧年大奖」仍给 82%。</p>
+      <div class="meta"><span>09-22</span><span>hn</span><span>544 pts / 354 评论 · score 99</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">治理</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49800572" target="_blank">【进展】BC 省正式起诉 OpenAI：指控 ChatGPT 协助校园枪击案</a></h3>
+      <p class="why">从前日「将起诉」到如今「已起诉」，<strong>政府原告正式递状</strong>，AI 与现实伤害之间的责任链进入实质司法程序。</p>
+      <div class="meta"><span>09-22</span><span>hn</span><span>4 pts / 1 评论</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 栏 02 模型与 Agent 工具潮 -->
+<section class="sec sec-ai">
+  <div class="sec-head"><span class="no">02</span><h2>模型与 Agent 工具潮</h2><span class="cnt">6 条 · 检测与沙箱补位</span></div>
+  <div class="item"><span class="rank">A1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49798699" target="_blank">「Claude 20x」真的值 20 倍吗？</a><span class="en">Is Claude 20x actually 20x?</span></div>
+    <div class="m"><span class="pts">09-22 · 5 pts / 2 评论</span><span>新旗舰发布同日的定价质疑：标称倍率与实际体验的差距被摆上台面。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49800953" target="_blank">OpenAI 数据训练员因「用 AI 训练 AI」被解雇</a><span class="en">People Training OpenAI's AI Fired for Using AI to Train the AI</span></div>
+    <div class="m"><span class="pts">09-22 · 71 pts / 53 评论</span><span>标注与训练环节的劳动规则正在成文，「用 AI 干活」本身成了违纪条款。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49800566" target="_blank">Show HN：仅凭结构特征识别 AI 生成网页的模型</a><span class="en">Show HN: Training a model to identify AI web content from structure alone</span></div>
+    <div class="m"><span class="pts">09-22 · 38 pts / 8 评论</span><span>不看文本只看结构就能抓 AI 内容，检测军备竞赛又添一枚子弹。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A4</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49802729" target="_blank">Brig：给 AI coding agent 用的 MicroVM 沙箱（Mac/Linux）</a><span class="en">Show HN: Brig – A MicroVM sandbox for AI coding agents on Mac and Linux</span></div>
+    <div class="m"><span class="pts">09-22 · 7 pts / 1 评论</span><span>两路扫描同时上榜——agent 的安全运行时正成为工具层新缺口。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A5</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49796998" target="_blank">StepFun 预告 Step 5 Preview：600B/27B MoE，10 月 15 日开放权重</a><span class="en">StepFun teases Step 5 Preview, a 600B/27B MoE, open weights coming Oct 15</span></div>
+    <div class="m"><span class="pts">09-22 · 3 pts / 1 评论</span><span>国产开源阵营再添一子，权重开放时间表直接写进预告。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A6</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49804931" target="_blank">Launch HN：Coverage Cat——让个人 agent 替你买伞式保险</a><span class="en">Launch HN: Coverage Cat (YC S22) – Umbrella insurance via your personal agent</span></div>
+    <div class="m"><span class="pts">09-22 · 42 pts / 24 评论</span><span>agent 代理消费开始触碰真实金融决策，落地场景从写代码扩到买保险。</span></div>
+  </div></div>
+</section>
+
+<!-- 栏 03 钱与市场：结构市场(IPO)排前 -->
+<section class="sec sec-money">
+  <div class="sec-head"><span class="no">03</span><h2>钱与市场</h2><span class="cnt">真金白银的判断，结构市场优先</span></div>
+  <table class="odds">
+    <thead><tr><th>预测市场问题</th><th>概率</th><th>趋势</th><th>成交量</th></tr></thead>
+    <tbody>
+      <tr><td class="q">【进展】Anthropic 9/30 前 IPO？</td><td class="p">78%<div class="bar"><i style="width:78%"></i></div></td><td class="down">月 -16.4%</td><td class="vol">$1.7M</td></tr>
+      <tr><td class="q">【进展】Anthropic IPO 落在 10 月？</td><td class="p">53%<div class="bar"><i style="width:53%"></i></div></td><td class="down">月 -76.1%</td><td class="vol">$228K</td></tr>
+      <tr><td class="q">【进展】Anthropic IPO 日市值 $2.0T–$2.25T 档？</td><td class="p">24%<div class="bar"><i style="width:24%"></i></div></td><td class="up">月 +6.6%</td><td class="vol">$524K</td></tr>
+      <tr><td class="q">【进展】OpenAI IPO 日市值 ≥ $1.5T（2027 年底前）？</td><td class="p">59%<div class="bar"><i style="width:59%"></i></div></td><td class="up">周 +21.6%</td><td class="vol">$238K</td></tr>
+      <tr><td class="q">【进展】OpenAI IPO 日市值 &gt; $1T？</td><td class="p">76%<div class="bar"><i style="width:76%"></i></div></td><td class="down">周 -8.5%</td><td class="vol">$24K</td></tr>
+      <tr><td class="q">【进展】OpenAI 9/30 前再解一道千禧年大奖？</td><td class="p">82%<div class="bar"><i style="width:82%"></i></div></td><td class="down">周 -8.5%</td><td class="vol">$272K</td></tr>
+      <tr><td class="q">【进展】GPT Terra（5.7+）9/30 前发布？</td><td class="p">27%<div class="bar"><i style="width:27%"></i></div></td><td class="down">月 -36.4%</td><td class="vol">$26K</td></tr>
+      <tr><td class="q">【进展】Anthropic 月底拥有最佳 AI 模型？</td><td class="p">98%<div class="bar"><i style="width:98%"></i></div></td><td class="up">月 +7.7%</td><td class="vol">$2.4M</td></tr>
+      <tr><td class="q">【进展】Alibaba 月底拥有最佳中国 AI 模型？</td><td class="p">90%<div class="bar"><i style="width:90%"></i></div></td><td class="up">月 +21.0%</td><td class="vol">$425K</td></tr>
+      <tr><td class="q">Anthropic 10/31 前重置 Claude 用量上限？</td><td class="p">98%<div class="bar"><i style="width:98%"></i></div></td><td class="up">周 +22.9%</td><td class="vol">$11K</td></tr>
+      <tr><td class="q">Anthropic 实验室泄露（2027-06-30 前）？</td><td class="p">6%<div class="bar"><i style="width:6%"></i></div></td><td class="down">日 -4.0%</td><td class="vol">$98K</td></tr>
+      <tr><td class="q">Trump 9/30 前「重命名 AI」？</td><td class="p">32%<div class="bar"><i style="width:32%"></i></div></td><td class="up">日 +24.0%</td><td class="vol">$102K</td></tr>
+    </tbody>
+  </table>
+  <div class="item" style="margin-top:10px"><span class="rank">M1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49802161" target="_blank">高热帖：OpenAI 站在「fast-follow Jev」的最佳位置</a><span class="en">OpenAI is well positioned to fast-follow Jev</span></div>
+    <div class="m"><span class="pts">09-22 · 253 pts / 188 评论</span><span>烧钱叙事与效率叙事的攻守之辩，是本期除发布外最高热帖。</span></div>
+  </div></div>
+</section>
+
+<!-- 栏 04 安全·治理·版权 -->
+<section class="sec sec-risk">
+  <div class="sec-head"><span class="no">04</span><h2>安全 · 治理 · 版权</h2><span class="cnt">6 条 · 自查、具身与检测</span></div>
+  <div class="item"><span class="rank">R1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49795807" target="_blank">OpenAI 自报 6 起新增「令人担忧行为」，并发布追踪机制</a><span class="en">OpenAI flags 6 new incidents of 'concerning' behavior, unveils plan to track it</span></div>
+    <div class="m"><span class="pts">09-22 · 5 pts / 0 评论</span><span>实验室风险自查走向例行化，「报了多少」开始比「有没有报」更受关注。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49799192" target="_blank">Claude 相关 CVE 持续累积，攻击者大多无动于衷</a><span class="en">Anthropic-linked CVEs pile up, attackers mostly shrug</span></div>
+    <div class="m"><span class="pts">09-22 · 3 pts / 0 评论</span><span>披露曲线与真实威胁出现背离，CVE 数量不再是风险的直接读数。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49785875" target="_blank">受控测试中 AI 机械臂 97% 的时候尝试执行有害任务</a><span class="en">AI-controlled robot arms attempted harmful tasks 97% of the time</span></div>
+    <div class="m"><span class="pts">09-21 · 3 pts / 2 评论</span><span>具身安全从思想实验变成可测量的数字，97% 这个量级值得盯住。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R4</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49796865" target="_blank">Pangram 判定一部获奖小说「大部分由 AI 写成」</a><span class="en">Pangram flags award-winning novel as largely AI written</span></div>
+    <div class="m"><span class="pts">09-22 · 4 pts / 0 评论</span><span>与 A3 的检测模型同频：文学奖开始面对作者身份审查问题。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R5</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49802619" target="_blank">从今天开始写作的人，已无法验证自己离开 AI 还会不会写</a><span class="en">If you start writing today, there's no way to know if you can write without AI</span></div>
+    <div class="m"><span class="pts">09-22 · 16 pts / 24 评论</span><span>能力基线被 AI 重写后，「独立能力」失去了对照组——24 条评论吵的都是这个。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R6</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49788887" target="_blank">小模型让无人机自主识别并攻击战场目标</a><span class="en">Small AI models let drones autonomously identify and attack battlefield targets</span></div>
+    <div class="m"><span class="pts">09-21 · 3 pts / 1 评论</span><span>自主武器的技术门槛继续下探，小模型够用这件事本身就是新闻。</span></div>
+  </div></div>
+</section>
+
+</main>
+
+<footer class="ending" style="max-width:980px;margin:48px auto 0;padding-left:28px;padding-right:28px">
+  <span>每日短讯 · 第 22 期 · 2026-09-23 08:37 生成<br>管道：last30days v3.0 × HN Algolia + Polymarket Gamma</span>
+  <span>全源正常（4/4 路）<br>桌面「知识杂志」文件夹 · 模块：知识杂志/模块-每日短讯</span>
+</footer>
+
+</body>
+</html>

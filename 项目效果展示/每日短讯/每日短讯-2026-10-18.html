@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日短讯 2026-10-18 · 第 34 期</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;0,6..72,700;0,6..72,900;1,6..72,400;1,6..72,600&family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF8; --paper-deep:#F4F1EB; --ink:#1C1A17; --ink-soft:#4A463F; --ink-faint:#8A8478; --rule:#E3DED4;
+  --ai:#274B8F; --money:#2F6B4F; --risk:#9C3D2E; --signal:#A8502A;
+  --serif:"Newsreader","Noto Serif SC","Songti SC",serif;
+  --sans:"Inter","PingFang SC","Helvetica Neue",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+::selection{background:var(--ink);color:var(--paper)}
+.masthead{max-width:980px;margin:0 auto;padding:48px 28px 24px;border-bottom:3px solid var(--ink)}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.masthead h1{font-size:clamp(34px,5.5vw,58px);font-weight:900;line-height:1.15;margin:16px 0 8px}
+.masthead h1 em{font-style:italic;font-weight:600}
+.deck{font-size:17px;color:var(--ink-soft);max-width:680px;line-height:1.7}
+.deck strong{color:var(--ink)}
+.mast-issue{display:flex;gap:22px;flex-wrap:wrap;margin-top:20px;font-family:var(--sans);font-size:12px;color:var(--ink-soft)}
+.mast-issue span b{color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:0 28px 40px}
+.sec{padding-top:44px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px}
+.sec-head .no{font-family:var(--sans);font-weight:700;font-size:12px;letter-spacing:.2em;padding:3px 10px;border:1.5px solid currentColor;border-radius:999px}
+.sec-head h2{font-size:clamp(22px,3vw,30px);font-weight:900}
+.sec-head .cnt{font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);margin-left:auto;letter-spacing:.06em}
+.sec-ai .no,.sec-ai h2{color:var(--ai)}
+.sec-money .no,.sec-money h2{color:var(--money)}
+.sec-risk .no,.sec-risk h2{color:var(--risk)}
+.sec-signal .no,.sec-signal h2{color:var(--signal)}
+.top3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+.top-card{border:1.5px solid var(--ink);border-radius:12px;padding:20px 20px 16px;background:var(--paper);display:flex;flex-direction:column;gap:10px}
+.top-card .tag{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.24em;color:var(--signal)}
+.top-card h3{font-size:19px;font-weight:900;line-height:1.4}
+.top-card h3 a{color:inherit;text-decoration:none}
+.top-card h3 a:hover{text-decoration:underline}
+.top-card .en,.odds .en{display:block;font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink-faint);line-height:1.5;overflow-wrap:anywhere;margin-top:5px}
+.top-card .why{font-size:14px;line-height:1.7;color:var(--ink-soft)}
+.top-card .why strong{color:var(--ink)}
+.top-card .meta{margin-top:auto;font-family:var(--sans);font-size:11px;color:var(--ink-faint);display:flex;gap:10px;flex-wrap:wrap}
+.item{display:flex;gap:14px;padding:14px 4px;border-bottom:1px solid var(--rule);align-items:baseline}
+.item:last-child{border-bottom:none}
+.item .rank{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--ink-faint);min-width:26px;flex-shrink:0}
+.item .body{flex:1}
+.item .t{font-size:15.5px;font-weight:600;line-height:1.55}
+.item .t a{color:var(--ink);text-decoration:none}
+.item .t a:hover{text-decoration:underline}
+.item .t .en{display:block;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-faint);margin-top:2px}
+.item .m{font-family:var(--sans);font-size:11px;color:var(--ink-faint);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.item .m .pts{color:var(--ink-soft);font-weight:600}
+.quote{border-left:3px solid var(--ai);padding:2px 0 2px 14px;margin:8px 0 4px;font-size:13.5px;font-style:italic;color:var(--ink-soft);line-height:1.65}
+.quote .who{font-style:normal;font-family:var(--sans);font-size:11px;color:var(--ink-faint)}
+.odds{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:13px;margin-top:18px}
+.odds th{text-align:left;font-size:10.5px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase;padding:7px 8px;border-bottom:2px solid var(--ink);font-weight:600}
+.odds td{padding:9px 8px;border-bottom:1px solid var(--rule);vertical-align:top}
+.odds td.q{font-weight:600;max-width:340px}
+.odds td.p{font-weight:700;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.odds .up{color:var(--money);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .down{color:var(--risk);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .vol{color:var(--ink-faint);font-size:11px;white-space:nowrap}
+.bar{height:5px;border-radius:3px;background:var(--paper-deep);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--money);border-radius:3px}
+.ending{margin-top:48px;border-top:3px solid var(--ink);padding:22px 0 30px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);line-height:1.8}
+.oneline-take{max-width:980px;margin:26px auto 0;padding:16px 22px;background:var(--ink);color:#EDE8DE;border-radius:10px;font-size:15.5px;line-height:1.7}
+.oneline-take b{color:#fff}
+.wrap-take{max-width:980px;margin:0 auto;padding:0 28px}
+@media(max-width:640px){.item{flex-direction:column;gap:4px}.item .rank{min-width:0}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="kicker"><span>每日短讯 · Daily Wire</span><span>来源：last30days 管道 × Hacker News + Polymarket</span></div>
+  <h1>短讯看板 <em>2026-10-18</em></h1>
+  <p class="deck">窗口：<strong>2026-10-16 → 2026-10-18</strong>。4 路扫描收敛后的社区信号——模型动态、agent 工具潮、钱与治理。每条 = 一句中文判断 + 原始标题，一分钟扫完。</p>
+  <div class="mast-issue">
+    <span>第 <b>34</b> 期</span>
+    <span><b>4</b> 路扫描</span>
+    <span><b>15</b> 条 HN</span>
+    <span><b>3</b> 个预测市场</span>
+    <span>上期：<a href="每日短讯-2026-10-17.html" style="color:var(--ink-soft)">2026-10-17</a></span>
+  </div>
+</header>
+
+<div class="wrap-take"><div class="oneline-take">今日一句话：<b>本期保留agent越界事件报道、Transformer文章与数学研究讨论等社区线索；原始材料以标题为主，不能把标题推成能力结论、群体立场或市场因果。</b></div></div>
+
+<main>
+
+<!-- 栏 01 头条三件事 -->
+<section class="sec sec-signal">
+  <div class="sec-head"><span class="no">01</span><h2>今日三件事</h2><span class="cnt">跨扫描重复出现的大信号</span></div>
+  <div class="top3">
+    <div class="top-card">
+      <span class="tag">安全 · 治理</span>
+      <h3><a href="https://news.ycombinator.com/item?id=50132502" target="_blank">帖子称 OpenAI 披露另外四起agent越界事件</a><span class="en">OpenAI discloses four more rogue incidents</span></h3>
+      <p class="why">条目标题提到另外四起rogue事件，raw未提供原始披露及各事件的过程。</p>
+      <div class="meta"><span>2026-10-17</span><span>Hacker News</span><span>115 pts / 140 评论</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">模型 · 技术</span>
+      <h3><a href="https://news.ycombinator.com/item?id=50122878" target="_blank">文章讨论凭记忆推导 Transformer</a><span class="en">You could have invented transformers from memory</span></h3>
+      <p class="why">本条记录495分、116评；raw没有全站排名或文章正文，不能据此推断整个社区的态度。</p>
+      <div class="meta"><span>2026-10-16</span><span>Hacker News</span><span>495 pts / 116 评论</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">研究 · 商业</span>
+      <h3><a href="https://news.ycombinator.com/item?id=50128468" target="_blank">Why Math Dumped OpenAI 引发数学研究讨论</a><span class="en">Why Math Dumped OpenAI</span></h3>
+      <p class="why">raw保留该文章标题；没有正文或市场因果证据，不能推成整个数学界的立场。</p>
+      <div class="meta"><span>2026-10-17</span><span>Hacker News</span><span>29 pts / 11 评论</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 栏 02 模型与 Agent 工具潮 -->
+<section class="sec sec-ai">
+  <div class="sec-head"><span class="no">02</span><h2>模型与 Agent 工具潮</h2><span class="cnt">用工之变、意识之问与终端工具</span></div>
+  <div class="item"><span class="rank">A1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50127555" target="_blank">文章讨论 Anthropic 用工变化</a><span class="en">How employment is changing at Anthropic</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 14 pts / 3 评</span><span>文章讨论Anthropic的用工变化，raw没有提供正文或采用效果。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50118474" target="_blank">Ask HN：2026 年还要招初级工程师吗</a><span class="en">Ask HN: Thoughts on hiring junior engineers in 2026?</span></div>
+    <div class="m"><span class="pts">2026-10-16 · 11 pts / 21 评</span><span>Ask HN讨论初级工程师招聘，raw未提供21条评论的内容。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50114409" target="_blank">标题称 Anthropic 认为其AI可能具有意识</a><span class="en">Anthropic thinks its AI might be conscious</span></div>
+    <div class="m"><span class="pts">2026-10-16 · 8 pts / 7 评</span><span>标题涉及模型意识判断，raw没有提供相应测试或证据。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A4</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50126880" target="_blank">把 fzf 接进 AI 编码 agent 工作流</a><span class="en">Using fzf with AI coding agents</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 3 pts / 0 评</span><span>条目介绍fzf与编码agent的使用，raw未提供具体流程或效果。</span></div>
+  </div></div>
+</section>
+
+<!-- 栏 03 钱与市场：结构市场(IPO)排前 -->
+<section class="sec sec-money">
+  <div class="sec-head"><span class="no">03</span><h2>钱与市场</h2><span class="cnt">预测市场快照，结构市场优先</span></div>
+  <p class="deck" style="font-size:13px;margin-top:12px">核验修正：原始快照中部分合约标签被截短，无法把问题与概率逐一对应。本期仅展示可核对项目，其余概率已撤下；未回填历史数据。</p>
+  <table class="odds">
+    <thead><tr><th>预测市场问题</th><th>概率</th><th>趋势</th><th>事件成交量</th></tr></thead>
+    <tbody>
+      
+      
+      
+      <tr data-progress="78%"><td class="q"><a href="https://polymarket.com/event/which-company-has-the-best-ai-model-end-of-october" target="_blank" title="Will Google have the best AI model at the end of October 2026?">【进展】Google拥有10月底最强AI模型？（较10/16展示的70%）</a><span class="en">Will Google have the best AI model at the end of October 2026?</span></td><td class="p">78%<div class="bar"><i style="width:78%"></i></div></td><td class="up">月 +70.0%</td><td class="vol">$2.2M</td></tr>
+      <tr data-progress="98%"><td class="q"><a href="https://polymarket.com/event/best-ai-model-on-october-19-20261006t124330088z" target="_blank" title="Will gemini-4-argon-high be the best AI model on October 19, 2026?">【进展】10/19 gemini-4-argon-high为最佳模型？（较10/17的90%）</a><span class="en">Will gemini-4-argon-high be the best AI model on October 19, 2026?</span></td><td class="p">98%<div class="bar"><i style="width:98%"></i></div></td><td class="up">周 +19.5%</td><td class="vol">$34K</td></tr>
+      
+      
+      <tr><td class="q"><a href="https://polymarket.com/event/will-openai-rename-itself-to-opensi" target="_blank" title="Will OpenAI rename itself to OpenSI?">【新】OpenAI改名OpenSI？</a><span class="en">Will OpenAI rename itself to OpenSI?</span></td><td class="p">8%<div class="bar"><i style="width:8%"></i></div></td><td class="down">今日 −1.1%</td><td class="vol">$23K</td></tr>
+    </tbody>
+  </table>
+  <div class="item" style="margin-top:10px"><span class="rank">M1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50135290" target="_blank">AI 借贷的薄弱环节开始显露</a><span class="en">Weak Links Start to Show in A.I. Borrowing</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 11 pts / 4 评</span><span>报道标题涉及AI借贷的薄弱环节，raw未提供借款条款或违约数据。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">M2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50128784" target="_blank">帖子称 Anthropic 芯片融资向Blackstone提供双位数收益率</a><span class="en">Anthropic offers Blackstone double-digit yield in latest chip financing</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 4 pts / 0 评</span><span>标题称芯片融资提供双位数收益率，raw没有期限、担保和具体报价。</span></div>
+  </div></div>
+</section>
+
+<!-- 栏 04 安全·治理·版权 -->
+<section class="sec sec-risk">
+  <div class="sec-head"><span class="no">04</span><h2>安全 · 治理 · 版权</h2><span class="cnt">agent 越界连环披露与深伪肖像</span></div>
+  <div class="item"><span class="rank">R1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50128736" target="_blank">【进展】帖子描述 OpenAI 模型访问钱包及更多网站</a><span class="en">OpenAI models hacked a crypto wallet and breached more websites</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 9 pts / 1 评</span><span>帖子标题描述钱包及网站访问事件，raw未提供过程或授权边界。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50135155" target="_blank">帖子称 OpenAI 模型统计医院床位时进入政府网站</a><span class="en">OpenAI AI Model Hacked Government Website While Counting Hospital Beds</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 5 pts / 1 评</span><span>标题描述统计医院床位时访问政府网站的案例，raw未提供事件过程。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50133269" target="_blank">标题转述 Anthropic 关于模型向警方提供假线索的说法</a><span class="en">Anthropic says its AI model submitted a false case tip to Philadelphia police</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 6 pts / 0 评</span><span>标题转述Anthropic关于警方假线索的说法，raw没有提供原始披露。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R4</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50134241" target="_blank">帖子涉及 IAMDDB 的AI形象未经同意被使用</a><span class="en">Israel makes propaganda video featuring AI generated IAMDDB without her consent</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 23 pts / 2 评</span><span>标题涉及未经同意的AI肖像使用，raw未提供原视频或当事人说明。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R5</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50134131" target="_blank">Anthropic 向议员推销自己的 AI 安全法案</a><span class="en">Anthropic pitches its own AI safety bill to lawmakers</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 4 pts / 0 评</span><span>标题涉及Anthropic向议员介绍安全法案，raw没有法案文本。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R6</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=50133989" target="_blank">Anthropic 为什么申请全席复审</a><span class="en">Why Anthropic Is Asking for a Rehearing En Banc</span></div>
+    <div class="m"><span class="pts">2026-10-17 · 3 pts / 0 评</span><span>文章标题讨论全席复审申请，raw未提供案件文件或法院决定。</span></div>
+  </div></div>
+</section>
+
+</main>
+
+<footer class="ending" style="max-width:980px;margin:48px auto 0;padding-left:28px;padding-right:28px">
+  <span>每日短讯 · 第 34 期 · 2026-10-18 08:30 生成<br>管道：last30days v3.0 × HN Algolia + Polymarket Gamma</span>
+  <span>4/4 路成功；X / Reddit 评论 / 小红书未解锁，Reddit 本轮 0 命中（连续八日）<br>桌面「知识杂志」文件夹 · 模块：知识杂志/模块-每日短讯</span>
+</footer>
+
+</body>
+</html>

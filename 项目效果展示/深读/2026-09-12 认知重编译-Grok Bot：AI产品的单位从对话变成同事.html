@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深读 №02 · AI 产品的单位从「对话」变成「同事」— Grok Bot 认知重编译</title>
+<!--
+  深读 №02：Lenny's Podcast × Roman Ugarte「几个人一个月做出 Grok Bot」认知重编译（2026-09-12）
+  设计假设（Junior Designer 备注）：
+  1. 版式系统直接继承《深读特刊 №01·技术革命与金融资本》与《知识萃取特刊》：纸白底、
+     Newsreader + Noto Serif SC 衬线正文、Inter + PingFang SC 界面字、3px 实线报头、
+     置顶胶囊导航、编号章节眉、命题盒、流程链 chips、首字下沉锚点框、拆书双栏、暗色
+     underwater 重点框、阅读进度条。同一本杂志的第二期深读，不另起炉灶。
+  2. 语义配色：五章各得一色——Harness=靛蓝(系统)、同事=绿(组织)、Capability=锈橙(产品)、
+     90→100=深红(跃迁)、时间差套利=金(未来)。全刊颜色只从这套语义出发。
+  3. 出处纪律是本刊编辑红线：【访谈】=中文编译稿中 Roman 陈述；【Lenny】=Lenny 的归纳
+     而非 Roman 原话（如 moats are discovered）；【重编译】=本次拆解的迁移判断。
+  4. 全部数字（99% 自然语言 automation、73.2→74.1、5–10 个 bot、200–300 人 onboarding）
+     均出自中文编译稿；英文原播客未独立核听。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF8; --paper-deep:#F4F1EB; --paper-mid:#EFEBE2;
+  --ink:#1C1A17; --ink-soft:#4A463F; --ink-faint:#8A8478;
+  --rule:#E3DED4; --rule-strong:#C9C2B2;
+  /* 章节语义色 */
+  --c-har:#274B8F; --c-har-bg:#EAEFF6;   /* 壹 Harness · 靛 */
+  --c-col:#2F6B4F; --c-col-bg:#EDF2EE;   /* 贰 同事 · 绿 */
+  --c-cap:#A8502A; --c-cap-bg:#F7EDE6;   /* 叁 Capability · 锈 */
+  --c-leap:#8A2F2B; --c-leap-bg:#F5E9E7; /* 肆 90→100 · 深红 */
+  --c-arb:#8F6A1E; --c-arb-bg:#F4EDDC;   /* 伍 套利 · 金 */
+  --gold:#8F6A1E;
+  --serif:'Newsreader','Noto Serif SC','Songti SC',serif;
+  --sans:'Inter','PingFang SC','Hiragino Sans GB',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.85;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--c-har-bg);color:var(--ink)}
+a{color:inherit}
+.wrap{max-width:960px;margin:0 auto;padding:0 28px}
+
+/* ── 进度条 ── */
+#pbar{position:fixed;top:0;left:0;height:3px;background:var(--ink);width:0;z-index:99;transition:width .1s linear}
+
+/* ── 报头 ── */
+.masthead{border-bottom:3px solid var(--ink);padding:26px 0 18px}
+.masthead .row1{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--sans);
+  font-size:12px;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:14px}
+.masthead h1{font-family:var(--serif);font-weight:900;font-size:clamp(30px,5vw,46px);line-height:1.18;letter-spacing:.01em}
+.masthead .sub{margin-top:10px;font-size:15.5px;color:var(--ink-soft);font-style:italic}
+.masthead .sub b{font-style:normal;color:var(--ink);font-weight:600}
+
+/* ── 置顶导航 ── */
+.topnav{position:sticky;top:0;z-index:60;background:rgba(251,250,248,.93);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--rule)}
+.topnav .inner{max-width:960px;margin:0 auto;padding:0 20px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.topnav .inner::-webkit-scrollbar{display:none}
+.topnav a{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink-soft);text-decoration:none;
+  padding:11px 13px;white-space:nowrap;border-bottom:2px solid transparent}
+.topnav a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.topnav a.on{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+
+/* ── 章节眉 ── */
+.sec-head{display:flex;align-items:baseline;gap:14px;margin:86px 0 8px;border-top:2px solid var(--ink);padding-top:14px}
+.sec-head .no{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--paper);
+  background:var(--ink);padding:3px 9px;border-radius:999px;white-space:nowrap}
+.sec-head h2{font-size:clamp(23px,3.4vw,30px);font-weight:900;letter-spacing:.01em}
+.sec-head .en{font-family:var(--sans);font-size:12px;letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;margin-left:auto;white-space:nowrap}
+.sec-lede{font-size:16.5px;color:var(--ink-soft);max-width:880px;margin:16px 0 26px;line-height:1.9}
+.sec-lede b{color:var(--ink)}
+h3{font-size:21px;font-weight:700;margin:44px 0 10px}
+p{margin:12px 0}
+.prose{text-align:justify}
+.prose p{margin:13px 0}
+
+/* 章节语义着色 */
+section.ch-har{--c:var(--c-har);--c-bg:var(--c-har-bg)}
+section.ch-col{--c:var(--c-col);--c-bg:var(--c-col-bg)}
+section.ch-cap{--c:var(--c-cap);--c-bg:var(--c-cap-bg)}
+section.ch-leap{--c:var(--c-leap);--c-bg:var(--c-leap-bg)}
+section.ch-arb{--c:var(--c-arb);--c-bg:var(--c-arb-bg)}
+section.ch-har .sec-head .no,section.ch-col .sec-head .no,section.ch-cap .sec-head .no,
+section.ch-leap .sec-head .no,section.ch-arb .sec-head .no{background:var(--c)}
+section.ch-har .sec-head h2,section.ch-col .sec-head h2,section.ch-cap .sec-head h2,
+section.ch-leap .sec-head h2,section.ch-arb .sec-head h2{color:var(--c)}
+.prose b{background:linear-gradient(transparent 62%,var(--c-bg) 62%)}
+
+/* ── 出处徽标 ── */
+.tag{display:inline-block;font-family:var(--sans);font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  padding:1px 7px;border-radius:3px;vertical-align:2px;margin-left:6px;white-space:nowrap}
+.tag-talk{background:var(--ink);color:var(--paper)}
+.tag-lenny{border:1px solid var(--ink-faint);color:var(--ink-soft);background:transparent}
+.tag-compile{background:var(--c-har-bg);color:var(--c-har);border:1px solid var(--c-har)}
+
+/* ── 总判断 statement ── */
+.hero{margin-top:44px}
+.hero .statement{background:var(--paper-deep);border:1px solid var(--rule);border-left:4px solid var(--ink);
+  padding:26px 30px;margin:26px 0}
+.hero .statement .s-label{font-family:var(--sans);font-size:11.5px;letter-spacing:.2em;font-weight:700;color:var(--ink-faint);margin-bottom:8px}
+.hero .statement .s-main{font-size:clamp(19px,2.6vw,23px);font-weight:700;line-height:1.7}
+.hero .statement .s-main em{font-style:normal;color:var(--c-har)}
+.hero .statement .s-sub{margin-top:10px;font-size:15.5px;color:var(--ink-soft)}
+
+/* ── 流程链 ── */
+.flow-chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:20px 0}
+.flow-chip{background:#fff;border:1.5px solid var(--ink);border-radius:5px;padding:9px 13px;font-size:14px;
+  font-weight:600;line-height:1.5;display:flex;align-items:center;text-align:center}
+.flow-chip small{display:block;font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink-faint);margin-top:2px}
+.flow-arrow{align-self:center;font-family:var(--sans);color:var(--ink-faint);font-size:16px;flex:none}
+.flow-chip.hl{background:var(--ink);color:var(--paper)}
+.flow-chip.hl small{color:rgba(251,250,248,.7)}
+.figcap{font-family:var(--sans);font-size:12.5px;color:var(--ink-faint);margin:8px 0 0;line-height:1.6}
+
+/* ── 命题盒 ── */
+.thesis{border:1px solid var(--rule-strong);border-radius:6px;background:#fff;margin:26px 0;overflow:hidden}
+.thesis-head{display:flex;align-items:baseline;gap:14px;padding:18px 24px 14px;background:var(--paper-deep);border-bottom:1px solid var(--rule)}
+.thesis-head .t-no{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--paper);background:var(--ink);padding:2px 9px;border-radius:999px;flex:none}
+.thesis-head .t-t{font-size:19.5px;font-weight:900;line-height:1.5}
+.thesis-body{padding:18px 24px 20px}
+.thesis-body .t-claim{font-size:16.5px;line-height:1.85;margin-bottom:14px}
+.thesis-body .t-claim b{background:linear-gradient(transparent 62%,var(--c-bg) 62%)}
+
+/* 因果链 aspect 行 */
+.aspects{display:grid;grid-template-columns:1fr 1fr;gap:0 34px}
+.aspect{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:8.5px 0;border-top:1px dashed var(--rule);font-size:14.5px;line-height:1.75}
+.aspect>b{font-family:var(--sans);font-size:12px;font-weight:700;color:var(--ink-faint);letter-spacing:.06em;padding-top:3px}
+.aspect b.k{color:var(--c)}
+.aspect .v b{color:var(--ink)}
+
+/* ── 公式条 ── */
+.formula{background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:16px 24px;margin:22px 0;
+  font-size:17px;font-weight:700;text-align:center;letter-spacing:.02em}
+.formula small{display:block;font-family:var(--sans);font-weight:400;font-size:12px;color:var(--ink-faint);margin-top:6px;letter-spacing:.05em}
+.formula b{color:var(--c)}
+
+/* ── 锚点故事框（首字下沉） ── */
+.story{background:var(--paper-deep);border:1px solid var(--rule);border-radius:6px;padding:18px 22px;margin:20px 0}
+.story .st-t{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--c);margin-bottom:8px}
+.story p{font-size:15.5px;line-height:1.9;text-align:justify}
+.story p:first-of-type::first-letter{font-size:2.6em;font-weight:900;float:left;line-height:1;margin:4px 10px 0 0;font-family:var(--serif)}
+.story p b{color:var(--c)}
+
+/* ── 表格 ── */
+.tbl{width:100%;border-collapse:collapse;margin:20px 0;background:#fff;font-size:14.5px}
+.tbl th{font-family:var(--sans);font-size:12.5px;letter-spacing:.06em;text-align:left;padding:10px 14px;
+  border-bottom:2px solid var(--ink)}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.75}
+.tbl td:first-child{font-weight:700;white-space:nowrap}
+.tbl tr td:first-child{font-family:var(--sans);font-size:13px;color:var(--ink-soft)}
+.tbl td.old{color:var(--ink-faint)}
+.tbl td.new{color:var(--c);font-weight:600}
+.tbl-scroll{overflow-x:auto}
+
+/* ── 双轨对比（90% vs 100%） ── */
+.dual{border:1px solid var(--rule-strong);border-radius:8px;background:#fff;padding:24px 26px;margin:22px 0}
+.dual .d-track{margin:14px 0}
+.dual .d-label{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.14em;margin-bottom:10px}
+.dual .d-old .d-label{color:var(--ink-faint)} .dual .d-new .d-label{color:var(--c-leap)}
+.dual .d-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dual .d-chip{border:1.5px solid var(--ink-faint);color:var(--ink-soft);border-radius:999px;padding:5px 13px;font-size:13.5px;font-weight:600;background:var(--paper)}
+.dual .d-new .d-chip{border-color:var(--c-leap);color:var(--c-leap);background:var(--c-leap-bg)}
+.dual .d-verdict{font-size:15px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule)}
+.dual .d-verdict b{color:var(--c-leap)}
+.dual .d-old .d-verdict b{color:var(--ink-soft)}
+
+/* ── 可迁移/失效 meta ── */
+.meta{border-top:2px solid var(--ink);margin:26px 0 0}
+.meta .row{display:grid;grid-template-columns:88px 1fr;gap:14px;padding:11px 0;border-bottom:1px solid var(--rule)}
+.meta .row .k{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--c);padding-top:4px}
+.meta .row .k.warn{color:var(--ink-faint)}
+.meta .row .v{font-size:15px;line-height:1.8;color:var(--ink-soft)}
+.meta .row .v b{color:var(--ink)}
+
+/* ── 拆书 ── */
+.dd-item{border-top:1px solid var(--rule-strong);padding:18px 0 20px;display:grid;grid-template-columns:170px 1fr;gap:20px}
+.dd-item:first-of-type{border-top:2px solid var(--ink)}
+.dd-item .dd-t{font-size:17px;font-weight:900;line-height:1.6}
+.dd-item .dd-t small{display:block;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--ink-faint);margin-top:4px}
+.dd-item .dd-b{font-size:15.5px;line-height:1.9;text-align:justify}
+.dd-item .dd-b b{background:linear-gradient(transparent 62%,var(--c-col-bg) 62%)}
+.tagrow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 6px}
+.tg{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.1em;padding:2px 10px;border-radius:999px;white-space:nowrap;
+  border:1px solid var(--rule-strong);color:var(--ink-soft);background:#fff}
+
+/* ── underwater 暗框（全刊唯一深色区） ── */
+.underwater{background:var(--ink);color:#EDE9E0;border-radius:8px;padding:24px 28px;margin:26px 0}
+.underwater .uw-t{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.2em;color:#B9B29F;margin-bottom:10px}
+.underwater p{font-size:16.5px;line-height:1.9;color:#F2EFE7}
+.underwater p b{color:#fff}
+.underwater .src{color:#B9B29F}
+.underwater pre{margin-top:18px;padding:18px 20px;background:#14120F;border-radius:6px;overflow-x:auto;
+  font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px;line-height:1.8;color:#C9C2B2}
+.underwater pre b{color:#E8D5A3;font-weight:600}
+
+/* ── 收尾 ── */
+.clos-item{border-top:1px solid var(--rule-strong);padding:18px 0 20px;display:grid;grid-template-columns:170px 1fr;gap:20px}
+.clos-item:first-of-type{border-top:2px solid var(--ink)}
+.clos-item .c-t{font-size:17px;font-weight:900;line-height:1.6}
+.clos-item .c-t small{display:block;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--ink-faint);margin-top:4px}
+.clos-item ul{list-style:none;margin-top:4px}
+.clos-item li{padding:7px 0 7px 0;font-size:15.5px;line-height:1.85;text-align:justify}
+.clos-item li b{background:linear-gradient(transparent 62%,var(--c-har-bg) 62%)}
+.bdg{display:inline-block;font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  padding:1px 8px;border-radius:999px;margin-right:8px;vertical-align:1px}
+.bdg-conn{background:var(--c-col-bg);color:var(--c-col);border:1px solid var(--c-col)}
+.bdg-conf{background:var(--paper-mid);color:var(--ink);border:1px solid var(--ink-faint)}
+
+/* ── 页脚 ── */
+footer{margin-top:96px;border-top:3px solid var(--ink);padding:30px 0 60px;background:var(--paper-deep)}
+footer .f-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px}
+footer h5{font-family:var(--sans);font-size:12px;letter-spacing:.16em;font-weight:700;margin-bottom:12px}
+footer p,footer li{font-size:13.5px;line-height:1.9;color:var(--ink-soft)}
+footer ul{list-style:none}
+footer li::before{content:"— ";color:var(--ink-faint)}
+footer a{color:var(--c-har);text-decoration:none;border-bottom:1px solid var(--rule-strong)}
+footer a:hover{border-bottom-color:var(--c-har)}
+
+@media (max-width:820px){
+  .aspects{grid-template-columns:1fr}
+  .dd-item,.clos-item{grid-template-columns:1fr;gap:8px}
+  footer .f-grid{grid-template-columns:1fr}
+  .sec-head .en{display:none}
+  .meta .row{grid-template-columns:78px 1fr}
+}
+</style>
+</head>
+<body>
+<div id="pbar"></div>
+
+<!-- ================= 报头 ================= -->
+<header class="masthead">
+  <div class="wrap">
+    <div class="row1">
+      <span>知识杂志 · 深读 Deep-Read</span>
+      <span>№02 · 2026-09-12</span>
+    </div>
+    <h1>AI 产品的单位，正在从「对话」变成「同事」</h1>
+    <p class="sub">Lenny's Podcast × <b>Roman Ugarte</b>（Grok Bot 产品负责人，早期 Cursor 成员）·「几个人一个月做出 Grok Bot」—— 一期对谈的认知重编译，不复述原文，抽取五条命题，合成一条因果链。</p>
+  </div>
+</header>
+
+<nav class="topnav" id="topnav">
+  <div class="inner">
+    <a href="#verdict" class="on">总判断</a>
+    <a href="#ch1">壹 Harness</a>
+    <a href="#ch2">贰 同事</a>
+    <a href="#ch3">叁 Capability</a>
+    <a href="#ch4">肆 90→100</a>
+    <a href="#ch5">伍 套利</a>
+    <a href="#deconstruct">拆书</a>
+    <a href="#closing">收尾</a>
+    <a href="#discipline">出处</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ================= 总判断 ================= -->
+<section id="verdict" class="hero">
+
+  <div class="statement">
+    <div class="s-label">总判断 · 整期一句话</div>
+    <p class="s-main">同一批模型，换掉产品的基本假设，用户拿到的是完全不同的东西。Grok Bot 一个月从零做出来，靠的不是新模型——它把 AI 产品的瓶颈从「模型聪不聪明」挪到了<em>「给这份聪明配了什么身体、环境和组织关系」</em>。访谈里的每一个产品决定，都是这一次挪动的后果。</p>
+    <p class="s-sub">原料：2026-09-08 发布的中文编译稿。几个人，与公司隔离，一个月出内测，三周 unship 后公开发布。</p>
+  </div>
+
+  <!-- 整期思想链 -->
+  <div class="flow-chain">
+    <span class="flow-chip">模型够聪明</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">瓶颈移到 Harness</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">给身体<small>电脑与环境</small></span><span class="flow-arrow">→</span>
+    <span class="flow-chip">长期同事</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">组织结构涌现</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">信任成立</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">一整块工作交出去</span><span class="flow-arrow">→</span>
+    <span class="flow-chip hl">AI 从效率软件变成团队容量</span>
+  </div>
+  <p class="figcap">整期对谈的完整思想链。五章命题各自独立成立，合起来就是这条链的五段展开。</p>
+
+  <div class="takeaway" style="background:var(--paper-deep);border:1px solid var(--rule-strong);border-radius:6px;padding:18px 24px;margin:22px 0">
+    <div class="tk-t" style="font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink);margin-bottom:8px">这一期怎么读</div>
+    <p style="font-size:15.5px;margin:6px 0">这不是访谈纪要，是一台<b>取景框</b>。五条命题每条按同一节奏展开：命题 → 因果链 → 散文 → 锚点故事 → 可迁移 / 失效边界；然后是冷静版的拆书五件事、收尾四件事。全文带出处徽标——<span class="tag tag-talk">访谈</span>=编译稿中 Roman 的陈述；<span class="tag tag-lenny">Lenny</span>=Lenny 的归纳而非 Roman 原话；<span class="tag tag-compile">重编译</span>=本次拆解的迁移判断，与受访者观点严格分开。</p>
+  </div>
+</section>
+
+<!-- ================= 壹 · Harness ================= -->
+<section id="ch1" class="ch-har">
+  <div class="sec-head"><span class="no">壹</span><h2>瓶颈正在从模型变成 Harness</h2><span class="en">Model × Harness</span></div>
+  <p class="sec-lede"><b>命题：Agent 的瓶颈正从 Intelligence 转向 Harness。</b>旧 roadmap 的隐含主语永远是模型——等下一代出来，这个就能做了。这期对谈给出的反例足够硬。</p>
+
+  <div class="thesis">
+    <div class="thesis-head"><span class="t-no">因果链</span><span class="t-t">从「等下一代模型」到「修鼠标精度」</span></div>
+    <div class="thesis-body">
+      <div class="aspects">
+        <div class="aspect"><b class="k">旧假设</b><span class="v">模型越聪明，产品越强</span></div>
+        <div class="aspect"><b class="k">实际观察</b><span class="v">卡住它的是没电脑、没账号、登录不了 Salesforce、鼠标点不到按钮</span></div>
+        <div class="aspect"><b class="k">新稀缺</b><span class="v"><b>环境与执行权限</b></span></div>
+        <div class="aspect"><b class="k">行为变化</b><span class="v">修鼠标精度、修登录、修浏览器状态，而不是等下一代模型</span></div>
+        <div class="aspect"><b class="k">结果</b><span class="v"><b>昨天不能做的一整块工作，今天能做</b></span></div>
+        <div class="aspect"><b class="k">证据</b><span class="v">sales 团队：「连续失败七天的 workflow 终于跑通了」<span class="tag tag-talk">访谈</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>访谈里最硬的反例来自 sales 团队。他们每天用的企业软件没有 API、没有 MCP，传统 AI 工具到这里就停。Grok Bot 有电脑，可以像真员工一样打开 Salesforce、看 dashboard、点击、输入、跑完整个 workflow。卡住它的从来不是智力，是某个页面上的控件鼠标点不准。</p>
+    <p>所以 Roman 盯的不是 benchmark 从 73.2 涨到 74.1，而是那句话。修的东西毫不性感：鼠标能不能点准、网站能不能登录、浏览器状态能不能读对。一个功能列表根本体现不了这些，但 agent 在这里失败一次，整个任务就断。<span class="tag tag-compile">重编译</span>判断 Agent 的进展，看「昨天还不能做的一整块工作」，不看 benchmark 小数点。</p>
+  </div>
+
+  <div class="formula">实际完成的工作 = <b>模型</b> × <b>上下文</b> × <b>工具</b> × <b>环境</b> × <b>可靠性</b><small>乘法里短板决定总量：任何一项接近零，智力再高也输出不了工作。改进 = 找到最小的那一项抬起来。</small></div>
+
+  <div class="story">
+    <div class="st-t">锚点 · ANCHOR</div>
+    <p><b>新员工入职，不发 laptop。</b>「以后你永远坐我旁边，我们共享一台电脑，密码互看，轮流抢鼠标。」人类听了觉得疯狂——今天大量 computer-use 产品对 AI 做的正是这件事。未来回头看这个阶段，会像我们看共享鼠标一样奇怪。</p>
+  </div>
+
+  <div class="prose">
+    <p>竞争因此换了战场：不是谁拥有最聪明的脑，而是谁最先给这个脑配齐身体、工位和组织关系。电脑只是这个判断的一个实例。</p>
+  </div>
+
+  <div class="meta">
+    <div class="row"><span class="k">可迁移</span><span class="v">评估任何 Agent 产品，别问它跑什么模型，<b>问它昨天才解锁了哪一整块工作</b>。</span></div>
+    <div class="row"><span class="k warn">失效边界</span><span class="v">环境侧成为公共底座（OS 级 agent 接口、浏览器协议普及）后，Harness 从差异化退化为入场券，瓶颈回到模型与数据。</span></div>
+  </div>
+</section>
+
+<!-- ================= 贰 · 同事 ================= -->
+<section id="ch2" class="ch-col">
+  <div class="sec-head"><span class="no">贰</span><h2>基本单位正在从「对话」变成「同事」</h2><span class="en">Thread → Colleague</span></div>
+  <p class="sec-lede"><b>命题：Multi-agent 最终不是工程架构概念，而是组织设计概念。</b>primitive 一换，组织问题自动浮出水面——而且组织是从使用中涌现的，不是被设计出来的。</p>
+
+  <div class="tbl-scroll"><table class="tbl">
+    <thead><tr><th>维度</th><th>旧 primitive：Thread / 对话</th><th>新 primitive：Long-lived colleague</th></tr></thead>
+    <tbody>
+      <tr><td>存在方式</td><td class="old">新任务 → 新线程，随会话结束消失</td><td class="new">长期存在的实体，默认在云端，不依附任何设备</td></tr>
+      <tr><td>上下文</td><td class="old">每次清零，靠人复制粘贴结论</td><td class="new">记住交互、习惯与上下文，随时间变好</td></tr>
+      <tr><td>调度器</td><td class="old">人充当所有线程之间的路由器</td><td class="new">一个 bot 管一条 lane；可信的委托对象</td></tr>
+      <tr><td>组织形态</td><td class="old">无——用户与工具的一对一会话</td><td class="new">5–10 个 bot 分工，Chief of Staff 自然长出</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="prose">
+    <p>ChatGPT 时代基本单位的代价藏在每个人的手指里：开新对话，把上一段的结论复制粘贴回来。Grok Bot 换了 primitive 之后，内部用了一两周，人们开始建 5 到 10 个 bot 分管不同领域。然后出现了团队完全没有设计的行为：有人把表现最好的 bot「晋升」为 <b>Chief of Staff</b>，以后主要跟它说话，由它分发任务、跟踪进度、汇总结果。</p>
+    <p>团队不确定这是内部文化特产还是普遍规律，做外部 onboarding 时刻意不引导——don't lead the witness——结果外部用户也长出了类似结构。<span class="tag tag-talk">访谈</span></p>
+  </div>
+
+  <div class="story">
+    <div class="st-t">锚点 · ANCHOR</div>
+    <p>「<b>你被升职了。</b>」bot 回问：「那我涨薪吗？token budget 会加吗？」——玩笑底下是真结构：人面对一组可委托对象时，用的就是他唯一熟悉的协作语法——公司组织。</p>
+  </div>
+
+  <div class="prose">
+    <p>这件事把平时讨论的 subagent 开不开、怎么 routing、context 怎么传，整个翻了个面。那些是计算机系统视角的问题。Roman 给的 heuristics 是一级原则：<b>如果它是真人同事，我们会怎样组织他？</b>人类有几百年协作经验，答案高度一致——问题只是能不能把 AI 做成那样。</p>
+  </div>
+
+  <div class="meta">
+    <div class="row"><span class="k">可迁移</span><span class="v">遇到 agent 分工问题，先问真人团队里这个岗位怎么设。<b>「组织设计」在产品语汇里的权重会超过「系统设计」</b>。</span></div>
+    <div class="row"><span class="k warn">失效边界</span><span class="v">bot 数量超出人的管理带宽后，组织直觉失灵——Roman 已经在给十几个 bot 建统一 output store。同事隐喻的前提，是人的组织能力还有余量。</span></div>
+  </div>
+</section>
+
+<!-- ================= 叁 · Capability ================= -->
+<section id="ch3" class="ch-cap">
+  <div class="sec-head"><span class="no">叁</span><h2>进化单位从 Feature 变成 Capability，UI 是要被删除的债</h2><span class="en">Feature → Capability</span></div>
+  <p class="sec-lede"><b>命题：最好的 AI UI 不是展示能力，而是让用户感受不到能力背后的复杂度。</b>最强的 power tool，长得像聊天软件。</p>
+
+  <div class="thesis">
+    <div class="thesis-head"><span class="t-no">因果链</span><span class="t-t">句式一换，产品哲学跟着换：has → can</span></div>
+    <div class="thesis-body">
+      <div class="aspects">
+        <div class="aspect"><b class="k">旧路径</b><span class="v">能力↑ → 按钮↑ → 面板↑ → 设置项↑（power tool = 驾驶舱）</span></div>
+        <div class="aspect"><b class="k">新变化</b><span class="v">模型 + agent 能力↑ → scaffolding↓ → UI↓</span></div>
+        <div class="aspect"><b class="k">机制</b><span class="v"><b>capability 由 bot 自己控制时，对应 UI 就成了债</b></span></div>
+        <div class="aspect"><b class="k">行为变化</b><span class="v">发布前三周在删功能；automation 不再有 builder</span></div>
+        <div class="aspect"><b class="k">句式</b><span class="v">「Grok Bot <b>now has</b>…」接新按钮 →「Grok Bot <b>can now</b>…」接它能多完成什么工作</span></div>
+        <div class="aspect"><b class="k">数据</b><span class="v">当时平台上约 <b>99% 的 automation 由自然语言创建</b><span class="tag tag-talk">访谈</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>传统 SaaS 的成长路径是加法：更多能力，更多按钮，更多面板。专业软件像 Photoshop，熟练驾驶它本身就是一种专业。还有一个更隐蔽的机制：公司有三支团队，UI 里正好出现三个 tab——Roman 管这叫 <b>shipping your org chart</b>。用户看到的其实是三个产品哲学被塞进同一个窗口：为什么我要理解你公司内部有三个东西？</p>
+    <p>Automation 是最干净的例子。传统产品要打开 sidebar、选 trigger、选 action、配参数，普通用户根本建不了几条。Grok Bot 里你说「每天早上八点做这件事」，说完就结束——用户甚至不该意识到背后创建了一个 automation 对象。</p>
+    <p>发布前三周的主要工作不是加大功能，是 <b>unship</b>：把开发者 debug 用的 model thinking、observability 从产品里猛删。至于 reasoning 流和 tool call 日志——几乎没有真人同事会要求你「每两秒汇报一次你点了什么按钮」。</p>
+  </div>
+
+  <div class="story">
+    <div class="st-t">锚点 · ANCHOR</div>
+    <p><b>has → can。</b>两个句式的差别，就是两种产品哲学的分水岭。新世界里的专业工具只剩两个用户动作：表达 intent，加 steering——Roman 走过同事桌边，常常以为对方在发消息，那个人其实正在完成主要工作。</p>
+  </div>
+
+  <div class="meta">
+    <div class="row"><span class="k">可迁移</span><span class="v">看 AI 产品的更新日志，数 has 型条目和 can 型条目的比例，<b>比例越高越危险</b>；设计 agent 能力时，每一项先问能不能不占 pixel。</span></div>
+    <div class="row"><span class="k warn">失效边界</span><span class="v">用户需要承担责任的场景（交易、医疗、法务、审计）必须看见中间过程——不可见的复杂性反而不可信。UI 的删除有边界，边界画在人仍然要负责的地方。</span></div>
+  </div>
+</section>
+
+<!-- ================= 肆 · 90 → 100 ================= -->
+<section id="ch4" class="ch-leap">
+  <div class="sec-head"><span class="no">肆</span><h2>90% → 100% 不是性能提升，是产品类别变化</h2><span class="en">90% ≠ 100%</span></div>
+  <p class="sec-lede"><b>命题：Agent 的价值函数，不是节省多少操作时间，而是消灭多少仍滞留在人脑里的责任。</b>通常我们把 reliability 当线性指标；用户心理不是。</p>
+
+  <div class="dual">
+    <div class="d-track d-old">
+      <div class="d-label">90% 完成 · 同一根曲线上远一点</div>
+      <div class="d-chips">
+        <span class="d-chip">还得监督</span><span class="flow-arrow">→</span>
+        <span class="d-chip">检查</span><span class="flow-arrow">→</span>
+        <span class="d-chip">返工</span><span class="flow-arrow">→</span>
+        <span class="d-chip">任务仍占据 working memory</span>
+      </div>
+      <p class="d-verdict">本质：<b>AI 帮我干活</b>——任务理论上交出去了，实际上一直留在你脑子里。Roman 的判断很干脆：这不是 delegation。</p>
+    </div>
+    <div class="d-track d-new">
+      <div class="d-label">足够可靠 · 另一根曲线的起点</div>
+      <div class="d-chips">
+        <span class="d-chip">任务整体交出去</span><span class="flow-arrow">→</span>
+        <span class="d-chip">不再想它</span><span class="flow-arrow">→</span>
+        <span class="d-chip">认知负载消失</span>
+      </div>
+      <p class="d-verdict">本质：<b>AI 替我拥有这块工作</b>——「我把任务交出去，我不用继续想着，回来它已经做好了。」</p>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>把工作交给一个只能信任九成的同事，你知道他可能做不好、中途可能要干预、结果回来还得检查、有些地方得自己补。真正的 delegation 像篮球里的 <b>no-look pass</b>：球传出去，你已经开始跑下一个位置，不回头盯，因为你相信队友会处理好。这是 Grok Bot 第一次在非 coding 工作里给他的体验。</p>
+    <p>工程师过去一年已经在 coding agent 里完成了这个跃迁。但大多数知识工作者用 AI 的方式跟两年前没有区别：开新对话，prompt，等，看，改，再 prompt。两个世界并存，正是这期访谈的挠痒处。当 AI 能端到端完成一整块工作时，它就从「提高效率的软件」变成「<b>增加团队 capacity 的成员</b>」——不是同一根曲线上更远的一点，是另一根曲线的起点。</p>
+  </div>
+
+  <div class="meta">
+    <div class="row"><span class="k">可迁移</span><span class="v">判断所有 AI 效率产品只问一句：<b>它在减少我的 clicks，还是在减少我必须拥有的 work？</b>完全是两个市场。</span></div>
+    <div class="row"><span class="k warn">失效边界</span><span class="v">签字权和法律责任转移不出去；错误成本高到必须人审的任务，90/100 的界限会重新画在「谁复核」而不是「谁执行」。端到端只对可容忍错误的任务成立。</span></div>
+  </div>
+</section>
+
+<!-- ================= 伍 · 套利 ================= -->
+<section id="ch5" class="ch-arb">
+  <div class="sec-head"><span class="no">伍</span><h2>真正的 AI 公司不是预测未来，而是不断把未来提前三个月</h2><span class="en">Arbitrage the Future</span></div>
+  <p class="sec-lede"><b>命题：AI 产品团队的核心工作，是不断套利「模型未来能力」与「当前能力」之间的时间差；moat 是这个循环的沉淀物，不是第一天画出来的。</b>前四章是产品，这一章是组织。</p>
+
+  <div class="flow-chain">
+    <span class="flow-chip">预测三个月后的模型能力</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">engineering + scaffolding<small>今天就能做出来</small></span><span class="flow-arrow">→</span>
+    <span class="flow-chip">用户提前获得未来体验</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">模型追上</span><span class="flow-arrow">→</span>
+    <span class="flow-chip hl">delete the scaffolding</span><span class="flow-arrow">→</span>
+    <span class="flow-chip">下一个 frontier ↺</span>
+  </div>
+
+  <div class="prose">
+    <p>创业者爱问「两年后 moat 在哪」，Roman 对这个问题不迷信——24 个月在 AI 里近乎永远。Cursor 从来不是从 defensibility 倒推产品的。它的活法就是上面这个循环：obsess over building something useful today；盯住三个月、六个月后模型大概率能做到什么；然后问有没有办法用 glue code、特殊 UI、特殊 infra，把那种未来能力提前到今天让用户用上。三个月后模型自己会了？很好，把 scaffolding 全删掉，再看下一个三个月。</p>
+    <p>两个内部价值观是这个循环的两半。<b>Delete the product</b>：模型能力上来后，过去为补模型短板建的结构都要删，即使一小部分用户喜欢、内部有人舍不得。<b>Just do the thing</b>：看到该发生的事，不等许可，自己拉人——这不是 ask-for-permission culture。</p>
+    <p>Cursor 活下来靠的也是这个。它「应该死」很多次了——对面站着 OpenAI、Anthropic、Microsoft。Roman 认为倒下的竞争者不缺资源、也没犯某个明显的错，深层的死因是<b>组织文化跟不上 reality 变化的速度</b>。他的标准激进：不能大约每六个月彻底重新发明一次自己的公司，就会输。团队快不快，看的不是人数，是一种 scramble energy：一个人可以在极短时间里对某个方向产生巨大影响，而所有人高度信任别人会把自己那部分做好，所以不需要层层协调。</p>
+  </div>
+
+  <div class="story">
+    <div class="st-t">锚点 · ANCHOR · 出处要分清</div>
+    <p>「Moats are often discovered, not planned.」——<b>这是 Lenny 的归纳，不是 Roman 的原话。</b><span class="tag tag-lenny">Lenny</span>Roman 的版本更工程：moat 是循环跑久了自然沉淀下来的 trust、distribution、data 和使用习惯；它不在第一天的 strategy diagram 上。</p>
+  </div>
+
+  <div class="meta">
+    <div class="row"><span class="k">可迁移</span><span class="v">判断一个 AI 团队的健康度，看它的删除记录，不看功能清单——<b>敢不敢把上一季的杀手锏整个下线</b>。</span></div>
+    <div class="row"><span class="k warn">失效边界</span><span class="v">模型进步放缓时套利窗口收窄；更现实的威胁是模型厂商亲自下场 productize——OpenClaw 验证 primitives、Grok Bot 打磨产品这条路上，你的 scaffolding 随时可能变成别人的 roadmap。</span></div>
+  </div>
+</section>
+
+<!-- ================= 拆书五件事 ================= -->
+<section id="deconstruct">
+  <div class="sec-head"><span class="no">附录</span><h2>拆书五件事：把这期对谈当一本书拆</h2><span class="en">ljg-book · Five Moves</span></div>
+  <p class="sec-lede">冷静版，把整期对谈蒸馏成五段。前五章是重编译，这五段是蒸馏。</p>
+
+  <div class="dd-item">
+    <div class="dd-t">核心问题 + 挠痒处<small>PROBLEM</small></div>
+    <div class="dd-b">Roman 在答：<b>模型已经够聪明，面向普通知识工作的 Agent 产品该长什么样。</b>挠痒处：他从 Cursor 来，工程师已经在 coding agent 里尝过把任务整个交出去的滋味；而隔壁的运营、销售、招聘，用 AI 的方式和两年前一样——new chat，prompt，等，改。同一家公司里两种体验并存，这个落差缠着他不放。不写不行：他看着一群人把 AI 当搜索框用，知道差的那口气不在模型里。</div>
+  </div>
+  <div class="dd-item">
+    <div class="dd-t">基础假设<small>ASSUMPTIONS</small></div>
+    <div class="dd-b">三条不证之物。一，<b>模型能力会持续上涨</b>，所以一切 scaffolding 都是临时建筑。二，<b>人类几百年的协作方式是 Agent 产品最好的模板</b>，所以 colleague 类比可以一路用到底。三，<b>大量工作永远不会有 API，GUI 是最后的通用接口</b>，所以 bot 必须有电脑。动摇任何一条，整期对谈塌掉。</div>
+  </div>
+  <div class="dd-item">
+    <div class="dd-t">分析框架<small>FRAMEWORK</small></div>
+    <div class="dd-b">取景框是一台 <b>colleague lens</b>：任何产品决定，先过一遍「如果这是真人同事，你会怎么对他」。可见性、组织、电脑、automation、通知，全部被这台框重排。作者独占的标签：
+      <div class="tagrow"><span class="tg">colleague-pilled</span><span class="tg">Chief of Staff（涌现的）</span><span class="tg">has→can</span><span class="tg">unshipping</span><span class="tg">delete the product</span><span class="tg">just do the thing</span><span class="tg">no-look pass</span><span class="tg">infovore</span><span class="tg">one computer per bot</span><span class="tg">long-lived</span></div>
+      抽掉这些词，这段拆解能套到任何 Agent 访谈上——留着，它就是这期的指纹。</div>
+  </div>
+  <div class="dd-item">
+    <div class="dd-t">核心观点<small>THESIS</small></div>
+    <div class="dd-b">同样越来越强的模型，换掉产品的基本假设，用户感受到的是完全不同的东西。</div>
+  </div>
+  <div class="dd-item">
+    <div class="dd-t">精神内核 · 带走一件<small>TAKEAWAY</small></div>
+    <div class="dd-b">形态：一个模型（判断工具），见下方暗框。</div>
+  </div>
+
+  <div class="underwater">
+    <div class="uw-t">TAKEAWAY · AGENT 可靠性气压计</div>
+    <p><b>任务交出去之后，还剩多少留在你脑子里。剩得越多，产品越没到位。</b><span class="src"> 为什么是它：整期对谈的每个决定——给电脑、删 UI、藏 tool call、端到端完成——都是为了把这个读数压到零。带着它，任何一个 Agent 产品打开五分钟就能量出深浅。</span></p>
+    <pre>模型够聪明
+  |  受限于 harness / tools / form
+  v
+给电脑 + 长期存在  -&gt;  不再是 chat session
+  |
+  v
+colleague  -&gt;  借用人类协作方式（colleague lens）
+  |
+  v
+delegation + trust  -&gt;  端到端完成
+  |
+  v
+90% != delegation  -&gt;  100% 时认知负载消失
+  |
+  v
+<b>效率软件  -&gt;  增加 capacity 的成员</b></pre>
+  </div>
+</section>
+
+<!-- ================= 收尾四件事 ================= -->
+<section id="closing">
+  <div class="sec-head"><span class="no">收尾</span><h2>四件事：认知变化、长期判断、连接冲突、追问</h2><span class="en">Closing</span></div>
+
+  <div class="clos-item">
+    <div class="c-t">① 改变了什么旧认知<small>RECOMPILE</small></div>
+    <div class="dd-b">过去认为 AI 产品的差距主要由模型能力和编排（prompt、workflow、routing）决定；现在更倾向认为，在模型同质化的窗口里，差距主要在 <b>harness——给模型配的身体、环境与组织关系</b>——以及产品敢不敢把基本单位从「对话」换成「同事」。因为同一批模型，换掉产品基本假设后，用户拿到的东西完全不同。</div>
+  </div>
+  <div class="clos-item">
+    <div class="c-t">② 三个判断进长期知识库<small>THREE LAWS</small></div>
+    <ul>
+      <li><b>Harness 短板定律</b>：实际产出 = 模型 × 上下文 × 工具 × 环境 × 可靠性，短板定上限。判断 Agent 进展看「昨天还不能做的一整块工作」，不看 benchmark 小数点。</li>
+      <li><b>责任残量定律</b>：AI 产品的价值 = 消灭的「滞留在人脑里的责任」，不是节省的 clicks。90% 与 100% 是两个产品类别，中间隔着任务是否还占着你的脑子。</li>
+      <li><b>时间差套利循环</b>：预测三个月 → scaffolding 提前实现 → 模型追上 → 删除 → 下一个 frontier。moat（trust、distribution、data、习惯）是循环的沉淀物，不是规划物。</li>
+    </ul>
+  </div>
+  <div class="clos-item">
+    <div class="c-t">③ 与已有认知的连接与冲突<small>CONNECT / CONFLICT</small></div>
+    <ul>
+      <li><span class="bdg bdg-conn">连</span>与《Agent到Harness：从模型能力到运行时工程》（2026-09-07）完全同向——那篇讲运行时工程的四条路线，这篇给出产品侧的同一判断，互为印证；Grok Bot 是「环境即产品」的最新实例。</li>
+      <li><span class="bdg bdg-conn">连</span>与「AI 进 Teams / 群聊是最强 Agent surface」接上了。聊天界面强不是因为简单，而是因为它最接近人类已有的协作 primitive；「最强的 power tool 长得像聊天软件」直接支持这个方向。</li>
+      <li><span class="bdg bdg-conn">连</span>infovore（读全部 X 提及 → 交叉内部上下文 → bug 交给 QA bot 复现 → 分级通知）与 100X 知识萃取系统是同一个物种，架构几乎同构——差别只在 ours 还是人触发，Roman 的已经是 AI→人主动。</li>
+      <li><span class="bdg bdg-conf">冲</span>对「multi-agent 靠工程架构设计（routing、context 传递）」的直觉构成张力。Chief of Staff 没人教就长出来了，说明组织结构可以从使用中涌现；过早设计 org chart，可能是 shipping your org chart 的 agent 版。</li>
+      <li><span class="bdg bdg-conf">冲</span>delete the product 正面攻击「功能积累 = 资产」的 SaaS 直觉。我们自己的工具链也在攒 scaffolding——上个月补的 glue code，应该自带删除计划。</li>
+    </ul>
+  </div>
+  <div class="clos-item">
+    <div class="c-t">④ 还剩两个值得追问的问题<small>OPEN QUESTIONS</small></div>
+    <ul>
+      <li><b>组织级 context 怎么建。</b>bot 从个人助理进入真实团队时，organization-level memory 是什么：谁的历史上下文可以共享、权限边界画在哪、员工离开后 bot 归谁。Roman 明说这里全是 unanswered questions——而这恰是「transform businesses」必须过的关。</li>
+      <li><b>proactive 的信任经济学。</b>AI→人的主动通知（读全部提及、有权 page 你）依赖极高 trust，false positive 一次就烧掉耐心。attention 的准入门槛是产品问题还是模型问题——是等判断力够好自然解决，还是需要显式的「打扰预算」设计？</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer id="discipline">
+  <div class="wrap f-grid">
+    <div>
+      <h5>出处纪律 · SOURCE DISCIPLINE</h5>
+      <p>本刊区分三种陈述的等级，全文以徽标标注：</p>
+      <ul>
+        <li><span class="tag tag-talk">访谈</span> 中文编译稿（Slax Reader 转发，原发 2026-09-08）中 Roman Ugarte 的陈述与事例；英文原播客未独立核听。</li>
+        <li><span class="tag tag-lenny">Lenny</span> Lenny 的归纳或追问，不是 Roman 的原话立场（本刊仅一处：moats are discovered, not planned）。</li>
+        <li><span class="tag tag-compile">重编译</span> 本次拆解的迁移判断与失效边界推演，与受访者观点严格分开。</li>
+      </ul>
+    </div>
+    <div>
+      <h5>版本</h5>
+      <p>深读 №02 · 2026-09-12<br>
+      方法：认知重编译 v1——旧世界 → 新变化 → 机制 → 案例锚点 → 新世界 → 可迁移判断 → 失效条件<br>
+      配套：原文底稿与拆解笔记同存于 Obsidian「信息源/2026-09-W2」｜ 姊妹篇 <a href="2026-09-07%20Agent%E5%88%B0Harness%EF%BC%9A%E4%BB%8E%E6%A8%A1%E5%9E%8B%E8%83%BD%E5%8A%9B%E5%88%B0%E8%BF%90%E8%A1%8C%E6%97%B6%E5%B7%A5%E7%A8%8B.html">《Agent到Harness：从模型能力到运行时工程》</a>（深读特刊系统同源）<br>
+      编译：Cindy · 2026-09-12</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+// —— 阅读进度条 ——
+var pbar=document.getElementById('pbar');
+function updPbar(){
+  var h=document.documentElement,sc=h.scrollTop||document.body.scrollTop,
+      max=h.scrollHeight-h.clientHeight;
+  pbar.style.width=(max>0?(sc/max*100):0)+'%';
+}
+document.addEventListener('scroll',updPbar,{passive:true});updPbar();
+// —— 导航 scrollspy ——
+var links=[].slice.call(document.querySelectorAll('.topnav a')),
+    secs=links.map(function(a){return document.querySelector(a.getAttribute('href'))}).filter(Boolean);
+function updSpy(){
+  var y=window.scrollY+140,cur=secs[0];
+  secs.forEach(function(s){if(s.offsetTop<=y)cur=s});
+  links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+cur.id)});
+}
+document.addEventListener('scroll',updSpy,{passive:true});updSpy();
+</script>
+</body>
+</html>

@@ -1,0 +1,2443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>创新者的窘境 · 商业机会操作系统｜知识杂志伴读特辑</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;0,6..72,700;0,6..72,900;1,6..72,400;1,6..72,600&family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF8; --paper-deep:#F4F1EB; --paper-mid:#EFEAE1; --ink:#1C1A17; --ink-soft:#4A463F; --ink-faint:#8A8478; --rule:#E3DED4;
+  --law:#A8502A;  --law-bg:#F6E9E1;   /* 规律 · 锈 */
+  --case:#3B62B0; --case-bg:#E3EAF6;  /* 案例 · 靛 */
+  --inv:#12874A;  --inv-bg:#E0F0E7;   /* 投资 · 绿 */
+  --ent:#A86408;  --ent-bg:#F6EDD8;   /* 创业 · 琥珀 */
+  --macro:#0B84A8;--macro-bg:#DFEFF4; /* 宏观 · 青 */
+  --good:#2F6B4F; --warn:#B98A18; --orange:#C06414; --bad:#A83A2A;
+  --good-bg:#E2EEE7; --warn-bg:#F5EDD6; --orange-bg:#F6E8DA; --bad-bg:#F5E3DF;
+  --serif:"Newsreader","Noto Serif SC","Songti SC",serif;
+  --sans:"Inter","PingFang SC","Helvetica Neue",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.85;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--ink);color:var(--paper)}
+a{color:inherit}
+.wrap{max-width:1140px;margin:0 auto;padding:0 32px}
+small{font-family:var(--sans)}
+
+/* ── 进度条 ─────────────────────────── */
+#pbar{position:fixed;top:0;left:0;height:3px;background:var(--ink);width:0;z-index:99;transition:width .1s linear}
+
+/* ── 报头 ─────────────────────────── */
+.masthead{max-width:1140px;margin:0 auto;padding:52px 32px 26px;border-bottom:3px solid var(--ink)}
+.masthead .kicker{font-family:var(--sans);font-size:11px;letter-spacing:.35em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.masthead h1{font-size:clamp(38px,6.2vw,72px);font-weight:900;line-height:1.12;letter-spacing:.01em;margin:20px 0 10px}
+.masthead h1 em{font-style:italic;font-weight:600}
+.masthead .deck{font-size:18.5px;color:var(--ink-soft);max-width:780px;line-height:1.75}
+.masthead .deck strong{color:var(--ink)}
+.mast-issue{display:flex;gap:28px;flex-wrap:wrap;margin-top:24px;font-family:var(--sans);font-size:12.5px;color:var(--ink-soft)}
+.mast-issue span b{color:var(--ink);font-weight:700}
+
+/* ── 顶栏导航 ─────────────────────────── */
+.topnav{position:sticky;top:0;z-index:60;background:rgba(251,250,248,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+.topnav-in{max-width:1140px;margin:0 auto;padding:9px 32px;display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none}
+.topnav-in::-webkit-scrollbar{display:none}
+.topnav .logo{font-family:var(--sans);font-weight:700;font-size:12.5px;margin-right:8px;letter-spacing:.12em;white-space:nowrap}
+.topnav a{font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:5px 12px;border-radius:999px;white-space:nowrap;transition:all .18s}
+.topnav a:hover{background:var(--ink);color:var(--paper)}
+.topnav a.on{background:var(--ink);color:var(--paper)}
+.lens{margin-left:auto;display:flex;gap:0;border:1.5px solid var(--ink);border-radius:999px;overflow:hidden;flex:none}
+.lens button{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.05em;border:none;background:transparent;color:var(--ink);padding:5px 13px;cursor:pointer;transition:all .15s}
+.lens button+button{border-left:1px solid var(--rule)}
+.lens button.on{background:var(--ink);color:var(--paper)}
+body.lens-book [data-lens="derive"]{display:none!important}
+body.lens-derive [data-lens="book"]{display:none!important}
+.lens-note{font-family:var(--sans);font-size:11px;color:var(--ink-faint);padding:6px 32px;max-width:1140px;margin:0 auto}
+
+/* ── 首页 OS ─────────────────────────── */
+.os{padding:54px 0 8px}
+.os-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:34px;align-items:start}
+@media(max-width:920px){.os-grid{grid-template-columns:1fr}}
+.os-claim{border-left:4px solid var(--ink);padding-left:22px}
+.os-claim .rub{font-family:var(--sans);font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-faint)}
+.os-claim h2{font-size:clamp(26px,3.6vw,40px);font-weight:900;line-height:1.3;margin:10px 0 14px}
+.os-claim p{color:var(--ink-soft);font-size:16.5px;max-width:560px}
+.os-claim .verdict{margin-top:18px;font-size:18px;font-weight:700;font-style:italic}
+.os-claim .verdict b{color:var(--law)}
+.os-entries{margin-top:26px;display:grid;gap:12px}
+.os-entry{display:flex;align-items:center;gap:16px;border:1.5px solid var(--ink);border-radius:12px;padding:16px 20px;text-decoration:none;transition:all .18s;background:var(--paper)}
+.os-entry:hover{transform:translateX(6px)}
+.os-entry .ico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.os-entry .ico svg{width:22px;height:22px}
+.os-entry h3{font-size:19px;font-weight:900}
+.os-entry p{font-size:13.5px;color:var(--ink-soft);line-height:1.55;margin-top:2px;font-family:var(--sans)}
+.os-entry .arr{margin-left:auto;font-family:var(--sans);font-weight:700;color:var(--ink-faint);font-size:20px;flex:none}
+.os-entry.e-law:hover{border-color:var(--law);box-shadow:3px 3px 0 var(--law)}
+.os-entry.e-inv:hover{border-color:var(--inv);box-shadow:3px 3px 0 var(--inv)}
+.os-entry.e-ent:hover{border-color:var(--ent);box-shadow:3px 3px 0 var(--ent)}
+
+/* ── 图版组件 ─────────────────────────── */
+.figure{border:1.5px solid var(--ink);border-radius:14px;margin:30px 0;background:var(--paper);overflow:hidden}
+.fig-head{padding:16px 24px 12px;border-bottom:1px solid var(--rule);display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.fig-head .fig-no{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--paper);background:var(--ink);padding:3px 10px;border-radius:999px;flex:none}
+.fig-head h4{font-size:18.5px;font-weight:900;line-height:1.35}
+.fig-head .fig-src{font-family:var(--sans);font-size:11px;color:var(--ink-faint);margin-left:auto;flex:none}
+.fig-body{padding:18px 20px 10px}
+.fig-body svg{width:100%;height:auto;display:block}
+.fig-note{padding:10px 24px 16px;font-family:var(--sans);font-size:12.5px;color:var(--ink-soft);line-height:1.7;border-top:1px dashed var(--rule)}
+.fig-note b{color:var(--ink)}
+.sec-law .fig-head .fig-no{background:var(--law)} .sec-case .fig-head .fig-no{background:var(--case)}
+.sec-inv .fig-head .fig-no{background:var(--inv)} .sec-ent .fig-head .fig-no{background:var(--ent)}
+.sec-macro .fig-head .fig-no{background:var(--macro)}
+
+/* ── 章节骨架 ─────────────────────────── */
+.section{padding-top:66px;scroll-margin-top:70px}
+.sec-head{display:flex;align-items:baseline;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px;flex-wrap:wrap}
+.sec-head .no{font-family:var(--sans);font-weight:700;font-size:13px;letter-spacing:.22em;padding:4px 12px;border:1.5px solid currentColor;border-radius:999px}
+.sec-head h2{font-size:clamp(27px,3.8vw,42px);font-weight:900;line-height:1.2}
+.sec-head .en{font-family:var(--sans);font-size:12px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase}
+.sec-head .cnt{font-family:var(--sans);font-size:12px;color:var(--ink-faint);margin-left:auto;letter-spacing:.08em}
+.sec-law .no,.sec-law h2{color:var(--law)} .sec-case .no,.sec-case h2{color:var(--case)}
+.sec-inv .no,.sec-inv h2{color:var(--inv)} .sec-ent .no,.sec-ent h2{color:var(--ent)}
+.sec-macro .no,.sec-macro h2{color:var(--macro)}
+.sec-lede{font-size:16.5px;color:var(--ink-soft);max-width:880px;margin:18px 0 30px;line-height:1.9}
+.sec-lede strong{color:var(--ink);font-weight:700}
+
+.body-col{max-width:760px}
+.body-col p{margin-bottom:1.5em;font-size:17px}
+.body-col p.lead{font-size:18.5px}
+.wide{max-width:none}
+
+/* ── 资料纪律标签 ─────────────────────── */
+.tagrow{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.tg{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.12em;padding:2px 10px;border-radius:999px;white-space:nowrap}
+.tg-book{background:var(--ink);color:var(--paper)}
+.tg-case{background:var(--case-bg);color:var(--case);border:1px solid var(--case)}
+.tg-derive{background:var(--inv-bg);color:var(--inv);border:1px solid var(--inv)}
+.tg-map{background:var(--macro-bg);color:var(--macro);border:1px solid var(--macro)}
+.discipline{border:1.5px dashed var(--ink-faint);border-radius:12px;background:var(--paper-deep);padding:16px 22px;margin:18px 0;font-size:14px;line-height:1.8;font-family:var(--sans);color:var(--ink-soft)}
+.discipline b{color:var(--ink)}
+.discipline .dts{display:inline-flex;gap:6px;margin:0 4px;vertical-align:middle}
+
+/* ── 反直觉问题开场 ─────────────────────── */
+.qbox{margin:34px 0 26px;padding:22px 28px;border-left:4px solid var(--ink);background:var(--paper-deep);border-radius:0 12px 12px 0}
+.qbox .qk{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.3em;color:var(--ink-faint);text-transform:uppercase}
+.qbox h3{font-size:clamp(20px,2.8vw,27px);font-weight:900;font-style:italic;line-height:1.5;margin-top:6px}
+.sec-law .qbox{border-color:var(--law)} .sec-case .qbox{border-color:var(--case)}
+.sec-inv .qbox{border-color:var(--inv)} .sec-ent .qbox{border-color:var(--ent)} .sec-macro .qbox{border-color:var(--macro)}
+
+/* ── 机制/命名/推导组件 ─────────────────────── */
+.mech{margin:24px 0;border:1.5px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--paper)}
+.mech .m-head{background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.24em;padding:8px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mech .m-body{padding:18px 22px;font-size:15.5px;line-height:1.85;color:var(--ink-soft)}
+.mech .m-body b{color:var(--ink)}
+.mech .m-body p+p{margin-top:.9em}
+.namecall{margin:22px 0;padding:18px 24px;border-radius:12px;font-size:16px;line-height:1.8}
+.namecall .nc-k{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;opacity:.75;display:block;margin-bottom:6px}
+.namecall b{font-size:18px}
+.sec-law .namecall{background:var(--law-bg)} .sec-case .namecall{background:var(--case-bg)}
+.sec-inv .namecall{background:var(--inv-bg)} .sec-ent .namecall{background:var(--ent-bg)} .sec-macro .namecall{background:var(--macro-bg)}
+
+/* 投资意味 / 创业意味 双联 */
+.impl{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:26px 0}
+@media(max-width:760px){.impl{grid-template-columns:1fr}}
+.impl .imp{border-radius:12px;padding:18px 22px;border:1.5px solid}
+.impl .imp h5{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.22em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.impl .imp ul{padding-left:18px}
+.impl .imp li{font-size:14.5px;line-height:1.75;margin-bottom:8px}
+.imp-inv{background:var(--inv-bg);border-color:var(--inv)} .imp-inv h5{color:var(--inv)}
+.imp-ent{background:var(--ent-bg);border-color:var(--ent)} .imp-ent h5{color:var(--ent)}
+.impl .imp li b{color:var(--ink)}
+
+/* ── 引文 ─────────────────────────── */
+blockquote{margin:2em 0;padding:20px 26px;background:var(--paper-deep);border-left:3px solid var(--ink);font-size:17.5px;line-height:1.8}
+blockquote .who{display:block;font-style:normal;font-family:var(--sans);font-size:12px;color:var(--ink-faint);margin-top:10px;letter-spacing:.06em}
+blockquote em{font-style:italic}
+.sec-law blockquote{border-color:var(--law)} .sec-case blockquote{border-color:var(--case)}
+.sec-inv blockquote{border-color:var(--inv)} .sec-ent blockquote{border-color:var(--ent)} .sec-macro blockquote{border-color:var(--macro)}
+
+/* ── 命题卡 ─────────────────────────── */
+.props{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:28px 0}
+@media(max-width:860px){.props{grid-template-columns:1fr}}
+.prop{border:1.5px solid var(--ink);border-radius:14px;background:var(--paper);overflow:hidden;display:flex;flex-direction:column}
+.prop .p-head{padding:16px 22px 12px;border-bottom:1px solid var(--rule)}
+.prop .p-no{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.22em;color:var(--law)}
+.prop h3{font-size:20.5px;font-weight:900;line-height:1.45;margin-top:6px}
+.prop .p-body{padding:14px 22px 18px;font-size:14.5px;line-height:1.8;color:var(--ink-soft);flex:1}
+.prop .p-body b{color:var(--ink)}
+.prop .p-rows{border-top:1px dashed var(--rule);margin-top:8px;padding-top:10px;display:grid;gap:7px}
+.prop .p-row{display:flex;gap:10px;font-size:13.5px;line-height:1.65}
+.prop .p-row .k{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.1em;padding:2px 8px;border-radius:4px;height:fit-content;margin-top:3px;flex:none}
+.k-story{background:var(--case-bg);color:var(--case)} .k-opp{background:var(--ent-bg);color:var(--ent)} .k-watch{background:var(--inv-bg);color:var(--inv)}
+
+/* ── 对照表 ─────────────────────────── */
+.duo{display:grid;grid-template-columns:1fr 1fr;border:1.5px solid var(--ink);border-radius:14px;overflow:hidden;margin:26px 0}
+@media(max-width:760px){.duo{grid-template-columns:1fr}}
+.duo>div{padding:20px 24px}
+.duo .d-head{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.18em;padding:12px 24px;display:flex;align-items:center;gap:10px}
+.duo .d-mouth{background:var(--paper-mid);color:var(--ink-soft)}
+.duo .d-real{background:var(--ink);color:var(--paper)}
+.duo ul{list-style:none;margin-top:4px}
+.duo li{font-size:14.5px;line-height:1.75;padding:7px 0 7px 24px;position:relative;border-bottom:1px dashed var(--rule)}
+.duo li:last-child{border-bottom:none}
+.duo .d-mouth li::before{content:"🎙";position:absolute;left:0;font-size:12px;opacity:.6}
+.duo .d-real li::before{content:"→";position:absolute;left:0;font-family:var(--sans);font-weight:700;color:var(--ink-faint)}
+.duo .d-real li{color:#DDD8CC;border-color:#3A362F}
+.duo .d-real li b{color:var(--paper)}
+
+/* ── 阶段推进器（硬盘案例）─────────────────────── */
+.stepper{border:1.5px solid var(--case);border-radius:14px;overflow:hidden;margin:26px 0;background:var(--paper)}
+.step-tabs{display:flex;flex-wrap:wrap;background:var(--case-bg);border-bottom:1.5px solid var(--case)}
+.step-tabs button{flex:1;min-width:110px;font-family:var(--sans);font-size:12.5px;font-weight:600;padding:11px 8px;background:transparent;border:none;border-right:1px solid rgba(59,98,176,.25);color:var(--case);cursor:pointer;transition:all .15s;line-height:1.4}
+.step-tabs button:last-child{border-right:none}
+.step-tabs button b{display:block;font-size:10px;letter-spacing:.18em;opacity:.7;font-weight:700}
+.step-tabs button.on{background:var(--case);color:#fff}
+.step-tabs button:hover:not(.on){background:rgba(59,98,176,.14)}
+.step-panel{display:none;padding:26px 30px}
+.step-panel.on{display:block}
+.step-panel h4{font-size:21px;font-weight:900;color:var(--case);margin-bottom:12px}
+.step-panel h4 span{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--ink-faint);display:block;margin-bottom:4px}
+.step-panel p{font-size:15.5px;line-height:1.85;color:var(--ink-soft);margin-bottom:1em;max-width:820px}
+.step-panel p b{color:var(--ink)}
+.step-panel .sp-key{border-top:1.5px solid var(--case);margin-top:14px;padding:12px 16px;background:var(--case-bg);border-radius:0 10px 10px 0;font-size:14px;line-height:1.7}
+.step-panel .sp-key b{color:var(--case)}
+.step-next{margin-top:16px;font-family:var(--sans);font-size:12.5px;font-weight:600;border:1.5px solid var(--case);color:var(--case);background:transparent;border-radius:999px;padding:7px 18px;cursor:pointer;transition:all .15s}
+.step-next:hover{background:var(--case);color:#fff}
+
+/* ── 表格 ─────────────────────────── */
+.tbl{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:13px;margin:24px 0}
+.tbl th{text-align:left;font-size:11px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase;padding:9px 12px;border-bottom:2px solid var(--ink);font-weight:600}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.65}
+.tbl td b{color:var(--ink)}
+.tbl tr:hover td{background:var(--paper-deep)}
+.tbl .c-law{color:var(--law);font-weight:700} .tbl .c-case{color:var(--case);font-weight:700}
+.tbl-scroll{overflow-x:auto;margin:24px 0}
+.tbl-scroll .tbl{margin:0;min-width:640px}
+
+/* ── 计分卡 ─────────────────────────── */
+.scorecard{border:2px solid var(--inv);border-radius:16px;overflow:hidden;margin:30px 0;background:var(--paper)}
+.sc-head{background:var(--inv);color:#fff;padding:18px 26px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.sc-head h3{font-size:21px;font-weight:900}
+.sc-head span{font-family:var(--sans);font-size:11px;letter-spacing:.22em;opacity:.85}
+.sc-rows{padding:6px 0}
+.sc-row{padding:16px 26px;border-bottom:1px solid var(--rule)}
+.sc-row:last-child{border-bottom:none}
+.sc-q{display:flex;gap:12px;align-items:baseline;margin-bottom:9px}
+.sc-q .n{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--inv);min-width:30px}
+.sc-q h4{font-size:16px;font-weight:700;line-height:1.5}
+.sc-opts{display:flex;flex-wrap:wrap;gap:7px;padding-left:42px}
+@media(max-width:700px){.sc-opts{padding-left:0}}
+.sc-opt{font-family:var(--sans);font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px;border:1.5px solid var(--ink-faint);color:var(--ink-soft);cursor:pointer;transition:all .15s;background:var(--paper);line-height:1.4}
+.sc-opt:hover{border-color:var(--ink);color:var(--ink)}
+.sc-opt.on-g{background:var(--good);border-color:var(--good);color:#fff}
+.sc-opt.on-y{background:var(--warn);border-color:var(--warn);color:#fff}
+.sc-opt.on-o{background:var(--orange);border-color:var(--orange);color:#fff}
+.sc-opt.on-r{background:var(--bad);border-color:var(--bad);color:#fff}
+.sc-sum{padding:20px 26px;background:var(--paper-deep);border-top:1.5px solid var(--inv)}
+.sc-band{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.sc-band .band{font-family:var(--sans);font-size:13px;font-weight:700;padding:6px 16px;border-radius:999px}
+.band-g{background:var(--good);color:#fff}.band-y{background:var(--warn);color:#fff}
+.band-o{background:var(--orange);color:#fff}.band-r{background:var(--bad);color:#fff}
+.band-x{background:var(--ink-faint);color:#fff}
+.sc-counts{display:flex;gap:6px;flex-wrap:wrap}
+.sc-count{font-family:var(--sans);font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px}
+.sc-verdict{font-size:15px;line-height:1.8;color:var(--ink-soft)}
+.sc-verdict b{color:var(--ink)}
+.sc-hot{margin-top:10px;font-family:var(--sans);font-size:12.5px;color:var(--ink-soft)}
+.sc-hot b{color:var(--bad)}
+.sc-reset{font-family:var(--sans);font-size:11.5px;border:1.5px solid var(--ink-faint);background:transparent;color:var(--ink-soft);border-radius:999px;padding:4px 13px;cursor:pointer;margin-left:12px}
+.sc-reset:hover{border-color:var(--ink);color:var(--ink)}
+
+/* ── 机会卡（创业）─────────────────────── */
+.opp{border:1.5px solid var(--ent);border-radius:14px;margin:22px 0;overflow:hidden;background:var(--paper)}
+.opp .o-head{padding:18px 26px 14px;border-bottom:1px solid var(--rule);display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;background:var(--ent-bg)}
+.opp .o-letter{font-family:var(--sans);font-size:15px;font-weight:700;width:40px;height:40px;border-radius:50%;background:var(--ent);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;align-self:center}
+.opp h3{font-size:21px;font-weight:900;color:var(--ent)}
+.opp .o-sub{font-family:var(--sans);font-size:12px;color:var(--ink-soft)}
+.opp .o-body{padding:18px 26px}
+.opp .o-body p{font-size:15px;line-height:1.85;color:var(--ink-soft);max-width:840px;margin-bottom:.9em}
+.opp .o-body p b{color:var(--ink)}
+.opp .o-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:760px){.opp .o-grid{grid-template-columns:1fr}}
+.opp .o-cell{border:1px solid var(--rule);border-radius:10px;padding:14px 18px;background:var(--paper-deep)}
+.opp .o-cell h6{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.2em;color:var(--ent);margin-bottom:8px;text-transform:uppercase}
+.opp .o-cell ul{padding-left:16px}
+.opp .o-cell li{font-size:13.5px;line-height:1.7;color:var(--ink-soft);margin-bottom:5px}
+.opp .o-cell li b{color:var(--ink)}
+.opp.lit{box-shadow:4px 4px 0 var(--ent)}
+.opp.lit .o-head{background:#F3E2BC}
+.diag{border:1.5px dashed var(--ent);border-radius:12px;padding:18px 24px;margin:26px 0;background:var(--ent-bg)}
+.diag h4{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.22em;color:var(--ent);margin-bottom:12px}
+.diag label{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;line-height:1.7;padding:7px 0;cursor:pointer;color:var(--ink-soft)}
+.diag label b{color:var(--ink)}
+.diag input{margin-top:6px;accent-color:var(--ent);width:16px;height:16px;flex:none}
+.diag .d-res{margin-top:12px;font-family:var(--sans);font-size:13px;color:var(--ink)}
+
+/* ── AI 行业测试 ─────────────────────── */
+.industry{border:1.5px solid var(--macro);border-radius:14px;margin:24px 0;overflow:hidden;background:var(--paper)}
+.industry .i-head{padding:18px 26px 14px;border-bottom:1.5px solid var(--macro);background:var(--macro-bg)}
+.industry .i-head h3{font-size:21px;font-weight:900;color:var(--macro)}
+.industry .i-head p{font-family:var(--sans);font-size:13px;color:var(--ink-soft);margin-top:4px;line-height:1.7;max-width:820px}
+.industry .i-body{padding:18px 26px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:820px){.industry .i-body{grid-template-columns:1fr}}
+.industry .i-col h6{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.2em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.i-profit h6{color:var(--bad)} .i-test h6{color:var(--macro)}
+.industry .i-col p{font-size:14px;line-height:1.8;color:var(--ink-soft);margin-bottom:10px}
+.industry .i-col p b{color:var(--ink)}
+.industry .i-col ol{padding-left:20px}
+.industry .i-col li{font-size:14.5px;line-height:1.8;color:var(--ink-soft);margin-bottom:8px}
+.industry .i-col li b{color:var(--ink)}
+.industry .i-col li em{font-style:normal;color:var(--macro);font-weight:600}
+.i-signal{grid-column:1/-1;border-top:1px dashed var(--rule);padding-top:14px;margin-top:4px}
+.i-signal h6{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--ent);margin-bottom:8px}
+.i-signal p{font-size:14px;color:var(--ink-soft);line-height:1.75}
+.i-signal p b{color:var(--ink)}
+
+/* ── 全书地图 ─────────────────────── */
+.bookmap{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;margin:24px 0}
+.bm{border:1px solid var(--rule);border-radius:10px;padding:12px 14px;background:var(--paper);position:relative}
+.bm .bm-ch{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--ink-faint)}
+.bm h5{font-size:14.5px;font-weight:900;line-height:1.4;margin:3px 0 4px}
+.bm p{font-size:12px;line-height:1.6;color:var(--ink-soft);font-family:var(--sans)}
+.bm.bone{border-left:3px solid var(--ink);background:var(--paper-deep)}
+.bm.muscle{border-left:3px solid var(--ink-faint)}
+.bm.span3{grid-column:span 3}.bm.span4{grid-column:span 4}.bm.span6{grid-column:span 6}.bm.span12{grid-column:span 12}
+@media(max-width:860px){.bm.span3,.bm.span4{grid-column:span 6}.bm.span6{grid-column:span 12}}
+@media(max-width:560px){.bm.span3,.bm.span4,.bm.span6{grid-column:span 12}}
+.bm-legend{font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);margin:-14px 0 20px}
+.bm-legend b{color:var(--ink)}
+
+/* ── 术语表 ─────────────────────── */
+.gloss{width:100%;border-collapse:collapse;font-size:14px;margin:22px 0}
+.gloss th{text-align:left;font-family:var(--sans);font-size:11px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase;padding:8px 12px;border-bottom:2px solid var(--ink)}
+.gloss td{padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.7}
+.gloss td:first-child{font-weight:700;white-space:nowrap}
+.gloss td .zh{font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);display:block;font-weight:400}
+.gloss tr:hover td{background:var(--paper-deep)}
+
+/* ── 收束组件 ─────────────────────── */
+.takeaway{margin:52px 0 8px;border:2px solid var(--ink);border-radius:14px;overflow:hidden}
+.takeaway .tk-head{background:var(--ink);color:var(--paper);padding:16px 26px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+.takeaway .tk-head h2{font-size:22px;font-weight:900}
+.takeaway .tk-head span{font-family:var(--sans);font-size:11px;letter-spacing:.25em;color:#B9B2A4}
+.tk{display:flex;gap:18px;align-items:baseline;padding:15px 26px;border-bottom:1px solid var(--rule)}
+.tk:last-child{border-bottom:none}
+.tk-n{font-family:var(--sans);font-weight:700;font-size:15px;color:var(--ink-faint);min-width:34px}
+.tk p{font-size:16.5px;font-weight:600;line-height:1.7;flex:1}
+.tk p b{color:var(--law)}
+
+.finalq{margin:40px 0;padding:30px 34px;background:var(--ink);color:#EDE8DE;border-radius:16px}
+.finalq .fq-k{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.3em;color:#B9B2A4;margin-bottom:14px}
+.finalq h3{font-size:clamp(21px,3vw,29px);font-weight:900;line-height:1.55;color:#F6F2E9}
+.finalq h3 em{color:#E8B44C;font-style:italic}
+.finalq p{margin-top:14px;font-size:14.5px;color:#B9B2A4;font-family:var(--sans);line-height:1.8}
+
+footer{border-top:3px solid var(--ink);margin-top:70px;padding:30px 0 44px}
+footer .f-in{max-width:1140px;margin:0 auto;padding:0 32px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-family:var(--sans);font-size:12px;color:var(--ink-faint);line-height:1.8}
+footer b{color:var(--ink)}
+
+/* ── 回顶 ─────────────────────── */
+#top-btn{position:fixed;right:22px;bottom:22px;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;cursor:pointer;opacity:0;pointer-events:none;transition:all .25s;z-index:70}
+#top-btn.show{opacity:1;pointer-events:auto}
+#top-btn:hover{background:var(--ink);color:var(--paper)}
+
+/* ── 浮现动画 ─────────────────────── */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+@media print{.topnav,.lens-note,#top-btn,#pbar{display:none}.figure,.opp,.industry{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div id="pbar"></div>
+<!-- ══════════ 报头 ══════════ -->
+<header class="masthead">
+  <div class="kicker">
+    <span>知识杂志 · 伴读特辑 · Business Opportunity Operating System</span>
+    <span>Clayton M. Christensen · 1997</span>
+  </div>
+  <h1>创新者的窘境<em>·</em>商业机会操作系统</h1>
+  <p class="deck">为什么一家<strong>聪明、理性、客户满意、利润良好</strong>的公司，仍然可能系统性地错过下一代机会？——以及，这种结构性盲区如何变成<strong>投资机会</strong>与<strong>创业机会</strong>。<br>本次拆解的不是「颠覆式创新是什么」的管理学摘要，而是一台可以反复使用的<strong>机会识别机器</strong>。</p>
+  <div class="mast-issue">
+    <span>书目 <b>The Innovator's Dilemma</b>（哈佛商学院出版社，1997）</span>
+    <span>方法 <b>ljg-read 深读 × 金字塔重构</b></span>
+    <span>出品 <b>2026-09</b></span>
+  </div>
+</header>
+
+<nav class="topnav">
+  <div class="topnav-in">
+    <span class="logo">伴读</span>
+    <a href="#thesis" class="on">总论</a>
+    <a href="#props">六命题</a>
+    <a href="#logic">七大逻辑</a>
+    <a href="#cases">五案例</a>
+    <a href="#inv">投资地图</a>
+    <a href="#ent">创业地图</a>
+    <a href="#ai">AI 时代</a>
+    <a href="#macro">宏观栈</a>
+    <a href="#terms">全书地图·术语</a>
+    <div class="lens" id="lens" title="资料纪律：切换只看 Christensen 原书内容，或只看我们的推导与映射">
+      <button data-lens="all" class="on">全部</button>
+      <button data-lens="book">仅原书</button>
+      <button data-lens="derive">仅推导</button>
+    </div>
+  </div>
+</nav>
+<div class="lens-note">资料纪律：右上角可切换「仅原书」（Christensen 的逻辑与案例）与「仅推导」（我们对投资 / 创业 / AI 的现代推导——<b>这些不是原书内容</b>）。</div>
+
+<main>
+<!-- ══════════ 首页 OS ══════════ -->
+<section class="os" id="os">
+  <div class="wrap">
+    <div class="os-grid">
+      <div class="os-claim">
+        <div class="rub">One sentence</div>
+        <h2>伟大的公司不是死于愚蠢，<br>而是死于理性。</h2>
+        <p>倾听客户、追求高毛利、把资源配置到回报最高的地方——每一条都是管理教科书的原则。但当新技术从「巨头看不上的角落」长出来时，正是这些原则，让整个组织一步步退出未来。</p>
+        <p class="verdict">这个结构性悖论，Christensen 称之为 <b>The Innovator's Dilemma</b>——创新者的窘境。</p>
+      </div>
+      <div style="align-self:center">
+        <div class="os-entries" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+          <a class="os-entry e-law" href="#thesis">
+            <span class="ico" style="background:var(--law-bg)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#A8502A" stroke-width="2"><path d="M4 20 L4 14 M10 20 L10 9 M16 20 L16 4 M22 20 L2 20"/></svg>
+            </span>
+            <span><h3>理解企业规律</h3><p>旧公司为什么不做 · 新公司为什么能做</p></span>
+            <span class="arr">→</span>
+          </a>
+          <a class="os-entry e-inv" href="#inv">
+            <span class="ico" style="background:var(--inv-bg)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#12874A" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M11 7 L11 11 L14 13 M21 21 L16.5 16.5"/></svg>
+            </span>
+            <span><h3>寻找投资机会</h3><p>谁被现有客户绑架 · 谁在向上爬</p></span>
+            <span class="arr">→</span>
+          </a>
+          <a class="os-entry e-ent" href="#ent">
+            <span class="ico" style="background:var(--ent-bg)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#A86408" stroke-width="2"><path d="M4 20 L20 4 M20 4 L12 4 M20 4 L20 12"/></svg>
+            </span>
+            <span><h3>寻找创业机会</h3><p>巨头无法舒服进入的五个位置</p></span>
+            <span class="arr">→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主图：一张图看懂全书 -->
+    <div class="figure rv" style="margin-top:34px">
+      <div class="fig-head">
+        <span class="fig-no">图 0</span>
+        <h4>整本书的一张图：两条轨道，一个汇合点</h4>
+        <span class="fig-src">【原书逻辑】示意重构</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1060 610" role="img" aria-label="在位者上行轨道与颠覆者上行迁移轨道在主流市场汇合">
+          <defs>
+            <marker id="mk-ink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1C1A17"/></marker>
+            <marker id="mk-law" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A8502A"/></marker>
+            <marker id="mk-faint" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8A8478"/></marker>
+          </defs>
+          <!-- 轨道标签 -->
+          <text x="20" y="58" font-family="Inter,PingFang SC,sans-serif" font-size="11" font-weight="700" letter-spacing="2" fill="#8A8478">轨道一 · 在位者（INCUMBENT）</text>
+          <text x="20" y="446" font-family="Inter,PingFang SC,sans-serif" font-size="11" font-weight="700" letter-spacing="2" fill="#A8502A">轨道二 · 新进入者（ENTRANT）</text>
+          <line x1="14" y1="150" x2="14" y2="430" stroke="#8A8478" stroke-width="1" stroke-dasharray="3 4"/>
+          <text x="9" y="290" font-family="Inter,PingFang SC,sans-serif" font-size="10" fill="#8A8478" transform="rotate(-90 9 290)" text-anchor="middle" letter-spacing="1">同一时刻 · 两条轨道</text>
+
+          <!-- 上链：在位者 -->
+          <g font-family="Newsreader,Noto Serif SC,serif">
+            <rect x="20" y="78" width="150" height="58" rx="10" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/>
+            <text x="95" y="103" text-anchor="middle" font-size="15" font-weight="700" fill="#1C1A17">现有客户</text>
+            <text x="95" y="122" text-anchor="middle" font-size="10.5" fill="#8A8478" font-family="Inter,PingFang SC,sans-serif">最有钱、最挑剔的那批</text>
+
+            <rect x="196" y="78" width="140" height="58" rx="10" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/>
+            <text x="266" y="103" text-anchor="middle" font-size="15" font-weight="700" fill="#1C1A17">高毛利订单</text>
+            <text x="266" y="122" text-anchor="middle" font-size="10.5" fill="#8A8478" font-family="Inter,PingFang SC,sans-serif">财务上更好看</text>
+
+            <rect x="362" y="78" width="140" height="58" rx="10" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/>
+            <text x="432" y="103" text-anchor="middle" font-size="15" font-weight="700" fill="#1C1A17">资源分配</text>
+            <text x="432" y="122" text-anchor="middle" font-size="10.5" fill="#8A8478" font-family="Inter,PingFang SC,sans-serif">钱、人、KPI 流向它</text>
+
+            <rect x="528" y="78" width="168" height="58" rx="10" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/>
+            <text x="612" y="103" text-anchor="middle" font-size="15" font-weight="700" fill="#1C1A17">Sustaining 创新</text>
+            <text x="612" y="122" text-anchor="middle" font-size="10.5" fill="#8A8478" font-family="Inter,PingFang SC,sans-serif">性能更强 · 利润更高</text>
+
+            <rect x="722" y="78" width="180" height="58" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="812" y="103" text-anchor="middle" font-size="15" font-weight="700" fill="#A8502A">性能过剩</text>
+            <text x="812" y="122" text-anchor="middle" font-size="10.5" fill="#A8502A" opacity=".75" font-family="Inter,PingFang SC,sans-serif">Overshoot · 好过头</text>
+          </g>
+          <g stroke="#1C1A17" stroke-width="2">
+            <line x1="170" y1="107" x2="190" y2="107" marker-end="url(#mk-ink)"/>
+            <line x1="336" y1="107" x2="356" y2="107" marker-end="url(#mk-ink)"/>
+            <line x1="502" y1="107" x2="522" y2="107" marker-end="url(#mk-ink)"/>
+            <line x1="696" y1="107" x2="716" y2="107" marker-end="url(#mk-ink)"/>
+          </g>
+          <!-- 上行回路 -->
+          <path d="M 812 78 V 38 H 95 V 72" fill="none" stroke="#8A8478" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#mk-faint)"/>
+          <text x="453" y="30" text-anchor="middle" font-size="12.5" fill="#4A463F" font-family="Inter,PingFang SC,sans-serif">组织被拉向更高端客户、更高毛利（Northeast Pull）——低端被理性让出</text>
+
+          <!-- 下链：新进入者 -->
+          <g font-family="Newsreader,Noto Serif SC,serif">
+            <rect x="20" y="466" width="178" height="58" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="109" y="491" text-anchor="middle" font-size="15" font-weight="700" fill="#A8502A">颠覆式产品</text>
+            <text x="109" y="510" text-anchor="middle" font-size="10.5" fill="#A8502A" opacity=".75" font-family="Inter,PingFang SC,sans-serif">更便宜 · 更简单 · 性能更差</text>
+
+            <rect x="222" y="466" width="168" height="58" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="306" y="491" text-anchor="middle" font-size="15" font-weight="700" fill="#A8502A">小市场 · 新客户</text>
+            <text x="306" y="510" text-anchor="middle" font-size="10.5" fill="#A8502A" opacity=".75" font-family="Inter,PingFang SC,sans-serif">过去无法消费它们的人</text>
+
+            <rect x="414" y="466" width="150" height="58" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="489" y="491" text-anchor="middle" font-size="15" font-weight="700" fill="#A8502A">性能快速爬升</text>
+            <text x="489" y="510" text-anchor="middle" font-size="10.5" fill="#A8502A" opacity=".75" font-family="Inter,PingFang SC,sans-serif">斜率超过需求增长</text>
+
+            <rect x="586" y="466" width="140" height="58" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="656" y="491" text-anchor="middle" font-size="15" font-weight="700" fill="#A8502A">向上迁移</text>
+            <text x="656" y="510" text-anchor="middle" font-size="10.5" fill="#A8502A" opacity=".75" font-family="Inter,PingFang SC,sans-serif">Upmarket march</text>
+          </g>
+          <g stroke="#A8502A" stroke-width="2">
+            <line x1="198" y1="495" x2="216" y2="495" marker-end="url(#mk-law)"/>
+            <line x1="390" y1="495" x2="410" y2="495" marker-end="url(#mk-law)"/>
+            <line x1="564" y1="495" x2="582" y2="495" marker-end="url(#mk-law)"/>
+          </g>
+          <text x="489" y="552" text-anchor="middle" font-size="12" fill="#4A463F" font-family="Inter,PingFang SC,sans-serif">市场太小 → 对巨头无意义 → 拿不到资源 → 恰好留给新公司</text>
+
+          <!-- 汇合点 -->
+          <g>
+            <rect x="770" y="252" width="212" height="92" rx="12" fill="#1C1A17"/>
+            <text x="876" y="288" text-anchor="middle" font-size="17" font-weight="900" fill="#FBFAF8" font-family="Newsreader,Noto Serif SC,serif">主流市场</text>
+            <text x="876" y="312" text-anchor="middle" font-size="11" fill="#B9B2A4" font-family="Inter,PingFang SC,sans-serif">旧利润池从这里被侵蚀</text>
+            <text x="876" y="330" text-anchor="middle" font-size="11" fill="#B9B2A4" font-family="Inter,PingFang SC,sans-serif">上一代领导者让出王座</text>
+          </g>
+          <line x1="812" y1="136" x2="812" y2="246" stroke="#1C1A17" stroke-width="2" marker-end="url(#mk-ink)"/>
+          <text x="800" y="182" text-anchor="end" font-size="12" fill="#4A463F" font-family="Inter,PingFang SC,sans-serif">服务得越来越好</text>
+          <text x="800" y="200" text-anchor="end" font-size="12" fill="#4A463F" font-family="Inter,PingFang SC,sans-serif">——直到「好过头」</text>
+          <path d="M 726 495 C 800 495 872 460 876 352" fill="none" stroke="#A8502A" stroke-width="2.2" marker-end="url(#mk-law)"/>
+          <text x="806" y="440" text-anchor="middle" font-size="12.5" font-weight="700" fill="#A8502A" font-family="Inter,PingFang SC,sans-serif">向上吞噬</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>怎么读这张图</b>：上轨是 incumbent 的日常——每一环都理性；下轨是 entrant 的路径——每一步都不起眼。两条轨道的汇合点，就是旧王座的易主时刻。<b>全书其余部分，只是在解释这条图为什么必然发生、在哪些行业反复发生、以及你如何站在对的一边。</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ Level 1 · 总论 ══════════ -->
+<section class="section sec-law" id="thesis">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 1</span>
+      <h2>总论：困境本身</h2>
+      <span class="en">The Dilemma</span>
+    </div>
+    <p class="sec-lede">先不谈任何术语。从一个每家公司每天都在发生的场景开始。<strong>读完这一节，你应该能用自己的话说出「窘境」到底窘在哪里。</strong></p>
+
+    <div class="qbox rv">
+      <div class="qk">反直觉问题</div>
+      <h3>为什么「把现有客户服务得越来越好」，恰恰可能让一家伟大的公司输掉下一代市场？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p class="lead">想象一位销售总监，手里有两个项目。</p>
+      <p><b>A 项目</b>：今年的确定订单，能带来 5000 万收入、40% 毛利，客户是公司最重要的老主顾，做完还能续明年的约。</p>
+      <p><b>B 项目</b>：面向一群从未合作过的小客户，今年只有 200 万收入、20% 毛利，产品性能还不如现有产品——但也许，代表五年后的市场。</p>
+      <p>他会把最好的工程师、销售、生产产能押给谁？他的老板会晋升把资源押给 B 的人吗？财务会批准一个「拉低公司毛利率」的项目吗？</p>
+      <p>再把镜头拉远：当组织里<b>每一层</b>的人——销售、产品、财务、事业部总经理、CEO——都在各自的 KPI 里做出同一个理性选择时，会发生什么？</p>
+      <p>答案是：B 所代表的那类机会，会被一家运转良好的公司<b>系统性地、年复一年地</b>过滤掉。不是因为没人看见它，而是因为<b>每一次放弃它的决定都是对的</b>。</p>
+    </div>
+
+    <div class="mech rv" data-lens="book">
+      <div class="m-head"><span>隐藏机制 · 原书逻辑</span><span>The Innovator's Dilemma, Ch.1</span></div>
+      <div class="m-body">
+        <p>Christensen 研究了 1976–1995 年间的硬盘行业（外加挖掘机、钢铁、零售、打印机等行业作对照），得出一个不舒服的结论：</p>
+        <p><b>那些输掉下一代市场的领导公司，恰恰是管理最好的公司。</b>它们倾听客户、追踪对手、激进地投资下一代技术；它们失败，不是因为傲慢或官僚，而是因为<b>它们的客户、财务结构和资源分配机制太健康了</b>——健康到会自动绞杀任何「现在不赚钱、客户暂时不要」的新方向。</p>
+        <p>这正是「窘境」的定义：<b>两个都对，但只能选一个。</b>服务好现有客户是对的，投资下一代也是对的；可在颠覆式技术出现的早期，这两件事争夺同一批资源，而所有理性信号都指向前者。选择前者不犯任何错——直到五年后市场翻转，错误已经不可逆。</p>
+      </div>
+    </div>
+
+    <div class="namecall rv" data-lens="book">
+      <span class="nc-k">Christensen 给它的名字</span>
+      <b>The Innovator's Dilemma（创新者的窘境）</b>：越是认真践行「优秀管理」的种种原则——客户至上、利润导向、理性配置资源——越会在颠覆式技术面前变得脆弱。管理本身没有错；<b>是这套管理所内嵌的「价值网络」决定了它能看见什么、看不见什么。</b>
+    </div>
+
+    <div class="mech rv" data-lens="book">
+      <div class="m-head"><span>原书三大发现 · 第一章</span><span>Three Findings</span></div>
+      <div class="m-body">
+        <p><b>① 区分两类创新，比区分「激进 / 渐进」重要得多。</b>incumbent 几乎赢下所有 Sustaining 创新——包括那些技术上极其激进的（硬盘业两代磁头技术都由在位者率先量产）；它们只在 Disruptive 创新上系统性地输给新进入者。</p>
+        <p><b>② 技术进步的斜率，可以超过市场需求增长的斜率。</b>今天「不够好」的产品，会因为进步更快而追上、甚至超过主流需求——性能由此「过剩」，为更便宜、更简单的替代品让出空间。</p>
+        <p><b>③ 颠覆发生时，incumbent 的不作为是理性的。</b>是资源分配机制——而非管理层失误——把颠覆式项目筛掉了。换 CEO、换团队、发战略 PPT 都不解决，因为过滤器长在组织的客户结构与财务纪律里。</p>
+      </div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资意味着什么【我们的推导】</h5>
+        <ul>
+          <li>「管理层优秀」「客户粘性高」<b>不是</b>对下一代市场的保护——在本框架里，它们甚至可能是风险敞口的来源。</li>
+          <li>研究一家公司时，先找它的<b>利润池结构</b>：谁贡献最多利润，公司就被谁绑架。</li>
+          <li>警惕「每项决策都无可指摘」的公司：没有犯错的年份在累积，不代表没有在欠债。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业意味着什么【我们的推导】</h5>
+        <ul>
+          <li>你不需要比巨头聪明。你只需要站在<b>它理性上不去</b>的位置。</li>
+          <li>巨头放弃 B 项目的每一个理由——市场小、毛利低、客户不成熟——都是你的护城河的原材料。</li>
+          <li>先问：我做的事，巨头做了会不会<b>伤害它自己的财报</b>？若是，恭喜，你找到了结构性的位置。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 资料纪律 -->
+    <div class="discipline rv">
+      <b>资料纪律（全刊适用）</b>：本刊严格区分四类内容——
+      <span class="dts"><span class="tg tg-book">原书逻辑</span><span class="tg tg-case">原书 Case</span><span class="tg tg-derive">投资推导</span><span class="tg tg-map">现代映射</span></span>
+      前两类是 Christensen 1997 年书中的内容；后两类是我们基于框架对投资、创业、AI 的推导，<b>不是原书观点，也不代表 Christensen 本人的判断</b>。所有章节均以标签标注来源；顶栏可一键过滤。另：全书结构图与案例归属为 Agent 判断整理，供读者校验覆盖。
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ Level 2 · 六命题 ══════════ -->
+<section class="section sec-law" id="props">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 2</span>
+      <h2>六命题：金字塔的第二层</h2>
+      <span class="en">Six Propositions</span>
+    </div>
+    <p class="sec-lede">如果整本书压成一句话是「理性也能失败」，那么撑起这句话的是六根柱子。<strong>每一根都能独立用来审视一家公司、一个行业、一次你自己的选择。</strong>后面的「七大逻辑」和「五案例」，都是在给这六根柱子打地基。</p>
+
+    <div class="props">
+      <div class="prop rv" data-lens="book">
+        <div class="p-head"><div class="p-no">命题一</div><h3>伟大公司的失败，不一定因为愚蠢；可能恰恰因为太理性。</h3></div>
+        <div class="p-body">
+          「优秀管理」= 倾听客户、追求高毛利、把资源投向回报最高的地方。这套纪律在延续性（Sustaining）创新上是巨大优势；只有在颠覆式转折点上，它变成绞索。
+          <div class="p-rows">
+            <div class="p-row"><span class="k k-story">原书故事</span><span>14 英寸硬盘的领导厂商，没有一个成功守住 8 英寸及其后的市场——而它们的每一步都符合当时的教科书。</span></div>
+            <div class="p-row"><span class="k k-opp">创业机会</span><span>不必比巨头聪明，只需站在它「理性不上」的位置。</span></div>
+            <div class="p-row"><span class="k k-watch">投资观察</span><span>管理层优秀 ≠ 下一代安全；要看它被哪批客户、哪个毛利结构锁定。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop rv" data-lens="book">
+        <div class="p-head"><div class="p-no">命题二</div><h3>真正决定资源流向的，是现有客户，而不是战略部。</h3></div>
+        <div class="p-body">
+          组织真正听命的对象是给钱的人。销售、中层、预算流程构成一套自下而上的过滤器——客户不要的东西，注定拿不到工程师（原书引用「资源依赖理论」：组织受制于其资源来源）。
+          <div class="p-rows">
+            <div class="p-row"><span class="k k-story">原书故事</span><span>Seagate 在 1985 年就造出 3.5 英寸原型机——但主力客户（台式机厂商）说不要，项目在内部被搁置；创始人之一 Finis Conner 出走另立门户。</span></div>
+            <div class="p-row"><span class="k k-opp">创业机会</span><span>巨头「技术上能做但客户不让做」的每一处，都是留给你的时间窗。</span></div>
+            <div class="p-row"><span class="k k-watch">投资观察</span><span>别听战略发布，去查收入的客户集中度——利润池就是方向盘。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop rv" data-lens="book">
+        <div class="p-head"><div class="p-no">命题三</div><h3>高毛利像重力：组织被持续拉向上方，低端天然失血。</h3></div>
+        <div class="p-body">
+          更大的客户 → 更高价格 → 更高毛利 → 更好 ROI——组织里每个单元都感受到这股「东北方向」的拉力。低端市场则相反：更小、更薄利、客户更不成熟，理性组织会持续撤出。
+          <div class="p-rows">
+            <div class="p-row"><span class="k k-story">原书故事</span><span>美国综合钢厂「愉快地」退出了螺纹钢（钢筋）业务——那是利润率最差的狗粮生意；退出的每一年，财报都变得更好看。</span></div>
+            <div class="p-row"><span class="k k-opp">创业机会</span><span>被理性让出的低端，就是入口——而且巨头退出时还会替你把门带上。</span></div>
+            <div class="p-row"><span class="k k-watch">投资观察</span><span>龙头的产品组合与毛利结构逐年上移 = 低端真空正在扩大，翻翻它的分部数据就能看到。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop rv" data-lens="book">
+        <div class="p-head"><div class="p-no">命题四</div><h3>新市场出生时必然又小又看不清，这不是缺陷，是属性。</h3></div>
+        <div class="p-body">
+          颠覆式技术的第一批市场小到「不值得分析」：客户是谁、用它做什么、愿意付多少、通过什么渠道——全都未知。正因如此，用成熟市场的分析工具（TAM 测算、客户调研）必然得出「没有市场」的结论。
+          <div class="p-rows">
+            <div class="p-row"><span class="k k-story">原书故事</span><span>3.5 英寸硬盘最初的市场小到几乎不存在——第一批买单的是便携计算机厂商，一个当时尚不存在的品类。</span></div>
+            <div class="p-row"><span class="k k-opp">创业机会</span><span>「看不清」本身是护城河：巨头无法为看不见的市场立项，你可以用行动去换信息。</span></div>
+            <div class="p-row"><span class="k k-watch">投资观察</span><span>评估早期公司别看 TAM 幻灯片，看它单位时间学到多少、烧钱换来的信息是否真实。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop rv" data-lens="book">
+        <div class="p-head"><div class="p-no">命题五</div><h3>颠覆者一开始不是「更好」，而是在另一个维度上「更合适」。</h3></div>
+        <div class="p-body">
+          颠覆式产品在主流性能轴上通常更差（更小的斗容、更低的容量、更短的续航），但它携带一组主流产品没有的属性：更便宜、更简单、更小、更方便——对一批新客户而言，这些属性才是决定性的。
+          <div class="p-rows">
+            <div class="p-row"><span class="k k-story">原书故事</span><span>早期液压挖掘机的斗容只有缆索机的零头，干不了重活；但它便宜、轮式机动，住宅承包商第一次买得起自己的挖机。</span></div>
+            <div class="p-row"><span class="k k-opp">创业机会</span><span>别在主流性能轴上跟巨头比参数；换一根轴，让「更差」变成「更合适」。</span></div>
+            <div class="p-row"><span class="k k-watch">投资观察</span><span>警惕只在旧维度上内卷的挑战者；注意带着新维度进场的那一个。</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop rv" data-lens="book">
+        <div class="p-head"><div class="p-no">命题六</div><h3>技术能力 ≠ 组织能力。有钱有人，不等于能赢。</h3></div>
+        <div class="p-body">
+          组织的能力由三层构成：资源（钱、人、技术）、流程（做事的方法）、价值观（什么值得做）。跨进新价值网络时，前一层可以带走，后两层往往从资产变成负债——「我们一贯的做法」正是失败的原因。
+          <div class="p-rows">
+            <div class="p-row"><span class="k k-story">原书故事</span><span>领先的硬盘厂商「造得出」每一代新产品——事实证明技术与人才都在；但「造得出」和「愿意押上组织去卖」是两回事。</span></div>
+            <div class="p-row"><span class="k k-opp">创业机会</span><span>巨头复制你的成本不止研发费，还有「自毁流程与价值观」的组织成本。</span></div>
+            <div class="p-row"><span class="k k-watch">投资观察</span><span>大厂入场新闻三连问：放在哪个组织？KPI 是什么？谁负责？答案会说明一切。</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全书结构地图 -->
+    <div class="figure rv" id="terms-map" style="margin-top:44px">
+      <div class="fig-head">
+        <span class="fig-no">地图</span>
+        <h4>全书结构地图（ljg-read 全局扫描 · Agent 判断整理）</h4>
+        <span class="fig-src">章节归属为整理判断，读者可覆盖</span>
+      </div>
+      <div class="fig-body" style="padding-bottom:16px">
+        <div class="bookmap">
+          <div class="bm bone span3"><div class="bm-ch">CH 1 · 骨</div><h5>大公司为何失败<br>How Can Great Firms Fail?</h5><p>硬盘业全景 + 三大发现。全书总纲。</p></div>
+          <div class="bm bone span3"><div class="bm-ch">CH 2 · 骨</div><h5>价值网络与创新动力<br>Value Networks</h5><p>核心概念：价值网络如何定义「值得做的机会」。</p></div>
+          <div class="bm muscle span3"><div class="bm-ch">CH 3 · 肌</div><h5>机械挖掘机业<br>Mechanical Excavators</h5><p>液压 vs 缆索：跨行业验证同一机制。</p></div>
+          <div class="bm bone span3"><div class="bm-ch">CH 4 · 骨</div><h5>上行不可逆<br>What Goes Up Can't Come Down</h5><p>东北拉力：钢厂、百货、挖掘机的上行迁移。</p></div>
+          <div class="bm muscle span3"><div class="bm-ch">CH 5 · 肌</div><h5>交给需要的组织<br>Give Responsibility to…</h5><p>独立组织原则：Control Data、HP 喷墨等。</p></div>
+          <div class="bm muscle span3"><div class="bm-ch">CH 6 · 肌</div><h5>组织大小匹配市场大小<br>Match Size to Size</h5><p>小市场为何喂不饱大公司。</p></div>
+          <div class="bm bone span3"><div class="bm-ch">CH 7 · 骨</div><h5>发现新兴市场<br>Discovering New Markets</h5><p>无法分析的市场 + 电动车推演（假想案例）。</p></div>
+          <div class="bm bone span3"><div class="bm-ch">CH 8 · 骨</div><h5>能力与无能<br>Capabilities &amp; Disabilities</h5><p>RPV 框架：资源 / 流程 / 价值观。</p></div>
+          <div class="bm muscle span3"><div class="bm-ch">CH 9 · 肌</div><h5>性能供给与产品生命周期<br>Performance Provided</h5><p>性能过剩的深化：竞争基点如何转移。</p></div>
+          <div class="bm muscle span3"><div class="bm-ch">CH 10 · 肌</div><h5>管理颠覆式变革案例<br>Managing Change: A Case</h5><p>把前九章原则串成一套可操作程序。</p></div>
+          <div class="bm bone span3"><div class="bm-ch">CH 11 · 骨</div><h5>窘境小结<br>The Dilemma: A Summary</h5><p>四条组织规律 + 管理者的两难收束。</p></div>
+          <div class="bm span3" style="border-style:dashed;display:flex;flex-direction:column;justify-content:center;gap:6px">
+            <div class="bm-ch">图例</div>
+            <p><b>骨</b>＝承载核心论证的章节</p>
+            <p><b>肌</b>＝展开论证的证据章节</p>
+            <p>本刊七大逻辑、五案例与各章的对应关系见各节标签。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ══════════ Level 3 · 七大逻辑 ══════════ -->
+<section class="section sec-law" id="logic">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 3</span>
+      <h2>七大逻辑：经典深挖</h2>
+      <span class="en">Seven Mechanisms</span>
+    </div>
+    <p class="sec-lede">六个命题是柱子，七条逻辑是地基。<strong>每一节都从同一个动作开始：先问一个反直觉的问题，讲一个故事，再拆出背后的机制，给机制一个名字，最后回答两个问题——资本为什么必然这样行动，以及这对投资和创业分别意味着什么。</strong></p>
+
+    <!-- ────────── 逻辑 1 ────────── -->
+    <div class="qbox rv" id="l1">
+      <div class="qk">逻辑一 · Sustaining vs Disruptive</div>
+      <h3>为什么在位者连「激进的新技术」都不怕，<br>却总死在「看起来不起眼」的技术手里？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>直觉会告诉你：大公司死于技术落后。但硬盘业的数据讲了一个相反的故事——<b>每一代真正激进的核心技术（新型磁头、新型盘片介质），几乎都是领先在位厂商率先量产的。</b>它们有最好的实验室、最深的专利墙、最激进的研发预算，而且在延续性创新的战场上，它们几乎从不输。</p>
+      <p>杀死它们的东西长得很无害：更小尺寸的硬盘、斗容更小的挖机、只能炼最差钢材的小电炉。这些东西刚出现时，<b>每一项关键性能都不如 incumbent 的旗舰产品。</b>按任何一张参数对比表，在位者都赢了——直到它们输掉整个公司。</p>
+      <p>所以分类的钥匙根本不是「技术先进程度」，而是<b>技术进步沿着哪条轴走</b>。</p>
+    </div>
+
+    <div class="mech rv" data-lens="book">
+      <div class="m-head"><span>机制 · 原书定义</span><span>Ch.1–2</span></div>
+      <div class="m-body">
+        <p><b>Sustaining（延续性）创新</b>：沿着主流客户已经重视的性能轴，继续做得更好。客户欢呼、利润率高、市场规模明确可测、组织全力拥抱——无论技术多激进（哪怕推倒重来的架构创新），只要还在原来的价值轴上，incumbent 几乎必赢。</p>
+        <p><b>Disruptive（颠覆式）创新</b>：带来一个与此前完全不同的价值主张。它在主流性能轴上<b>通常更差</b>，但携带另一批属性——更便宜、更简单、更小、更方便——恰好是一群<b>新客户</b>（或最不挑剔的低端客户）真正在乎的。市场规模不可测、利润率更低、客户当时还不存在。</p>
+        <p><b>判据提醒</b>：不是所有「新公司打败老公司」都叫 Disruption。离开「另一根性能轴 + 新价值网络 + 向上迁移」这三个要件，就只是普通的竞争失败。本刊全篇按此纪律使用这个词。</p>
+      </div>
+    </div>
+
+    <div class="figure rv">
+      <div class="fig-head">
+        <span class="fig-no">图 1</span>
+        <h4>性能曲线：为什么产品会「好过头」</h4>
+        <span class="fig-src">【原书逻辑】Ch.1 &amp; Ch.9 方向性示意 · 不虚构数值</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 560" role="img" aria-label="技术供给曲线斜率超过需求增长斜率，颠覆式曲线后来居上">
+          <defs>
+            <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1C1A17"/></marker>
+          </defs>
+          <!-- 坐标轴 -->
+          <line x1="80" y1="500" x2="950" y2="500" stroke="#1C1A17" stroke-width="2" marker-end="url(#a1)"/>
+          <line x1="80" y1="500" x2="80" y2="50" stroke="#1C1A17" stroke-width="2" marker-end="url(#a1)"/>
+          <text x="942" y="487" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="13" fill="#4A463F">时间 →</text>
+          <text x="34" y="275" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="13" fill="#4A463F" transform="rotate(-90 34 275)">主流性能（容量 / 斗容 / 钢材质量 / 续航…）→</text>
+
+          <!-- 性能过剩区（需求线以上、供给线以下的右半区着色） -->
+          <path d="M 640 312 L 940 315 L 940 60 L 640 60 Z" fill="#F6E9E1" opacity=".55"/>
+          <text x="688" y="86" font-family="Inter,PingFang SC,sans-serif" font-size="13.5" font-weight="700" fill="#A8502A">性能过剩区（Overshoot）</text>
+          <text x="688" y="106" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#A8502A">主流用户「够用了」</text>
+
+          <!-- 需求线（虚线） -->
+          <line x1="80" y1="470" x2="945" y2="195" stroke="#8A8478" stroke-width="2" stroke-dasharray="7 5"/>
+          <text x="320" y="416" font-family="Inter,PingFang SC,sans-serif" font-size="13" fill="#4A463F" font-weight="600" transform="rotate(-17.6 320 416)">主流市场需要的性能（增长较慢）</text>
+
+          <!-- Sustaining 供给曲线 -->
+          <path d="M 90 460 C 350 400 620 230 940 62" fill="none" stroke="#1C1A17" stroke-width="2.6"/>
+          <text x="300" y="352" font-family="Inter,PingFang SC,sans-serif" font-size="13" fill="#1C1A17" font-weight="600" transform="rotate(-24 300 352)">技术供给的性能——在位者沿此线持续改善</text>
+
+          <!-- Disruptive 曲线 -->
+          <path d="M 235 505 C 480 470 700 330 938 118" fill="none" stroke="#A8502A" stroke-width="2.6"/>
+          <text x="665" y="450" font-family="Inter,PingFang SC,sans-serif" font-size="13" fill="#A8502A" font-weight="700" transform="rotate(-20 665 450)">颠覆式技术——起点更低，斜率更陡</text>
+
+          <!-- 起点标注 -->
+          <circle cx="240" cy="504" r="6" fill="#A8502A"/>
+          <text x="252" y="524" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#A8502A" font-weight="600">起点：性能不够，只有边缘新客户买单</text>
+          <text x="252" y="543" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">3.5″ 硬盘 / 液压挖机 / minimill 螺纹钢 / 早期电动车</text>
+
+          <!-- 追上主流需求 -->
+          <circle cx="640" cy="312" r="6" fill="#1C1A17"/>
+          <line x1="640" y1="312" x2="640" y2="500" stroke="#1C1A17" stroke-width="1.2" stroke-dasharray="3 4"/>
+          <text x="668" y="362" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="700" fill="#1C1A17">追上主流需求</text>
+          <text x="668" y="379" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#4A463F">→ 开始向上迁移，</text>
+          <text x="668" y="396" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#4A463F">攻入在位者腹地</text>
+          <line x1="650" y1="324" x2="660" y2="348" stroke="#8A8478" stroke-width="1.2" stroke-dasharray="3 3"/>
+        </svg>
+      </div>
+      <div class="fig-note"><b>为什么「好过头」是致命的</b>：技术供给的斜率快于需求增长（原书反复验证的规律），于是在某个时点，最便宜的产品也「够好」了。此后用户拒绝为边际性能付溢价，竞争基点沿着 性能→可靠性→便利→价格 逐级塌落（第 9 章方向性逻辑，更系统的表述见于续作《创新者的解答》）——而这正是颠覆式产品等待多年的入场时刻。<span style="color:var(--ink-faint)">（方法注：原书将需求表述为一条随客户层次分布的「需求带」，图中简化为中线。）</span></div>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p><b>资本为什么必然这样行动</b>：Sustaining 项目的每一项财务指标都更好——收入确定、毛利高、市场可测、客户已存在；Disruptive 项目的每一项指标都更差。资本市场的季度审视只是把这种偏好放大了亿万倍。这不是资本短视，是资本诚实地读了报表。</p>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>寻找 <b>overshoot 信号</b>：参数军备竞赛失灵、用户拒付新版溢价、「丐版」满意度追平旗舰、差评从「不够好」变成「太复杂」。</li>
+          <li>产品线毛利结构逐年上移、而用户满意度曲线走平 → 距离换轴竞争不远了。</li>
+          <li>评估挑战者时先问：它在<b>哪根轴</b>上进攻？旧轴上的挑战者只是更便宜的复制品，新轴上的才是颠覆候选人。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>别在主流轴上比参数，你是在给在位者喂它最擅长的仗。</li>
+          <li>overshoot 的瞬间就是换轴的窗口：<b>用户「用不完」的地方，就是「刚刚好」的入场点。</b></li>
+          <li>你的 V1 在主流轴上「更差」不是 bug——把它写进 pitch：更差的那一轴，恰是你在位者跟不进来的方向。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 逻辑 2 ────────── -->
+    <div class="qbox rv" id="l2" style="margin-top:56px">
+      <div class="qk">逻辑二 · Value Network</div>
+      <h3>一个技术上完全可行的项目，<br>为什么会在一家公司里永远拿不到资源？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>回到开场的销售总监。他的选择不是性格问题，也不是格局问题——把他放到任何一家运转良好的公司里，结果都一样。因为在他做出选择之前，公司已经替他装好了一整套<b>给机会打分的系统</b>。</p>
+      <p>Christensen 把这套系统叫做<b>价值网络（Value Network）</b>。注意：它不是「产业链」。产业链描述企业和上下游的关系；价值网络回答的是一个更尖锐的问题——<b>一家公司的客户、价格、成本、渠道、利润率和内部评价体系，如何共同定义了什么是「值得做的机会」。</b></p>
+      <p>原书的经典场景：Seagate——5.25 英寸硬盘的霸主——1985 年就在实验室里造出了 3.5 英寸原型。技术没有障碍，人才没有障碍。但它的主力客户是台式 PC 厂商，那些客户要的是<b>更大容量、更低每 MB 成本</b>，3.5 英寸两者都更差。客户不要 → 销售不推 → 财务测算显示毛利率低于公司均值、市场规模撑不起增长目标 → 项目在内部评审中死亡。整个过程没有任何人犯错。几年后，Seagate 的联合创始人 Finis Conner 出走创办 Conner Peripherals，专做 3.5 英寸——公司迅速成长为行业巨擘。<b>同一个机会，在旧价值网络里是毒药，在新的价值网络里是火箭。</b></p>
+    </div>
+
+    <div class="figure rv">
+      <div class="fig-head">
+        <span class="fig-no">图 2</span>
+        <h4>价值网络：嵌套的轨道与毛利率阶梯</h4>
+        <span class="fig-src">【原书逻辑】Ch.2 嵌套结构重构 · 毛利率方向为原书逻辑，不虚构数值</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 500" role="img" aria-label="嵌套价值网络与毛利率阶梯">
+          <text x="260" y="30" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="700" fill="#4A463F" letter-spacing="2">嵌套的价值网络</text>
+          <!-- 嵌套椭圆 -->
+          <ellipse cx="260" cy="255" rx="225" ry="195" fill="none" stroke="#1C1A17" stroke-width="1.8"/>
+          <ellipse cx="300" cy="275" rx="152" ry="128" fill="#E3EAF6" opacity=".5" stroke="#3B62B0" stroke-width="1.6"/>
+          <ellipse cx="335" cy="298" rx="95" ry="76" fill="none" stroke="#3B62B0" stroke-width="1.6"/>
+          <ellipse cx="360" cy="318" rx="52" ry="40" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.8"/>
+          <text x="180" y="100" font-family="Newsreader,Noto Serif SC,serif" font-size="14.5" font-weight="700" fill="#1C1A17">大型机网络 · 14″</text>
+          <text x="180" y="120" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">容量至上 · 最高毛利</text>
+          <text x="392" y="205" font-family="Newsreader,Noto Serif SC,serif" font-size="14" font-weight="700" fill="#3B62B0">小型机 · 8″</text>
+          <text x="438" y="286" font-family="Newsreader,Noto Serif SC,serif" font-size="13.5" font-weight="700" fill="#3B62B0">台式 PC · 5.25″</text>
+          <text x="360" y="314" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="12.5" font-weight="700" fill="#A8502A">便携 · 3.5″</text>
+          <text x="360" y="332" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="9.5" fill="#A8502A">新市场</text>
+          <text x="260" y="478" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">每一层都有自己的客户、价格点、成本结构、渠道与评价体系</text>
+
+          <!-- 右侧毛利率阶梯 -->
+          <text x="740" y="30" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="700" fill="#4A463F" letter-spacing="2">毛利率阶梯（相对）</text>
+          <line x1="560" y1="430" x2="560" y2="70" stroke="#1C1A17" stroke-width="2"/>
+          <g>
+            <rect x="580" y="90"  width="90" height="60"  fill="#1C1A17"/>
+            <rect x="670" y="160" width="90" height="80"  fill="#3B62B0" opacity=".85"/>
+            <rect x="760" y="240" width="90" height="100" fill="#3B62B0" opacity=".55"/>
+            <rect x="850" y="320" width="90" height="120" fill="#A8502A" opacity=".8"/>
+          </g>
+          <text x="625" y="125" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" font-weight="700" fill="#FBFAF8">14″</text>
+          <text x="715" y="205" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" font-weight="700" fill="#FBFAF8">8″</text>
+          <text x="805" y="295" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" font-weight="700" fill="#1C1A17">5.25″</text>
+          <text x="895" y="385" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" font-weight="700" fill="#FBFAF8">3.5″</text>
+          <text x="546" y="70" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">毛利 ↑</text>
+          <text x="740" y="462" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">越新的网络，毛利率越低——组织被拉向左上，新进入者从右下进场</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>阶梯的杀人力</b>：对一家把公司平均毛利率写进预算纪律的企业，进入右下角意味着<b>主动把公司毛利拉低</b>——任何一个 CFO 都会否决。于是毛利率阶梯变成了单向阀：资源只往左上流，新网络永远贫血。具体毛利率数值随时期波动，方向与层级关系为原书逻辑。</div>
+    </div>
+
+    <div class="figure rv">
+      <div class="fig-head">
+        <span class="fig-no">图 3</span>
+        <h4>资源分配系统：一个项目要活着穿过几道关卡</h4>
+        <span class="fig-src">【原书逻辑】Ch.2 资源分配机制重构</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 400" role="img" aria-label="项目穿过资源分配流程的多道关卡，B项目死于财务测算">
+          <defs>
+            <marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1C1A17"/></marker>
+          </defs>
+          <!-- 关卡 -->
+          <g font-family="Inter,PingFang SC,sans-serif" font-size="12" font-weight="600">
+            <rect x="30"  y="60" width="120" height="52" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="90"  y="91" text-anchor="middle" fill="#1C1A17">客户需求</text>
+            <rect x="170" y="60" width="120" height="52" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="230" y="91" text-anchor="middle" fill="#1C1A17">销售反馈</text>
+            <rect x="310" y="60" width="120" height="52" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="370" y="91" text-anchor="middle" fill="#1C1A17">财务测算</text>
+            <rect x="450" y="60" width="120" height="52" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="510" y="91" text-anchor="middle" fill="#1C1A17">市场规模</text>
+            <rect x="590" y="60" width="120" height="52" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="650" y="91" text-anchor="middle" fill="#1C1A17">毛利率门槛</text>
+            <rect x="730" y="60" width="120" height="52" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="790" y="91" text-anchor="middle" fill="#1C1A17">管理层审批</text>
+            <rect x="870" y="60" width="106" height="52" rx="9" fill="#1C1A17"/><text x="923" y="91" text-anchor="middle" fill="#FBFAF8">研发资源</text>
+          </g>
+          <g stroke="#1C1A17" stroke-width="1.8">
+            <line x1="150" y1="86" x2="166" y2="86" marker-end="url(#a3)"/>
+            <line x1="290" y1="86" x2="306" y2="86" marker-end="url(#a3)"/>
+            <line x1="430" y1="86" x2="446" y2="86" marker-end="url(#a3)"/>
+            <line x1="570" y1="86" x2="586" y2="86" marker-end="url(#a3)"/>
+            <line x1="710" y1="86" x2="726" y2="86" marker-end="url(#a3)"/>
+            <line x1="850" y1="86" x2="866" y2="86" marker-end="url(#a3)"/>
+          </g>
+          <!-- A 项目通道 -->
+          <text x="30" y="185" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="700" fill="#2F6B4F">A · 服务现有客户的项目</text>
+          <path d="M 90 205 H 923" stroke="#2F6B4F" stroke-width="2.4" fill="none"/>
+          <g fill="#2F6B4F">
+            <circle cx="90" cy="205" r="5"/><circle cx="230" cy="205" r="5"/><circle cx="370" cy="205" r="5"/><circle cx="510" cy="205" r="5"/><circle cx="650" cy="205" r="5"/><circle cx="790" cy="205" r="5"/><circle cx="923" cy="205" r="5"/>
+          </g>
+          <text x="940" y="210" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#2F6B4F" font-weight="600">→ 优先级 1</text>
+          <text x="230" y="238" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">「客户催着要」</text>
+          <text x="650" y="238" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">「毛利率高于公司均值」</text>
+          <!-- B 项目通道 -->
+          <text x="30" y="300" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="700" fill="#A8502A">B · 可能代表未来的项目</text>
+          <path d="M 90 320 H 330" stroke="#A8502A" stroke-width="2.4" fill="none"/>
+          <g fill="#A8502A">
+            <circle cx="90" cy="320" r="5"/><circle cx="230" cy="320" r="5"/>
+          </g>
+          <g>
+            <circle cx="352" cy="320" r="13" fill="none" stroke="#A8502A" stroke-width="2.4"/>
+            <line x1="343" y1="311" x2="361" y2="329" stroke="#A8502A" stroke-width="2.4"/>
+            <line x1="361" y1="311" x2="343" y2="329" stroke="#A8502A" stroke-width="2.4"/>
+          </g>
+          <text x="230" y="353" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">「主力客户说不需要」</text>
+          <text x="430" y="345" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#A8502A">死于第三关：市场规模撑不起增长目标 · 毛利率拉低公司均值 · 客户名单是空的</text>
+          <text x="30" y="388" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F" font-weight="600">原书结论：资源分配系统被设计出来，就是为了筛掉客户不想要的产品——它工作得越好，未来死得越快。</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>这就是 Value Network 和资源分配机制</b>：一个技术明明存在，却可能永远拿不到资源——不是被否决一次，而是<b>被这套系统日复一日地、在每一道关卡上安静地筛掉</b>。没有任何会议记录写着「我们决定放弃未来」。</div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>毛利率结构是「轨道锁定」的指纹：读分部财报，画出利润池地图，就知道这家公司不可能进攻哪里。</li>
+          <li>客户集中度 = 绑架深度：前五大客户占收入比例高的公司，战略自主性是幻觉。</li>
+          <li>新业务若与主业毛利率差超过一档，默认它会死于图 3 的第三关——除非被放在独立组织里（见逻辑七）。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>专找「大公司评分系统打低分」的机会：它被过滤的原因（毛利低、客户穷、市场小）恰好是它受保护的原因。</li>
+          <li>定价时主动留在巨头毛利率门槛之下——那是它的禁飞区，你的主场。</li>
+          <li>写进 BP 的一句话：巨头跟进我，需要先修改它的预算纪律。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 逻辑 3 ────────── -->
+    <div class="qbox rv" id="l3" style="margin-top:56px">
+      <div class="qk">逻辑三 · Resource Allocation Process</div>
+      <h3>为什么 CEO 说「我们一定重视 AI / 新业务」，<br>基本上没有意义？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>因为公司不是 CEO 一个人决定的。真实的资源分配，不发生在战略发布会上，而发生在每一天的毛细血管里：销售决定把哪个产品写进报价单，中层决定为哪个项目去抢预算，财务为哪个部门设定毛利率门槛，预算会上砍掉哪个「看不到回报」的提案。<b>成千上万个这样的小决定加总起来，才是这家公司真实的战略。</b></p>
+      <p>原书引述组织研究中的「资源依赖理论」进一步捅破窗户纸：与其说管理者配置资源，不如说<b>客户和资本在借管理者的手配置资源</b>。能在组织里活下来的项目，永远是现有资源提供者（客户、渠道、投资人）想要的项目。CEO 的意志敌不过这套系统——他也是被系统筛选出来的人。</p>
+      <p>所以判断一家公司是否真的在转向，不能听它说什么，要看<b>钱、人才和组织 KPI 有没有真的移动</b>。</p>
+    </div>
+
+    <div class="duo rv" data-lens="derive">
+      <div>
+        <div class="d-head d-mouth">🎙 嘴上战略（发布会 / 年报 / 通气会）</div>
+        <ul>
+          <li>「我们将 all in 新一代技术」</li>
+          <li>「客户成功是我们唯一的 North Star」</li>
+          <li>「我们设立了 X 创新事业部，直接向 CEO 汇报」</li>
+          <li>「人才是我们最重要的资产」</li>
+          <li>「我们坚持长期主义」</li>
+          <li>「内部赛马，让最好的产品胜出」</li>
+        </ul>
+      </div>
+      <div>
+        <div class="d-head d-real">⚙ 真实资源配置（可查证的事实）</div>
+        <ul>
+          <li><b>资本开支</b>与并购流向：仍 overwhelmingly 投在现有网络的产能与护城河上</li>
+          <li><b>销售提成结构</b>：指向毛利最高的老产品；新业务在提成表里是二等公民</li>
+          <li>新业务收入占比：<b>连续多年 &lt;1%</b>，且亏损容忍期一到就换帅</li>
+          <li>最顶尖的工程师在哪个事业部——升职最快的路线在哪里</li>
+          <li>季度 guidance 与<b>毛利率指引</b>：任何拉低毛利的业务都会被砍</li>
+          <li>赛道的起跑线：新业务背着旧网络的成本结构与 KPI 参赛</li>
+        </ul>
+      </div>
+    </div>
+    <p class="lens-note" style="max-width:none;padding:0 0 8px" data-lens="derive">「嘴上战略 vs 真实配置」对照框架为【我们的推导】，右侧每一行的观察方法来自原书逻辑：资源配置的真相藏在客户结构与财务纪律里。</p>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>五项硬核查：资本开支流向 / 并购标的 / 销售提成与定价表 / 顶尖人才去向 / 新业务放在哪个组织、背什么 KPI。</li>
+          <li>「战略转型」公告后<b>连续四个季度</b>没有真实资源移动 → 判定为 PPT 转型，估值不给修复。</li>
+          <li>反向用法：incumbent 的 PPT 转型期 = 新进入者的黄金窗口期。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>巨头的发布会是噪音，它的预算表才是真话。从它资源真正转向那天起算，你大约还有两三年窗口。</li>
+          <li>评估「巨头会不会抄我」时，别问它的实验室能不能做，问它的<b>提成表和毛利率门槛</b>让不让卖。</li>
+          <li>盯人事信号：负责新业务的高管连续离职 = 内部正在绞杀它。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 逻辑 4 ────────── -->
+    <div class="qbox rv" id="l4" style="margin-top:56px">
+      <div class="qk">逻辑四 · What Goes Up Can't Come Down</div>
+      <h3>巨头主动让出低端市场，<br>为什么在当时甚至是一个「正确决定」？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>把镜头切到 1980 年代的美国钢铁业。综合钢厂（高炉—转炉—连铸的巨型体系）做出一个决定：退出螺纹钢（建筑钢筋）市场。理由无懈可击——螺纹钢是质量要求最低、利润率最薄、客户最刁钻的品类，每退出一吨，公司平均毛利率就好看一分。华尔街鼓掌，管理层加薪，<b>退出低端在当时是教科书级的资本配置。</b></p>
+      <p>接盘的是一群用废钢 + 电弧炉的「小钢厂」（minimill）。它们当时的困境是：只能炼出最低档的钢——正好就是螺纹钢。<b>双方都觉得自己赢了。</b></p>
+      <p>之后的二十年，minimill 沿着质量阶梯一路向上：螺纹钢 → 角钢棒材 → 结构钢 → 汽车板材。等到综合钢厂反应过来时，它当年「理性让出」的低端，已经变成了敌人进攻的滩头阵地。<b>每一步都正确的决策，连成了一条通向悬崖的路。</b>（完整战役见案例三。）</p>
+      <p>这个方向性的力量，原书第四章的标题说得最狠：<b>What Goes Up Can't Come Down——上得去的，下不来。</b></p>
+    </div>
+
+    <div class="mech rv" data-lens="book">
+      <div class="m-head"><span>机制 · Northeast Pull（东北拉力）</span><span>Ch.4 · 「东北拉力」为本刊对该机制的简称</span></div>
+      <div class="m-body">
+        <p>组织的每个单元都感受到一股指向「东北方向」的拉力：<b>更大的客户 → 更高的价格 → 更高的毛利 → 更好的 ROI</b>。销售想去谈大单，事业部想冲高毛利，CEO 想让收入结构更漂亮——没有人越权，没有人犯错。</p>
+        <p>而「向下走」承受的是三重即时惩罚：<b>市场更小</b>（撑不起增长目标）、<b>毛利更低</b>（拉低公司均值，触发财务红线）、<b>客户更不成熟</b>（销售成本高、投诉多、故事难讲）。三重惩罚都是当季兑现的，而下行的收益（守住未来）要五年后才可能兑现。理性组织必然持续上行。</p>
+        <p>于是低端不是被「打败」的，是被<b>礼貌地、逐季度地</b>让出来的——每让出一步，财报都更好看一分。这正是创业者要找的位置：<b>巨头的退却有多理性，你的根据地就有多安全。</b></p>
+      </div>
+    </div>
+
+    <div class="figure rv">
+      <div class="fig-head">
+        <span class="fig-no">图 4</span>
+        <h4>Northeast Pull：一股没人违抗的重力</h4>
+        <span class="fig-src">【原书逻辑】Ch.4 示意重构</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 470" role="img" aria-label="组织被持续拉向高毛利高端市场，低端被理性让出">
+          <defs>
+            <marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1C1A17"/></marker>
+            <marker id="a4r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A8502A"/></marker>
+          </defs>
+          <!-- 阶梯 -->
+          <g>
+            <rect x="90"  y="330" width="180" height="80"  fill="#F6E9E1" stroke="#A8502A" stroke-width="1.6"/>
+            <rect x="270" y="240" width="180" height="170" fill="#F1E3D6" stroke="#A8502A" stroke-width="1.2"/>
+            <rect x="450" y="150" width="180" height="260" fill="#EAD9C6" stroke="#A8502A" stroke-width="1.2"/>
+            <rect x="630" y="60"  width="180" height="350" fill="#E3CFB5" stroke="#A8502A" stroke-width="1.2"/>
+          </g>
+          <g font-family="Newsreader,Noto Serif SC,serif" font-weight="900" text-anchor="middle">
+            <text x="180" y="362" font-size="16" fill="#7A3A1D">低 端</text>
+            <text x="360" y="272" font-size="16" fill="#7A3A1D">中 端</text>
+            <text x="540" y="182" font-size="16" fill="#7A3A1D" paint-order="stroke" stroke="#FBFAF8" stroke-width="4" stroke-linejoin="round">高 端</text>
+            <text x="720" y="92"  font-size="16" fill="#7A3A1D">塔 尖</text>
+          </g>
+          <g font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#4A463F" text-anchor="middle">
+            <text x="180" y="384">螺纹钢 / 3.5″ / 住宅挖机</text>
+            <text x="360" y="294" paint-order="stroke" stroke="#FBFAF8" stroke-width="4" stroke-linejoin="round">角钢 / 便携 PC / 小工程</text>
+            <text x="540" y="204" paint-order="stroke" stroke="#FBFAF8" stroke-width="4" stroke-linejoin="round">结构钢 / 台式 PC / 市政</text>
+            <text x="720" y="114">板材 / 大型机 / 矿山</text>
+          </g>
+          <!-- 东北拉力大箭头 -->
+          <line x1="360" y1="330" x2="640" y2="120" stroke="#1C1A17" stroke-width="3" marker-end="url(#a4)"/>
+          <text x="470" y="188" font-family="Inter,PingFang SC,sans-serif" font-size="13" font-weight="700" fill="#1C1A17" transform="rotate(-30 470 188)" paint-order="stroke" stroke="#FBFAF8" stroke-width="5" stroke-linejoin="round">每个季度都在拉：更大客户 · 更高价格 · 更高毛利</text>
+          <!-- 三重上行标注 -->
+          <text x="848" y="200" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">毛利率 ↑</text>
+          <text x="848" y="222" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">客户价值 ↑</text>
+          <text x="848" y="244" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">组织资源 ↑</text>
+          <!-- 逆行箭头 -->
+          <line x1="230" y1="240" x2="130" y2="310" stroke="#8A8478" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a4r)"/>
+          <g>
+            <line x1="196" y1="252" x2="208" y2="264" stroke="#A8502A" stroke-width="2.4"/>
+            <line x1="208" y1="252" x2="196" y2="264" stroke="#A8502A" stroke-width="2.4"/>
+          </g>
+          <text x="150" y="212" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#A8502A" font-weight="700">主动下行？</text>
+          <text x="150" y="230" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">市场更小 · 毛利更低 · 客户更不熟</text>
+          <!-- 底部结论 -->
+          <text x="500" y="446" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="600" fill="#4A463F">让出低端的每一年，财报都更好看——这正是巨头退却「完全理性」的原因，也是它永不回头的原因</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>创业者进入的位置</b>：右下角那块被涂成锈色的滩头。注意它安全的原因不是巨头看不见你，而是<b>巨头下来打你，先要击穿自己的毛利率纪律</b>——它做不到，直到你的性能曲线爬到它的主场（那时你也已经有了成本结构优势）。</div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>龙头产品组合与毛利结构逐年上移 = 低端真空在扩大；把「退出低端」的新闻按时间排成序列，就是进攻者的路线图。</li>
+          <li>警惕「塔尖化」晚期信号：收入涨、客户数跌、单客价值暴涨——那是只剩塔尖的形状。</li>
+          <li>持有 incumbent 的安全边际，来自估算「低端真空向上传导的速度」。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>把「巨头不会回头」写进护城河论证：它退出的三重理由（小、薄、难伺候），正是你毛利结构的防护罩。</li>
+          <li>选入口时问：这块低端<b>向上连通哪里</b>？不向上的低端是死胡同，向上的低端是楼梯（见图 9 minimill 之旅）。</li>
+          <li>定价永远留在巨头的毛利率门槛之下，让跟进 = 自我伤害。</li>
+        </ul>
+      </div>
+    </div>
+    <!-- ────────── 逻辑 5 ────────── -->
+    <div class="qbox rv" id="l5" style="margin-top:56px">
+      <div class="qk">逻辑五 · Small Markets Don't Solve the Growth Needs of Large Companies</div>
+      <h3>「这个市场太小了」——<br>为什么这句话对巨头是数学事实，对你只是错觉？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>做一个思想实验。一家收入 1000 亿的公司，为了满足增长 10% 的目标，今年需要新增 <b>100 亿</b>收入。这时有一个刚冒头的新市场，做到顶大约年收入 <b>2 亿</b>。</p>
+      <p>对这家公司，这个机会意味着什么？即便拿下 100% 的市场份额，对整体增长的贡献也只有 0.2 个百分点——<b>连增长目标的零头都覆盖不了</b>，而开拓它需要的组织精力、管理层注意力、财报阵痛却一样不少。所以在它内部的任何评审会上，这个项目的结论都只能是：「等市场大了再看。」</p>
+      <p>但同样一个 2 亿的市场，对一家收入 5000 万的创业公司意味着什么？<b>是收入的 4 倍，足以彻底改变这家公司的命运。</b></p>
+      <p>机会没有变，变的是分母。原书第六章用整章论证这件事：<b>小市场永远解决不了大公司的增长需要</b>——所以颠覆式技术必须交给「小到会为小机会兴奋」的组织去商业化（见逻辑七与案例一的 Micropolis 反例）。这不是大公司的道德缺陷，是增长数学的必然。</p>
+    </div>
+
+    <div class="figure rv" data-lens="derive">
+      <div class="fig-head">
+        <span class="fig-no">图 5</span>
+        <h4>同一个机会，对大公司与小公司的两种意义</h4>
+        <span class="fig-src">【我们的推导】思想实验数字为示意 · 机制出自原书 Ch.6</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 470" role="img" aria-label="同一新增收入需求与新市场在不同体量公司面前的相对大小对比">
+          <text x="30" y="34" font-family="Inter,PingFang SC,sans-serif" font-size="13.5" font-weight="700" fill="#1C1A17">收入 1000 亿的公司 · 增长目标 +10%</text>
+          <text x="30" y="58" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">需要新增 +100 亿 / 年</text>
+          <rect x="30" y="72" width="620" height="34" rx="6" fill="#1C1A17"/>
+          <text x="662" y="95" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">需要的增量</text>
+          <rect x="30" y="118" width="12" height="26" rx="3" fill="#A8502A"/>
+          <text x="52" y="137" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#A8502A" font-weight="700">那个新市场：做到头 ≈ 2 亿</text>
+          <text x="290" y="137" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#8A8478">→ 100% 份额对增长目标的贡献 ≈ 0.2pp，任何评审会都会说「等市场大了再看」</text>
+
+          <line x1="30" y1="182" x2="960" y2="182" stroke="#E3DED4" stroke-width="1.5"/>
+
+          <text x="30" y="222" font-family="Inter,PingFang SC,sans-serif" font-size="13.5" font-weight="700" fill="#A8502A">收入 5000 万的创业公司</text>
+          <text x="30" y="246" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">同样的 2 亿新市场</text>
+          <rect x="30" y="260" width="62" height="34" rx="6" fill="#8A8478"/>
+          <text x="102" y="283" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">现有收入 5000 万</text>
+          <rect x="30" y="306" width="248" height="34" rx="6" fill="#A8502A"/>
+          <text x="288" y="329" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#A8502A" font-weight="700">同一市场 = 收入的 4 倍</text>
+          <text x="30" y="378" font-family="Inter,PingFang SC,sans-serif" font-size="13.5" font-weight="700" fill="#1C1A17">机会不是绝对大小，而是机会大小相对于组织大小。</text>
+          <text x="30" y="402" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" fill="#8A8478">「对巨头太小、对你够大」的夹缝带，就是创业公司天然的根据地——也是巨头永远无法认真防守的地方。</text>
+          <text x="30" y="440" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">注：1000亿 / 100亿 / 2亿 / 5000万 为思想实验示意数字（本刊推导口径）；「小市场喂不饱大公司」的机制为原书第六章核心论点。</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>资本市场的放大器</b>：增长目标不是管理层随意定的——它锚定着股价。越是机构重仓的蓝筹，越被锁死在「必须寻找大市场」的牢笼里。于是巨头的理性，替创业公司守住了童年的安全。</div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>听电话会里管理层谈新市场的<b>语气</b>：客气、铺垫很多、给不出数字 → 结构性无法认真。</li>
+          <li>大公司对新创业务的态度转折点，往往出现在新市场大到进入其增长射程（约当期收入的 1–2%）之后——在那之前，巨头不是竞争对手，是背景板。</li>
+          <li>用「相对大小」视角重估小市值公司：它持有的市场若等于巨头 1% 的增长缺口，迟早成为并购标的或独立赢家。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>把「对巨头太小」翻译成你的语言：「这块市场<b>买得起我全公司的未来</b>，却买不起巨头一个季度的增长。」</li>
+          <li>相对大小是你的安全垫：巨头进入所需的市场规模，就是你的免打扰年限。</li>
+          <li>别急着否定小市场——先问它五年后能不能<b>向上连通</b>（见图 9）。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 逻辑 6 ────────── -->
+    <div class="qbox rv" id="l6" style="margin-top:56px">
+      <div class="qk">逻辑六 · Emergent Markets Cannot Be Analysed Like Existing Markets</div>
+      <h3>为什么「等市场看清楚了再进入」的大公司策略，<br>永远等不到那一天？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>成熟市场的分析工具箱——市场规模测算、客户调研、价格测试、渠道规划——全部依赖一个隐含前提：<b>市场已经存在，客户已经存在，你只是在测量它。</b></p>
+      <p>颠覆式技术的新市场不满足这个前提。3.5 英寸硬盘最初的市场是「便携计算机」——那时便携计算机本身就是个不存在的品类，你调研谁去？液压挖掘机的初始市场是住宅承包商——他们从未拥有过挖机，无法回答「你愿意为液压挖机付多少钱」。原书第七章给出的结论很干脆：<b>关于新市场的所有数据都不存在，因为市场本身还不存在。</b></p>
+      <p>于是正确的方法反转了：不是「分析正确了再行动」，而是<b>低成本行动 → 得到真实信息 → 修改策略 → 再行动</b>。计划的功能从「执行蓝本」变成了「学习框架」——每一个假设都标记出来，用最快的动作去证伪。原书以此推演了电动车案例（完整拆解见案例五），并主张让新业务<b>尽早自负盈亏</b>：盈利压力是最诚实的市场发现机制，它会逼着组织去找出真实付费的场景，而不是在补贴幻觉里漂着。</p>
+    </div>
+
+    <div class="figure rv">
+      <div class="fig-head">
+        <span class="fig-no">图 6</span>
+        <h4>两种循环：执行型计划 vs 发现型计划</h4>
+        <span class="fig-src">【原书逻辑】Ch.7 重构 · 精益创业为现代映射</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 380" role="img" aria-label="成熟市场的调研预测计划执行循环对比新兴市场的行动学习修改循环">
+          <defs>
+            <marker id="a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1C1A17"/></marker>
+            <marker id="a6r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#A8502A"/></marker>
+          </defs>
+          <!-- 左：成熟市场 -->
+          <text x="250" y="36" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="13.5" font-weight="700" fill="#1C1A17">成熟市场：执行型循环</text>
+          <g font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="600">
+            <rect x="60" y="70" width="120" height="46" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="120" y="98" text-anchor="middle" fill="#1C1A17">客户调研</text>
+            <rect x="230" y="70" width="120" height="46" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="290" y="98" text-anchor="middle" fill="#1C1A17">市场预测</text>
+            <rect x="60" y="200" width="120" height="46" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="120" y="228" text-anchor="middle" fill="#1C1A17">按计划执行</text>
+            <rect x="230" y="200" width="120" height="46" rx="9" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/><text x="290" y="228" text-anchor="middle" fill="#1C1A17">规模化投放</text>
+          </g>
+          <g stroke="#1C1A17" stroke-width="1.8" fill="none">
+            <line x1="180" y1="93" x2="226" y2="93" marker-end="url(#a6)"/>
+            <path d="M 350 116 C 380 150 380 166 350 200" marker-end="url(#a6)"/>
+            <line x1="226" y1="223" x2="184" y2="223" marker-end="url(#a6)"/>
+            <path d="M 60 200 C 30 166 30 150 60 116" marker-end="url(#a6)"/>
+          </g>
+          <text x="250" y="300" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">前提：市场存在、客户存在、可测量</text>
+          <text x="250" y="322" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">这是大公司最擅长的循环——在旧市场里它近乎完美</text>
+
+          <!-- 分隔 -->
+          <line x1="500" y1="50" x2="500" y2="330" stroke="#E3DED4" stroke-width="1.5"/>
+
+          <!-- 右：新兴市场 -->
+          <text x="760" y="36" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="13.5" font-weight="700" fill="#A8502A">新市场：发现型循环</text>
+          <g font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="600">
+            <rect x="560" y="70" width="130" height="46" rx="9" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/><text x="625" y="98" text-anchor="middle" fill="#A8502A">小成本行动</text>
+            <rect x="740" y="70" width="130" height="46" rx="9" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/><text x="805" y="91" text-anchor="middle" fill="#A8502A">拿到真实信息</text><text x="805" y="107" text-anchor="middle" font-size="10" fill="#8A8478">付费·行为·流失</text>
+            <rect x="740" y="200" width="130" height="46" rx="9" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/><text x="805" y="228" text-anchor="middle" fill="#A8502A">修改策略</text>
+            <rect x="560" y="200" width="130" height="46" rx="9" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/><text x="625" y="221" text-anchor="middle" fill="#A8502A">再行动</text><text x="625" y="237" text-anchor="middle" font-size="10" fill="#8A8478">螺旋上升</text>
+          </g>
+          <g stroke="#A8502A" stroke-width="1.8" fill="none">
+            <line x1="690" y1="93" x2="736" y2="93" marker-end="url(#a6r)"/>
+            <path d="M 870 116 C 900 150 900 166 870 200" marker-end="url(#a6r)"/>
+            <line x1="736" y1="223" x2="694" y2="223" marker-end="url(#a6r)"/>
+            <path d="M 560 200 C 530 166 530 150 560 116" marker-end="url(#a6r)"/>
+          </g>
+          <text x="760" y="300" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">前提不存在——市场是行动创造出来的</text>
+          <text x="760" y="322" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">失败不是偏差，是数据；早死早转向</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>与现代创业方法的连接</b>【现代映射】：原书的「发现型循环」与后来精益创业运动的 MVP、快速迭代、付费验证、「生成式策略 vs 执行式策略」高度同构——精益创业一脉公开承认其思想源头之一正是 Christensen。原书早于该运动十余年。</div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>评估早期公司：TAM 幻灯片价值≈0；看<b>单位时间的学习量</b>——上季度最大的假设证伪了什么、这季度动作变了吗。</li>
+          <li>警惕「憋大招」式 launch：一次性巨额投放 + 无迭代记录 = 还在用执行型循环打发现型战场。</li>
+          <li>好信号：有真实的早期付费用户，且客单价/场景在一年内改过版。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>第一版商业计划的唯一功能是<b>被证伪</b>——把每条假设列出来，按「最可能错」排序，逐条用最小成本的动作去撞。</li>
+          <li>尽早收真钱：补贴换来的规模是幻觉，付费行为才是市场存在的唯一证据（原书：让新业务尽早自负盈亏）。</li>
+          <li>选实验的顺序：先验证「谁会付钱」，再验证「付多少」，最后才是「怎么规模化」。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 逻辑 7 ────────── -->
+    <div class="qbox rv" id="l7" style="margin-top:56px">
+      <div class="qk">逻辑七 · Capabilities and Disabilities（RPV）</div>
+      <h3>「Google / Microsoft / 大厂有钱有人有技术」，<br>为什么这句话不构成它对你的胜率？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>先看一个反常识的历史细节：硬盘行业每一次架构更替时，在位厂商<b>几乎都造出了新产品</b>——实验室里有原型，工程师有能力，专利也注册了。也就是说「技术能力」从头到尾都在。真正缺的东西，财务报表上看不见。</p>
+      <p>更硬的证据来自原书第五、八章：<b>同一家公司，把新技术放进不同组织，结果天差地别。</b>Control Data 在远离总部的俄克拉荷马城设独立单位做 8 英寸硬盘——成了；惠普把喷墨打印机放在温哥华的独立分部，与 Boise 的激光打印主力军分灶吃饭——喷墨活了下来并长成支柱。如果能力长在「人」或「技术」身上，这些差异不该存在。结论只能是：<b>能力长在组织里。</b></p>
+      <p>Christensen 把组织能力拆成三层（RPV）：<b>Resources（资源）</b>——钱、人才、技术、品牌、关系，看得见、可交易、可转移；<b>Processes（流程）</b>——产品开发怎么做、预算怎么批、人怎么招怎么升，是「我们做事的方法」，沉淀在惯例里，难转移；<b>Values（价值观）</b>——毛利率门槛、收入增长目标、品牌定位，是「什么值得做」的排序器，由最深处的商业模式决定，几乎不可转移。</p>
+      <p>关键的一句：<b>同一套 RPV，在原来的价值网络里是能力，跨进新网络就变成残疾。</b>让微软最赚钱那套流程与价值观，恰是它在搜索和移动时代最重的包袱；让大厂顺手收购一家初创容易，让收购来的团队按原来的方式运转——多数以团队离职告终。收购能买到 Resources，买不到后两层。</p>
+    </div>
+
+    <div class="figure rv">
+      <div class="fig-head">
+        <span class="fig-no">图 7</span>
+        <h4>RPV 三层模型：越往上层，越难复制</h4>
+        <span class="fig-src">【原书逻辑】Ch.8 重构</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 430" role="img" aria-label="资源流程价值观三层堆叠，可复制性递减">
+          <!-- Values 顶层 -->
+          <rect x="300" y="60" width="400" height="96" rx="12" fill="#A8502A"/>
+          <text x="500" y="103" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="20" font-weight="900" fill="#FBFAF8">Values · 价值观</text>
+          <text x="500" y="130" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#F6E9E1">什么值得做：毛利率门槛 · 增长目标 · 品牌定位</text>
+          <!-- Processes 中层 -->
+          <rect x="190" y="170" width="620" height="96" rx="12" fill="#3B62B0"/>
+          <text x="500" y="213" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="20" font-weight="900" fill="#FBFAF8">Processes · 流程</text>
+          <text x="500" y="240" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#E3EAF6">我们怎么做事：研发 · 预算 · 招聘 · 晋升 · 评审的惯例</text>
+          <!-- Resources 底层 -->
+          <rect x="80" y="280" width="840" height="96" rx="12" fill="#1C1A17"/>
+          <text x="500" y="323" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="20" font-weight="900" fill="#FBFAF8">Resources · 资源</text>
+          <text x="500" y="350" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#B9B2A4">钱 · 人才 · 技术 · 品牌 · 客户关系——可见、可交易、可转移</text>
+          <!-- 右侧刻度 -->
+          <g font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">
+            <text x="976" y="108" text-anchor="end">最难复制</text>
+            <text x="976" y="126" text-anchor="end" fill="#8A8478">长在商业模式里</text>
+            <text x="976" y="218" text-anchor="end">难转移</text>
+            <text x="976" y="236" text-anchor="end" fill="#8A8478">长在惯例里</text>
+            <text x="976" y="328" text-anchor="end">可购买</text>
+            <text x="976" y="346" text-anchor="end" fill="#8A8478">收购即得</text>
+          </g>
+          <text x="500" y="412" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="13" font-weight="600" fill="#1C1A17">大公司进新市场，能带来的只有最底层；而决定胜负的往往是最上面两层。</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>为什么换人不解决</b>：原书第八章的论断——组织的能力独立于任何个人。把顶尖人才放进旧流程与旧价值观里，产出仍由后两层决定。这就是为什么「大厂有钱有人」不构成胜率：<b>钱和人只是 Resources，它们要先穿过 Processes 的漏斗、再通过 Values 的投票，才能变成产品。</b></div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>大厂入场新闻的三连问：<b>放在哪个组织？背什么 KPI？谁负责（他的级别与汇报线）？</b>——三个答案比发布会内容重要十倍。</li>
+          <li>预测并购成败：标的需要母公司的 Resources，还是需要摆脱母公司的 Processes/Values？后者高危。</li>
+          <li>「独立分部 + 独立损益 + 独立销售体系」是 incumbent 自救的最小信号；仍共用销售与毛利纪律 = 换汤不换药。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>巨头复制你的总成本 = 研发费 + <b>自毁流程与价值观的组织成本</b>。后者不会出现在它的 press release 里，但会出现在它的季度利润表里。</li>
+          <li>你的护城河可以主动设计成「让它的 Values 替你守门」——凡巨头做了就伤害自身毛利率/客单价/渠道的生意，它越优秀越进不来。</li>
+          <li>反过来警惕自己：公司规模化后，你的 Processes/Values 也在变成下一代颠覆者的墙。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 七逻辑速查表 -->
+    <div class="tbl-scroll rv" style="margin-top:48px">
+      <table class="tbl">
+        <thead><tr><th style="width:15%">逻辑</th><th style="width:33%">一句话</th><th style="width:26%">投资之眼</th><th style="width:26%">创业之刃</th></tr></thead>
+        <tbody>
+          <tr><td class="c-law">① Sustaining vs Disruptive</td><td>incumbent 输的从来不是技术竞赛，是换轴竞赛。</td><td>找 overshoot 信号：参数内卷失灵、丐版够用。</td><td>换一根轴进场，让「更差」变「更合适」。</td></tr>
+          <tr><td class="c-law">② Value Network</td><td>价值网络是一套给机会打分的系统，分数决定生死。</td><td>毛利率结构 + 客户集中度 = 轨道锁定指纹。</td><td>专找评分系统打低分的机会。</td></tr>
+          <tr><td class="c-law">③ Resource Allocation</td><td>真正的战略是每天成千上万次资源小决定的总和。</td><td>五查：资本开支/并购/提成/人才/组织归属。</td><td>预算表才是巨头的真话；发布会是噪音。</td></tr>
+          <tr><td class="c-law">④ Northeast Pull</td><td>上得去，下不来——低端是被理性让出的。</td><td>毛利结构逐年上移 = 低端真空在扩大。</td><td>入口选「向上的低端」，不是死胡同低端。</td></tr>
+          <tr><td class="c-law">⑤ Small vs Large</td><td>机会的大小是相对的，分母是组织体量。</td><td>电话会里对新市场的客气 = 结构性无法认真。</td><td>「买得起你的未来，买不起巨头一个季度」。</td></tr>
+          <tr><td class="c-law">⑥ Emergent Markets</td><td>不存在的市场无法分析，只能被行动创造。</td><td>看学习速率，不看 TAM 幻灯片。</td><td>第一版计划的功能是被证伪；尽早收真钱。</td></tr>
+          <tr><td class="c-law">⑦ RPV</td><td>能力长在组织里；同一 RPV 换网络即残疾。</td><td>三连问：哪个组织/什么 KPI/谁负责。</td><td>让巨头的 Values 替你守门。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<!-- ══════════ Level 4 · 五案例 ══════════ -->
+<section class="section sec-case" id="cases">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 4</span>
+      <h2>五个案例：机制穿上西装</h2>
+      <span class="en">Five Cases</span>
+    </div>
+    <p class="sec-lede">逻辑离开案例就是空转。<strong>前三个（硬盘、挖掘机、钢铁）是原书的核心证据链——同一套机制在三个毫无相似之处的行业里精确复现；零售是原书中的支撑性简例；电动车是作者亲自演示「怎么办」的管理推演。</strong>每个案例都回答同一组问题：新市场从哪里长出来、在位者当时的决策为什么完全正确、以及结局为什么仍然是被颠覆。</p>
+
+    <!-- ────────── 案例一 · 硬盘 ────────── -->
+    <div class="qbox rv">
+      <div class="qk">案例一 · 硬盘驱动器（原书主案例 · Ch.1–2）</div>
+      <h3>为什么 14 英寸的霸主们<br>没有任何一家守住 8 英寸？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>硬盘业是全书的主战场，因为它像一台高速摄影机：1976 到 1995 年间，行业经历了 14″ → 8″ → 5.25″ → 3.5″ → 2.5″ 及以下五代架构更替，每一代都完整重演一遍「在位者死亡、新进入者崛起」。正常行业一百年发生一次的事，这里二十年发生了五次。</p>
+      <p>下面这个推进器把一代完整的更替拆成六幕。<strong>每一幕单看都是常识，连起来你会看见那台机器。</strong></p>
+    </div>
+
+    <div class="stepper rv" id="hdd-stepper" data-lens="book">
+      <div class="step-tabs" role="tablist">
+        <button class="on" data-step="0"><b>第一幕</b>14″ 的王座</button>
+        <button data-step="1"><b>第二幕</b>8″ 出现</button>
+        <button data-step="2"><b>第三幕</b>「能做」从来不是问题</button>
+        <button data-step="3"><b>第四幕</b>为什么不愿投入</button>
+        <button data-step="4"><b>第五幕</b>新进入者服务谁</button>
+        <button data-step="5"><b>第六幕</b>向上反攻</button>
+      </div>
+
+      <div class="step-panel on">
+        <h4><span>第一幕</span>大型机时代：性能的定义权</h4>
+        <p>1970 年代中期的硬盘业为大型计算机服务。客户（IBM、Control Data 们的大型机事业部与政府、大企业）唯一在乎的指标是<b>容量与速度</b>——硬盘要装进机柜、接进机房，14 英寸盘径天经地义。这个网络的毛利率高、客户集中、需求清晰。</p>
+        <p>14″ 时代的领导者：IBM、Control Data、Memorex、Univac 等一批大型机世界的名字。它们定义了什么叫「性能」。</p>
+        <div class="sp-key"><b>机制在此</b>：性能的定义权属于价值网络——谁付钱，谁定义什么叫好。这一幕埋下的前提，将在第四幕变成绞索。</div>
+        <button class="step-next">下一幕 →</button>
+      </div>
+
+      <div class="step-panel">
+        <h4><span>第二幕</span>8″ 出现：老客户集体摇头</h4>
+        <p>70 年代末，8 英寸硬盘出现。容量小、每 MB 成本高——<b>按大型机客户的评分表，它全面落后。</b>销售拿去问老客户，回答整齐划一：「不需要。」</p>
+        <p>但另一群客户出现了：<b>小型计算机厂商</b>（DEC、Wang、Prime、Data General 一代）。他们的机器小、便宜、要装进办公室而不是机房——8″ 的小体积、低功耗对他们不是缺陷，是<b>入场券</b>。这是一个尚不存在、无法调研的市场。</p>
+        <div class="sp-key"><b>机制在此</b>：颠覆式产品的首批客户，永远是「过去无法消费这类产品的人」——不是被抢来的，是被创造出来的。</div>
+        <button class="step-next">下一幕 →</button>
+      </div>
+
+      <div class="step-panel">
+        <h4><span>第三幕</span>「造得出」从来不是问题</h4>
+        <p>最反常识的一幕：几乎每一代更替中，在位厂商<b>都拿出了可工作的原型</b>。人才在、技术在、实验室在。硬盘业两代真正的核心技术跨越（薄膜磁头、磁阻磁头）甚至都是在位厂商率先量产的。</p>
+        <p>最锋利的例子：Seagate——5.25 英寸时代的霸主——<b>1985 年就在内部造出了 3.5 英寸原型</b>。技术没有任何障碍。</p>
+        <div class="sp-key"><b>机制在此</b>：杀死在位者的从来不是技术差距，而是原型的下一站——立项、量产、销售。从「造得出」到「愿意押上组织去卖」，中间隔着一整套资源分配系统。</div>
+        <button class="step-next">下一幕 →</button>
+      </div>
+
+      <div class="step-panel">
+        <h4><span>第四幕</span>为什么不愿投入：一套无懈可击的推理</h4>
+        <p>把 Seagate 1985 年的处境代入它的决策系统：主力客户是台式 PC 厂商，他们要更大容量、更低每 MB 成本；3.5″ 两者都更差；便携计算是一个<b>尚不存在的品类</b>，市场测算无从做起；预期毛利率低于公司均值；市场规模撑不起增长目标。</p>
+        <p>结论：搁置（Seagate 的 3.5″ 原型正走上这条路；几年后它靠追赶才进入该市场）。注意——<b>这个结论在 1985 年的会议室里是正确的。</b>每一条判断都有数据支持，每一位参与者都称职。这正是逻辑三（资源分配系统）与逻辑二（价值网络）咬合的瞬间。</p>
+        <div class="sp-key"><b>机制在此</b>：原型不是被否决一次，而是被这套系统日复一日地在每道关卡上安静筛掉。没有会议记录写着「我们决定放弃未来」。</div>
+        <button class="step-next">下一幕 →</button>
+      </div>
+
+      <div class="step-panel">
+        <h4><span>第五幕</span>新进入者最初服务谁</h4>
+        <p>每一代的第一批客户，都是上一代网络的<b>局外人</b>：8″ → 小型机厂商（Shugart Associates、Micropolis、Priam、Quantum 等新名字由此崛起）；5.25″ → 台式 PC 厂商（Seagate 由 Shugart 与 Conner 创立，成为这一代霸主）；3.5″ → 便携计算机厂商（Rodime 率先，Conner Peripherals——Seagate 联合创始人 Finis Conner 出走所创——借 Compaq 的订单起飞）。</p>
+        <p>注意这个不断重复的细节：<b>征服者往往是上一代王者的校友、下属、出走者。</b>他们不是更聪明，只是换了一张评分表——新客户的评分表。</p>
+        <div class="sp-key"><b>机制在此</b>：新价值网络不需要说服，它本来就在等一个「够用」的产品。新进入者的优势不是技术，是它没有被旧网络锁定的自由。</div>
+        <button class="step-next">下一幕 →</button>
+      </div>
+
+      <div class="step-panel">
+        <h4><span>第六幕</span>性能爬升，向上反攻主流</h4>
+        <p>接下来是逻辑一的曲线兑现：新架构的进步斜率更陡，几年内容量追上主流需求——然后越过它。8″ 攻入大型机市场，5.25″ 攻入小型机，3.5″ 攻入台式 PC。当旧网络的主流客户转向新架构时，旧霸主即便随后跟进（多数都跟了），也再没能夺回王座。</p>
+        <p>唯一的例外证明了规则：Micropolis——8″ 时代的独立厂商——是唯一成功活进 3.5″ 时代的旧一代厂商。它的做法不是「转型」，而是<b>在旧业务还赚钱时就另建组织、另立流程去养新业务</b>——原书第五章用整整一章分析「把新业务交给小到会挨饿的组织」。代价惨重，但活了下来。</p>
+        <div class="sp-key"><b>机制在此</b>：代际更替不是一次事件，是一台每四五年重演一次的机器。活下来的钥匙不在技术，在组织。</div>
+        <button class="step-next">回到第一幕 ⟲</button>
+      </div>
+    </div>
+
+    <div class="tbl-scroll rv" data-lens="book">
+      <table class="tbl">
+        <thead><tr><th>代际</th><th>约进入市场</th><th>首批客户（新网络）</th><th>在位者反应</th><th>这一代的赢家</th><th>对当时在位者的意义</th></tr></thead>
+        <tbody>
+          <tr><td class="c-case">14″</td><td>1960s–70s</td><td>大型计算机</td><td>—（定义者）</td><td>IBM、Control Data、Memorex 等</td><td>王座本身</td></tr>
+          <tr><td class="c-case">8″</td><td>约 1979–80</td><td>小型计算机厂商</td><td>客户说不要；小市场不值得立项</td><td>Shugart、Micropolis、Priam、Quantum 等新进入者</td><td>「容量小、成本高的小玩具」——14″ 霸主无一守住</td></tr>
+          <tr><td class="c-case">5.25″</td><td>约 1980–82</td><td>台式 PC 厂商</td><td>再次视为低端小市场</td><td>Seagate、Miniscribe、Tandon 等</td><td>8″ 的胜利者们重演上一代的故事</td></tr>
+          <tr><td class="c-case">3.5″</td><td>约 1984–87</td><td>便携计算机厂商</td><td>原型在手（Seagate 1985）却搁置</td><td>Rodime、Conner、Quantum 等</td><td>5.25″ 霸主 Seagate 的原型躺了两年，靠追赶进场</td></tr>
+          <tr><td class="c-case">2.5″/1.8″</td><td>约 1988–92</td><td>笔记本 / 更小设备</td><td>同一台机器第三次开动</td><td>又一轮新名字</td><td>3.5″ 的胜利者多数没能到场</td></tr>
+        </tbody>
+      </table>
+      <p class="lens-note" style="font-family:var(--sans);font-size:11px;color:var(--ink-faint);margin:6px 0 0">代际时间为约数；公司名录按原书叙述整理，个别公司跨越多代，此处只标注其代表性一代。</p>
+    </div>
+
+    <div class="figure rv" data-lens="book">
+      <div class="fig-head">
+        <span class="fig-no">图 8</span>
+        <h4>硬盘产业时间轴：一台每四五年重演一次的机器</h4>
+        <span class="fig-src">【原书 Case】Ch.1 · 代际时间为约数</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 400" role="img" aria-label="硬盘代际更替时间轴，每一代新架构从底部进入并向上吞噬上一代">
+          <!-- 时间轴 -->
+          <line x1="70" y1="330" x2="950" y2="330" stroke="#1C1A17" stroke-width="2"/>
+          <g font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478" text-anchor="middle">
+            <text x="70" y="352">1976</text><text x="240" y="352">1980</text><text x="410" y="352">1984</text>
+            <text x="580" y="352">1988</text><text x="750" y="352">1992</text><text x="920" y="352">1996</text>
+          </g>
+          <g stroke="#E3DED4" stroke-width="1">
+            <line x1="70" y1="330" x2="70" y2="40"/><line x1="240" y1="330" x2="240" y2="40"/><line x1="410" y1="330" x2="410" y2="40"/>
+            <line x1="580" y1="330" x2="580" y2="40"/><line x1="750" y1="330" x2="750" y2="40"/><line x1="920" y1="330" x2="920" y2="40"/>
+          </g>
+          <!-- 代际通道：每代从低处进入，向上爬升 -->
+          <g>
+            <!-- 14 -->
+            <path d="M 70 90 C 300 85 450 95 620 130" fill="none" stroke="#1C1A17" stroke-width="3"/>
+            <text x="86" y="76" font-family="Newsreader,Noto Serif SC,serif" font-size="15" font-weight="900" fill="#1C1A17">14″ · 大型机</text>
+            <text x="86" y="112" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">领导者：IBM、CDC、Memorex…</text>
+            <!-- 8 -->
+            <path d="M 190 200 C 380 190 520 180 730 235" fill="none" stroke="#3B62B0" stroke-width="3"/>
+            <text x="206" y="186" font-family="Newsreader,Noto Serif SC,serif" font-size="15" font-weight="900" fill="#3B62B0">8″ · 小型机</text>
+            <text x="206" y="222" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">新名字：Shugart、Micropolis、Priam…</text>
+            <!-- 5.25 -->
+            <path d="M 320 290 C 500 272 640 258 860 300" fill="none" stroke="#12874A" stroke-width="3"/>
+            <text x="336" y="276" font-family="Newsreader,Noto Serif SC,serif" font-size="15" font-weight="900" fill="#12874A">5.25″ · 台式 PC</text>
+            <text x="336" y="312" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">Seagate 霸主时代</text>
+            <!-- 3.5 -->
+            <path d="M 470 318 C 640 304 780 296 940 312" fill="none" stroke="#A86408" stroke-width="3"/>
+            <text x="600" y="291" font-family="Newsreader,Noto Serif SC,serif" font-size="14" font-weight="900" fill="#A86408">3.5″ · 便携PC</text>
+            <text x="700" y="336" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">Rodime / Conner：原型在 Seagate 躺着</text>
+            <!-- 2.5 -->
+            <path d="M 640 318 C 780 312 880 310 950 316" fill="none" stroke="#0B84A8" stroke-width="3"/>
+            <text x="790" y="278" font-family="Newsreader,Noto Serif SC,serif" font-size="15" font-weight="900" fill="#0B84A8">2.5″ · 笔记本</text>
+          </g>
+          <text x="70" y="380" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="600" fill="#4A463F">纵轴不是性能数值，是「离大型机网络的距离」——每代新架构都从旧网络看不上、看不清的位置进场，随后向左上爬升。</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>怎么读</b>：五条线不是五种技术路线，是五台同型号的机器。颜色区分代际（本图代际为分类维度）；曲线位置为示意，不对应任何真实数值。</div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>硬盘业给投资人的训练：判断「下一代」不要看参数表，看<b>新架构的第一批客户是谁</b>——局外人占比越高，颠覆纯度越高。</li>
+          <li>「原型已就绪但被搁置」是可识别的中间状态：专利、招聘、供应商订单都会先于产品泄露消息。</li>
+          <li>每一次代际更替 = 一次板块性的市值重构；原书样本期内，几乎每一代的龙头组合都被整体换血。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>「上代王者的校友」是最被低估的创始人画像：他懂技术、懂行业，又背着新客户的评分表。</li>
+          <li>原型在巨头手里躺着的那两年，就是你公司的全部童年——别浪费在说服巨头上，去服务等你的局外人。</li>
+          <li>如果你是被颠覆方：Micropolis 路线（趁旧业务赚钱时另立组织）是原书给出的唯一幸存剧本。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 案例二 · 挖掘机 ────────── -->
+    <div class="qbox rv" id="case-exc" style="margin-top:64px">
+      <div class="qk">案例二 · 液压挖掘机（原书对照案例 · Ch.3）</div>
+      <h3>和硬盘毫无相似之处的行业，<br>为什么精确复现了同一台机器？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>把镜头从硅谷切到工地。二战后，挖掘机业的在位者是缆索（吊铲）挖掘机厂商——Bucyrus-Erie、Ruston-Bucyrus、Marion 等一批重工业名字，客户是承重土方与矿业承包商，卖点是巨大的斗容与可靠性。</p>
+      <p>1940 年代末到 50 年代，液压技术登场——来自英国的公司（JCB 等）率先把它做成产品。<b>按主流客户的评分表，早期液压挖机是个笑话</b>：斗容只有缆索机的零头（原书举例约四分之一立方码对数立方码的量级），干不了任何重活，业内一致认定液压「永远不可能」胜任大工程。</p>
+      <p>但有一群人不在乎：<b>住宅与小型通用工程的承包商</b>。他们从来没拥有过挖机——缆索机太贵、太大、需要专人操作。液压挖机便宜、可以装轮胎自己开到工地、一个人就能操作。<b>对这群「过去无法消费」的客户，零头斗容不是缺陷，是第一台买得起的挖机。</b></p>
+      <p>此后的剧本你已能背出来：液压的斗容逐年爬升 → 1960 年代拿下中型工程 → 1970 年代在多数工程类别里超过缆索机。到原书写作时，缆索机只在最大的矿业与重土方场景幸存。多数缆索机在位者退场或退守利基——<b>它们不是看不见液压，是它们的客户（大承包商）多年内确实不需要。</b></p>
+    </div>
+
+    <div class="mech rv" data-lens="book">
+      <div class="m-head"><span>跨案例同构 · 与硬盘逐项对齐</span><span>Ch.3</span></div>
+      <div class="m-body">
+        <p><b>新架构在主流轴上更差</b>：3.5″ 容量小 ＝ 液压斗容小。<b>首批客户是局外人</b>：便携机厂商（不存在的品类）＝ 从未拥有挖机的住宅承包商（新消费群体）。<b>在位者理性不投入</b>：客户不要、市场小、毛利结构不支持。<b>新轴上的属性决定性</b>：体积小/低功耗 ＝ 便宜/轮式机动/单人操作。<b>斜率兑现</b>：两边的性能曲线都在 15–20 年内越过主流需求。</p>
+        <p>两个行业的技术史、客户名单、渠道结构毫无交集——重合的只有<b>机制本身</b>。这正是 Christensen 的方法论主张：这不是硬盘业的故事，是价值网络的结构规律。</p>
+      </div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>单案例会骗人，双案例才开始像定律：看到「行业 A 与行业 B 表面无关、机制同构」时，优先怀疑后者正在前者的时间轴上早中段。</li>
+          <li>挖机业的对应信号是二手设备价格与承包商自有率——「第一次买得起」的渗透率数据比厂商发布会诚实。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>「业内一致认为不可能」是大奖的指纹：行业共识越整齐，说明评分表锁得越死，局外人市场越空白。</li>
+          <li>新轴不必高级——「便宜、小、一个人能开」没有一项是技术突破，组合起来就是新价值网络。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 案例三 · 钢铁 ────────── -->
+    <div class="qbox rv" id="case-steel" style="margin-top:64px">
+      <div class="qk">案例三 · 小钢厂（原书核心案例 · Ch.4–5）</div>
+      <h3>综合钢厂退出螺纹钢的决定，<br>请逐字写成「当时完全理性的」——然后再看结局</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p>这个案例的特殊价值：它不是「新市场颠覆」（硬盘、挖机的新客户原本不消费），而是<b>「低端颠覆」</b>——同一批客户、同一类需求，被成本结构完全不同的新玩家从底部接管。</p>
+      <p><b>先替综合钢厂把决策写全，按当时完全理性来写</b>：螺纹钢（建筑钢筋）是质量要求最低、单价与毛利最薄、客户最挑剔的品类；产能让给高附加值钢材，公司平均毛利率上移；管理层向华尔街证明「聚焦高端」，估值改善。逐条对照股东利益：全部成立。<b>退出低端，在当年是教科书级的资本配置。</b></p>
+      <p>接盘的是小钢厂（minimill）：电弧炉 + 废钢，投资额与运营成本远低于高炉体系，原书给出的量级是约 20% 的成本优势——但只能炼最低档的钢。螺纹钢正好。<b>双方都觉得自己赢了，而且双方当时都确实赢了。</b></p>
+      <p>然后是东北拉力的下半场：小钢厂在螺纹钢站稳后，同样被「更大客户、更高毛利」拉着向上走——角钢棒材 → 结构钢 → 1989 年，Nucor 在印第安纳州 Crawfordsville 建成薄板坯连铸产线，攻入综合钢厂最后的堡垒：板材。到 90 年代，Nucor 已是美国最赚钱的钢铁公司之一；综合钢厂退无可退——<b>塔尖的市场撑不起它们的体量，而它们再也下不来了。</b></p>
+    </div>
+
+    <div class="figure rv" data-lens="book">
+      <div class="fig-head">
+        <span class="fig-no">图 9</span>
+        <h4>Minimill 的上行之旅：被让出的低端如何变成楼梯</h4>
+        <span class="fig-src">【原书 Case】Ch.4 · 年份为标志性事件约数</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 430" role="img" aria-label="小钢厂从螺纹钢逐级向上迁移至板材的阶梯">
+          <defs>
+            <marker id="a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3B62B0"/></marker>
+          </defs>
+          <!-- 阶梯：从左下到右上 -->
+          <g>
+            <rect x="60"  y="300" width="200" height="90"  fill="#E3EAF6" stroke="#3B62B0" stroke-width="1.4"/>
+            <rect x="260" y="220" width="200" height="170" fill="#D8E2F2" stroke="#3B62B0" stroke-width="1.2"/>
+            <rect x="460" y="140" width="200" height="250" fill="#CCDAEE" stroke="#3B62B0" stroke-width="1.2"/>
+            <rect x="660" y="60"  width="200" height="330" fill="#C2D1E8" stroke="#3B62B0" stroke-width="1.6"/>
+          </g>
+          <g font-family="Newsreader,Noto Serif SC,serif" font-weight="900" text-anchor="middle">
+            <text x="160" y="332" font-size="17" fill="#2A4A8C">螺纹钢</text>
+            <text x="360" y="284" font-size="17" fill="#2A4A8C">角钢 · 棒材</text>
+            <text x="560" y="188" font-size="17" fill="#2A4A8C">结构钢</text>
+            <text x="775" y="94" font-size="17" fill="#2A4A8C">板材</text>
+          </g>
+          <g font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#4A463F" text-anchor="middle">
+            <text x="160" y="356">综合钢厂「愉快退出」</text>
+            <text x="160" y="372">minimill 成本优势 ~20%</text>
+            <text x="360" y="308">站稳后继续上行</text>
+            <text x="360" y="324">东北拉力照常生效</text>
+            <text x="560" y="214">攻入中型工程</text>
+            <text x="560" y="230">质量逐年爬坡</text>
+            <text x="775" y="124">1989 · Nucor Crawfordsville</text>
+            <text x="775" y="140">薄板坯连铸 · 最后的堡垒</text>
+          </g>
+          <!-- 上行箭头 -->
+          <path d="M 270 290 C 340 250 420 210 470 190" fill="none" stroke="#3B62B0" stroke-width="2.6" marker-end="url(#a9)"/>
+          <path d="M 470 200 C 540 160 620 130 665 115" fill="none" stroke="#3B62B0" stroke-width="2.6" marker-end="url(#a9)"/>
+          <path d="M 670 120 C 700 105 720 96 740 88" fill="none" stroke="#3B62B0" stroke-width="2.6" marker-end="url(#a9)"/>
+          <!-- 撤退标注 -->
+          <text x="988" y="330" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#A8502A" font-weight="700">综合钢厂的轨迹</text>
+          <text x="988" y="348" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">被东北拉力持续拉向</text>
+          <text x="988" y="364" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">与 minimill 相向而行</text>
+          <text x="500" y="415" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="600" fill="#4A463F">让出的每一级都成了敌人的楼梯——而每让一级，当年的财报都更好看</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>注意与图 4 的关系</b>：图 4 讲的是 incumbent 为何上行（东北拉力），这张图讲的是 entrant 为何也上行（同一股东北拉力，作用在新价值网络上）。<b>两股力方向相同、在塔尖迎头相撞</b>——这就是低端颠覆的完整几何学。</div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>钢铁业示范了「低端真空传导速度」的量级：从螺纹钢到板材约 20 年。跨行业校准时，用「新玩家最近一次跳档的年份」估算时钟位置。</li>
+          <li>「20% 成本优势 + 只能做最低档」是可识别的 minimall 式组合：看到时不要问「它能不能做好货」，问「它什么时候能做好货」。</li>
+          <li>综合钢厂式的「聚焦高端」公告期，通常是做空研究窗口而非利好。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>低端颠覆对创业者更友好：不需要创造新客户（比新市场颠覆容易起步），只需要一个结构性成本优势。</li>
+          <li>向上跳档的时机是被拉上去的（老客户主动要更好的），不是硬闯上去的——订单结构会告诉你何时该跳。</li>
+          <li>Nucor 的 Crawfordsville 赌注提醒：最后一跳（进入堡垒市场）需要的资本与技术跳跃最大，要提前多年布局。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 案例四 · 零售 ────────── -->
+    <div class="qbox rv" id="case-retail" style="margin-top:64px">
+      <div class="qk">案例四 · 折扣零售（原书支撑性简例 · Ch.4）</div>
+      <h3>书里一笔带过的行业，<br>为什么值得单独摆出来？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p><b>先声明边界</b>：零售在原书中是第四章的支撑性简例，不是被逐章解剖的主案例。本刊按原书篇幅如实处理——讲机制证据，不做过度展开。</p>
+      <p>原书叙述的骨架：1950–60 年代，美国折扣零售商（discount retailers）以更低的价格、更少的服务、更薄的毛利进场，从传统百货与杂货连锁手中接管大众商品市场。到本书写作时，行业主导权已经易主——原书点名的新一代赢家包括 Kmart（Kresge 创立）与 Target（Dayton Hudson 创立）；传统百货的反应与硬盘、钢铁业的在位者如出一辙：<b>退出薄毛利的大众市场，上移到更高毛利的高档品类</b>——又一次东北拉力，又一次低端让出。</p>
+      <p>值得单独摆出来的原因有两个。其一，它证明机制不依赖「技术」：折扣零售没有任何新技术，靠的只是成本结构（更少服务、更快周转）——<b>颠覆的引擎是价值网络，不是科技。</b>其二，它是「在位者内部孵化出新王」的稀有样本：Kmart 与 Target 都出身旧公司（Kresge、Dayton Hudson）内部的独立尝试，而非纯粹的外来者——与逻辑七的独立组织原则互为印证。</p>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>机制不挑行业：评估任何「服务减少、价格更低、周转更快」的新玩家时，旧网络的高毛利纪律同样在替它清场。</li>
+          <li>Kmart/Target 样本提示：旧公司孵化新模式的成功前提是「另立门户式」运作——按这个标准给转型公司打分。</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>没有技术也能颠覆：先找成本结构的代差（服务模型、周转模型、渠道模型），再谈产品。</li>
+          <li>反过来自查：如果你的新意只是「更便宜地卖同样的东西」，确认你的便宜是结构性的，而不是补贴性的。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 案例五 · 电动车 ────────── -->
+    <div class="qbox rv" id="case-ev" style="margin-top:64px">
+      <div class="qk">案例五 · 电动车（原书第 7 章管理推演 · 假想案例）</div>
+      <h3>一个从未发生的案例，<br>为什么可能是全书最实用的一章？</h3>
+    </div>
+
+    <div class="body-col" data-lens="book">
+      <p><b>性质声明（重要）</b>：电动车案例是 Christensen 在第七章的<b>管理推演假想案例</b>——不是历史案例。作者用它演示「面对无法分析的新市场，一套发现式规划该怎么做」。把它当史实读就辜负了它；把它当操作手册读，它可能是全书最实用的一章。</p>
+      <p>推演的起点是一个诚实的无知：<b>假设电动车是颠覆式技术</b>（当时作者的假设设定：约百英里级续航、零排放、结构更简单），那么——市场规模多大？不知道。客户是谁？不知道。愿意付多少钱？不知道。原书的回答不是去预测，而是<b>把无知转化为一系列假设与实验</b>。</p>
+      <p>推演识别出的候选切入市场之一是<b>城市固定路线的配送车队</b>：路线可预测（里程焦虑可控）、夜间集中充电可行、总拥有成本可测算——对「过去因为油价与维保成本而不划算」的车队买家，电动车可能第一次「合适」。注意这个筛选逻辑：<b>不是找「谁最想要电动车」，而是找「电动车当前的缺陷对谁最不致命、新属性对谁最值钱」。</b></p>
+      <p>最后一条原则贯穿全章：<b>让新业务尽早自负盈亏。</b>盈利压力是最诚实的市场发现机制——它会逼组织去找到真实付费的场景，而不是在母公司的补贴幻觉里漂着。</p>
+    </div>
+
+    <div class="mech rv" data-lens="book">
+      <div class="m-head"><span>发现式规划 · 操作要点（原书 Ch.7）</span><span>Discovery-driven</span></div>
+      <div class="m-body">
+        <p><b>① 把预测换成假设</b>：商业计划里每个数字都标注「这是假设」，不当作事实。<b>② 按致命度排序</b>：哪个假设一旦证伪、全盘皆输？先测它。<b>③ 用最小成本买信息</b>：实验的目的不是收入，是证伪速度。<b>④ 尽早自负盈亏</b>：让真实付费倒逼真实发现。</p>
+        <p><b>【现代映射·事后视角】</b>：现实中的电动车产业后来真实爆发——切入点（城市配送、再到家用）与「缺陷最不致命处进场」的逻辑大体应验。但这是我们的对照，不是原书预测的胜利；原书的价值在方法，不在预言。</p>
+      </div>
+    </div>
+
+    <div class="impl">
+      <div class="imp imp-inv rv" data-lens="derive">
+        <h5>◆ 投资【我们的推导】</h5>
+        <ul>
+          <li>看早期公司的方法论清单就抄这四条：假设标注完整度、致命假设测试顺序、单位信息的成本、离自负盈亏的距离。</li>
+          <li>「切入点选择」是创始人水平的试纸：他选的是「缺陷最不致命、新属性最值钱」的客户，还是「最性感」的客户？</li>
+        </ul>
+      </div>
+      <div class="imp imp-ent rv" data-lens="derive">
+        <h5>◆ 创业【我们的推导】</h5>
+        <ul>
+          <li>切入市场筛选公式：新技术的<b>每个缺陷 × 哪群客户最不在乎</b> + 新技术的<b>每个优势 × 哪群客户最在乎</b>——交集就是滩头。</li>
+          <li>把「自负盈亏日」写进日程表：它不是财务目标，是你的市场发现引擎开机日。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ────────── 跨案例总结 ────────── -->
+    <div class="tbl-scroll rv" style="margin-top:52px">
+      <table class="tbl">
+        <thead><tr><th>行业</th><th>颠覆载体</th><th>最初新市场</th><th>在位者的理性决策</th><th>结局</th></tr></thead>
+        <tbody>
+          <tr><td class="c-case">硬盘</td><td>更小盘径（8″→3.5″→…）</td><td>小型机 / 台式 PC / 便携厂商（原本不存在的设备品类）</td><td>客户不要 → 不立项；原型搁置（Seagate 1985）</td><td>每代霸主整体换血；仅 Micropolis 幸存转型</td></tr>
+          <tr><td class="c-case">挖掘机</td><td>液压（斗容小、便宜、轮式）</td><td>住宅与小型通用工程承包商（从未拥有挖机）</td><td>大客户多年内确实不需要重型替代品</td><td>1970 年代液压全面超越；缆索机退守矿业</td></tr>
+          <tr><td class="c-case">钢铁</td><td>电弧炉 minimill（~20% 成本优势）</td><td>螺纹钢（同批客户、最低端品类）</td><td>「愉快退出」低毛利品类，聚焦高端——财报逐年更好</td><td>螺纹钢 → 板材逐级攻陷；Nucor 成为最赚钱钢铁公司之一</td></tr>
+          <tr><td class="c-case">零售</td><td>折扣业态（少服务、快周转）</td><td>价格敏感的大众消费者</td><td>百货退出大众市场、上移高档（东北拉力）</td><td>主导权易主；Kmart / Target 从旧公司内部孵化胜出</td></tr>
+          <tr><td class="c-case">电动车</td><td>（假想推演）电动动力总成</td><td>城市固定路线配送车队（候选之一）</td><td>—（用于演示发现式规划，非史实）</td><td>方法论产出：假设驱动 + 尽早自负盈亏</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 2×2 -->
+    <div class="figure rv" data-lens="book" style="margin-top:40px">
+      <div class="fig-head">
+        <span class="fig-no">图 10</span>
+        <h4>四象限：谁赢，取决于在哪个战场开战</h4>
+        <span class="fig-src">【原书逻辑】Ch.1 三大发现之一 · 定性示意</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 470" role="img" aria-label="攻击类型与攻击者组合的四象限，延续性战场在位者胜，颠覆式战场新进入者胜">
+          <!-- 轴 -->
+          <line x1="500" y1="30" x2="500" y2="440" stroke="#8A8478" stroke-width="1.6" stroke-dasharray="6 5"/>
+          <line x1="60" y1="235" x2="940" y2="235" stroke="#8A8478" stroke-width="1.6" stroke-dasharray="6 5"/>
+          <text x="500" y="22" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="700" fill="#4A463F">攻击者：新进入者 ↑ ｜ 在位者 ↓</text>
+          <text x="938" y="42" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="12.5" font-weight="700" fill="#4A463F">战场：← 延续性（Sustaining） ｜ 颠覆式（Disruptive）→</text>
+          <!-- 左上：entrant sustaining -->
+          <rect x="80" y="50" width="390" height="165" rx="12" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/>
+          <text x="275" y="95" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="19" font-weight="900" fill="#1C1A17">新进入者 × 延续性战场</text>
+          <text x="275" y="130" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="14" font-weight="700" fill="#A8502A">几乎必败</text>
+          <text x="275" y="158" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#8A8478">在对方主场的性能轴上正面比参数</text>
+          <text x="275" y="178" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#8A8478">在位者的资源、流程、客户关系全面占优</text>
+          <!-- 右上：entrant disruptive -->
+          <rect x="530" y="50" width="390" height="165" rx="12" fill="#F6E9E1" stroke="#A8502A" stroke-width="2"/>
+          <text x="725" y="95" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="19" font-weight="900" fill="#A8502A">新进入者 × 颠覆式战场</text>
+          <text x="725" y="130" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="14" font-weight="700" fill="#12874A">结构性胜率</text>
+          <text x="725" y="158" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">在位者的价值网络替你挡住它的援军</text>
+          <text x="725" y="178" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">本刊五案例的主战场</text>
+          <!-- 左下：incumbent sustaining -->
+          <rect x="80" y="255" width="390" height="165" rx="12" fill="#E0F0E7" stroke="#12874A" stroke-width="2"/>
+          <text x="275" y="300" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="19" font-weight="900" fill="#12874A">在位者 × 延续性战场</text>
+          <text x="275" y="335" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="14" font-weight="700" fill="#12874A">几乎必胜</text>
+          <text x="275" y="363" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">硬盘业最激进的技术跨越全是在位者完成</text>
+          <text x="275" y="383" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">这里不需要英雄主义</text>
+          <!-- 右下：incumbent disruptive -->
+          <rect x="530" y="255" width="390" height="165" rx="12" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.5"/>
+          <text x="725" y="300" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="19" font-weight="900" fill="#1C1A17">在位者 × 颠覆式战场</text>
+          <text x="725" y="335" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="14" font-weight="700" fill="#A8502A">结构性凶险</text>
+          <text x="725" y="363" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#8A8478">除非：独立组织 + 独立损益（逻辑七）</text>
+          <text x="725" y="383" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#8A8478">Micropolis / Control Data / HP 温哥华 的剧本</text>
+          <text x="500" y="462" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#4A463F">给自己的定位问题永远是：我站在哪个格子？我把对手拖进哪个格子？</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>使用提醒</b>：这是结构概率不是宿命——格子给出的是赔率与正确姿势（在位者该立独立组织，新进入者该换轴），不是「在位者必死于颠覆」。</div>
+    </div>
+  </div>
+</section>
+<!-- ══════════ Level 5 · 投资地图 ══════════ -->
+<section class="section sec-inv" id="inv">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 5</span>
+      <h2>投资地图：十个问题，一张计分卡</h2>
+      <span class="en">Investor Map</span>
+    </div>
+    <p class="sec-lede">把全书压缩成一台<b>持仓体检机</b>：十个问题逐一对任何一家公司（你持有的、你想做空的、你犹豫的）打分。<strong>问题本身是中性的——高分不代表公司差，它告诉你的是：这家公司的利润池正暴露在哪一级颠覆风险之下，以及时钟走到几点了。</strong>本节全部为【我们的推导】，每题的观察方法源自原书机制。</p>
+
+    <div class="scorecard rv" id="scorecard">
+      <div class="sc-head">
+        <h3>颠覆风险计分卡</h3>
+        <span>每题选一个最贴切的观察 · 绿=未出现 黄=早期信号 橙=正在发生 红=已经兑现</span>
+      </div>
+      <div class="sc-rows">
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q1</span><h4>公司最赚钱的客户是谁？他们的需求是否正在替公司决定路线图？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">资源依赖理论：给钱的人在配置资源。利润池越集中，战略自主性越是幻觉。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">客户分散，无单一利润池绑架</button>
+            <button class="sc-opt" data-v="2">头部客户重要但公司仍推主动产品</button>
+            <button class="sc-opt" data-v="3">路线图明显跟随头部客户需求排序</button>
+            <button class="sc-opt" data-v="4">前几大客户实质决定产品与定价</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q2</span><h4>销售团队最愿意卖什么？提成表指向哪一代产品？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">嘴上战略 vs 真实配置：提成结构是资源分配的毛细血管。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">新业务提成与老产品一视同仁甚至更优</button>
+            <button class="sc-opt" data-v="2">老产品占优但新业务有独立激励</button>
+            <button class="sc-opt" data-v="3">提成与培训 overwhelmingly 指向老产品</button>
+            <button class="sc-opt" data-v="4">新业务在销售体系里是二等公民，靠自建团队</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q3</span><h4>销售最不愿意卖什么？什么样的客户会被销售悄悄劝退？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">被劝退的客户名单 = 被让出的低端地图 = 下一代对手的客户名单。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">小额、低毛利客户仍被系统化服务</button>
+            <button class="sc-opt" data-v="2">长尾客户转自助渠道，仍是正式战略</button>
+            <button class="sc-opt" data-v="3">低客单客户明显被销售冷落、流失无人过问</button>
+            <button class="sc-opt" data-v="4">公司公开宣布「聚焦头部客户」，退出低客单段</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q4</span><h4>什么样的新产品若大获成功，会蚕食公司自己的利润？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">自我蚕食测试：如果答案存在且公司拒绝做它——那个产品迟早由别人做。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">不存在明显的自我蚕食冲突</button>
+            <button class="sc-opt" data-v="2">存在冲突，公司已用独立组织在做替代品</button>
+            <button class="sc-opt" data-v="3">存在冲突，公司讨论多年但无实际动作</button>
+            <button class="sc-opt" data-v="4">替代品已由外部公司做出并开始上量</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q5</span><h4>是否有新技术正在把「价格」或「使用复杂度」的门槛降一个数量级？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">颠覆的经典入口：更便宜、更简单。门槛每降一档，就解锁一批过去的非消费者。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">未见此类技术，或公司自身就是降门槛者</button>
+            <button class="sc-opt" data-v="2">有苗头但尚不成熟、无人规模化</button>
+            <button class="sc-opt" data-v="3">已有新玩家用新技术把价格/复杂度打到新低</button>
+            <button class="sc-opt" data-v="4">低成本新玩家已开始抢走价格敏感客户</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q6</span><h4>是否出现了一批 incumbent 不重视、甚至看不见的新客户？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">新市场颠覆的起点：不是抢客户，是客户被新技术创造出来。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">没有明显的新客户群出现</button>
+            <button class="sc-opt" data-v="2">有小众新用户群，但尚无变现证明</button>
+            <button class="sc-opt" data-v="3">新客户群已开始为某种新产品付费</button>
+            <button class="sc-opt" data-v="4">新客户群规模化的同时出现专属新玩家</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q7</span><h4>新进入者是不是从「小到不值得做」的市场开始的？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">机会大小相对于组织大小：越是对巨头无意义的市场，越是创业公司的安全童年。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">潜在对手都在主流市场正面进攻</button>
+            <button class="sc-opt" data-v="2">有边缘小市场玩家，但看不出向上连通性</button>
+            <button class="sc-opt" data-v="3">小市场玩家在积攒成本/数据/网络优势</button>
+            <button class="sc-opt" data-v="4">小市场已长大到值得巨头认真对待</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q8</span><h4>新进入者那条「另一根轴」上的性能，改善速度有多快？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">性能曲线的斜率决定时钟：技术供给的进步快于需求增长，够用只是时间问题。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">停滞或倒退，多年无实质进步</button>
+            <button class="sc-opt" data-v="2">缓慢改善，离主流需求尚远</button>
+            <button class="sc-opt" data-v="3">快速改善，已能满足最不挑剔的主流用户</button>
+            <button class="sc-opt" data-v="4">已追平或超过主流需求的关键部分</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q9</span><h4>新进入者是否已开始向上迁移、进入核心市场？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">图 1 的交汇点：性能追上主流需求的那一刻，攻守易形开始倒计时。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">仍停留在边缘市场</button>
+            <button class="sc-opt" data-v="2">拿下边缘市场后试探性上探中端</button>
+            <button class="sc-opt" data-v="3">在中端市场获得标志性主流客户</button>
+            <button class="sc-opt" data-v="4">正在蚕食原领导者的核心客户与毛利</button>
+          </div>
+        </div>
+        <div class="sc-row">
+          <div class="sc-q"><span class="n">Q10</span><h4>incumbent 的应对，是真实改变了资源配置，还是只发了 PPT？<small style="display:block;font-family:var(--sans);font-size:11.5px;font-weight:400;color:var(--ink-faint);margin-top:3px">五项硬核查：资本开支、并购、提成表、顶尖人才去向、新业务挂在哪个组织背什么 KPI。</small></h4></div>
+          <div class="sc-opts">
+            <button class="sc-opt" data-v="1">独立组织 + 独立损益 + 真实预算连续多季</button>
+            <button class="sc-opt" data-v="2">有独立团队但共用销售与毛利纪律</button>
+            <button class="sc-opt" data-v="3">发布会级别重视，资源未见移动</button>
+            <button class="sc-opt" data-v="4">多次宣布转型，负责人反复更换，皆无果</button>
+          </div>
+        </div>
+      </div>
+      <div class="sc-sum">
+        <div class="sc-band">
+          <span class="band band-x" id="sc-band-el">待作答</span>
+          <div class="sc-counts" id="sc-counts"></div>
+          <button class="sc-reset" id="sc-reset">重置</button>
+        </div>
+        <p class="sc-verdict" id="sc-verdict">逐题选择后，这里会汇总出风险档位、分布与最危险的三个信号。</p>
+        <p class="sc-hot" id="sc-hot"></p>
+        <p style="font-family:var(--sans);font-size:11px;color:var(--ink-faint);margin-top:10px">说明：档位划分与全部题目均为本刊【我们的推导】，刻意不使用假精确的量化模型——这是一张体检表，不是预测器。选择会保存在本机浏览器。</p>
+      </div>
+    </div>
+
+    <div class="takeaway rv" data-lens="derive">
+      <div class="tk-head"><h2>投资地图 · 三条收束</h2><span>INVESTOR'S RECAP</span></div>
+      <div class="tk"><span class="tk-n">一</span><p>判断一家公司，先找<b>利润池结构</b>：利润从哪来，公司的眼睛就被绑在那儿——这决定它看得见什么、看不见什么（逻辑二）。</p></div>
+      <div class="tk"><span class="tk-n">二</span><p>估值里最贵的错误不是看错产品，是<b>把「暂时不需要」当成「永远不会来」</b>——性能曲线的斜率会替对手兑现时间（逻辑一、图 1）。</p></div>
+      <div class="tk"><span class="tk-n">三</span><p>转型信号只认三样：组织、损益、人才。其余都是噪音（逻辑三、逻辑七）。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ Level 6 · 创业地图 ══════════ -->
+<section class="section sec-ent" id="ent">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 6</span>
+      <h2>创业地图：五个结构性安全位</h2>
+      <span class="en">Entrepreneur Map</span>
+    </div>
+    <p class="sec-lede">「巨头为什么不做这件事」不是风险尽调的句号，而是机会本身的问题。<strong>五种答案，对应五个对手进不来的位置——每种都由原书机制背书。</strong>先做下面的自测，系统会点亮你命中的机会类型。本节框架为【我们的推导】，每一类的机制根据出自原书。</p>
+
+    <div class="diag rv" id="opp-diag">
+      <h4>六问自测 · 你命中的是哪种机会？</h4>
+      <label><input type="checkbox" data-t="A"><span>我的产品对主流用户来说「功能过剩」——他们其实只需要现有方案的 20% 功能，却为 100% 付费。</span></label>
+      <label><input type="checkbox" data-t="B"><span>我的客户里有很多「过去从不消费这类东西」的人——是新东西让他们第一次入场。</span></label>
+      <label><input type="checkbox" data-t="C"><span>我瞄准的市场规模，对任何巨头来说都「不值得立项」——撑不起它们的增长目标。</span></label>
+      <label><input type="checkbox" data-t="D"><span>我的成本结构天生更低（没有渠道/服务/组织的重负担），能以对方无法跟随的价格长期活着。</span></label>
+      <label><input type="checkbox" data-t="E"><span>巨头若模仿我，会直接伤害它自己的客单价、席位费、服务费或渠道利益。</span></label>
+      <label><input type="checkbox" data-t="X"><span>我的产品在主流性能轴上比对手差，但便宜/简单/方便得多。</span></label>
+      <div class="d-res" id="diag-res">勾选你符合的描述（可多选），下方对应的机会卡会点亮。</div>
+    </div>
+
+    <div class="opp rv" id="opp-a" data-t="A">
+      <div class="o-head"><span class="o-letter">A</span><div><h3>被过度服务者</h3><div class="o-sub">Overserved Customers · 机制根据：性能过剩（逻辑一 · 原书 Ch.9）</div></div></div>
+      <div class="o-body">
+        <p>当技术供给越过主流需求线，最挑剔的客户之外的所有人都在为用不到的性能付费。<b>他们不是不满，是「够了还多」</b>——他们的容忍度，就是你的定价空间。</p>
+        <div class="o-grid">
+          <div class="o-cell"><h6>识别信号</h6><ul>
+            <li>用户只用旗舰产品的少数功能，却付全价</li>
+            <li>差评从「不够好」变成「太复杂、太贵」</li>
+            <li>二手/旧版本市场异常活跃——用户在用脚投票要「够用」</li>
+          </ul></div>
+          <div class="o-cell"><h6>原书根据 ↔ AI 时代例子【现代映射】</h6><ul>
+            <li>原书：性能过剩 → 竞争基点从性能转向价格与便利</li>
+            <li>映射：轻量 SaaS 只做旗舰软件 20% 的高频功能，按需定价</li>
+          </ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="opp rv" id="opp-b" data-t="B">
+      <div class="o-head"><span class="o-letter">B</span><div><h3>非消费者</h3><div class="o-sub">Non-consumption · 机制根据：新市场颠覆（原书 Ch.2–3 · 液压挖机案例）</div></div></div>
+      <div class="o-body">
+        <p>住宅承包商从未拥有过挖机——液压技术让「第一次拥有」成为可能。最大的空白市场不是对手的客户，是<b>还没开始消费的潜在客户</b>：新技术把过去太贵、太复杂、太专业的体验降到他们的门槛之下。</p>
+        <div class="o-grid">
+          <div class="o-cell"><h6>识别信号</h6><ul>
+            <li>存在大量用笨办法（人工、Excel、不做）凑合的人</li>
+            <li>「专业门槛」是消费的最大障碍，而非「需求不存在」</li>
+            <li>新技术的关键属性恰好是门槛的解药（便宜/即时/无需培训）</li>
+          </ul></div>
+          <div class="o-cell"><h6>原书根据 ↔ AI 时代例子【现代映射】</h6><ul>
+            <li>原书：颠覆的首批客户总是「过去无法消费的人」</li>
+            <li>映射：AI 让不会编程的人第一次「写」软件、不请律师也能处理基础法律文书</li>
+          </ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="opp rv" id="opp-c" data-t="C">
+      <div class="o-head"><span class="o-letter">C</span><div><h3>对巨头太小的市场</h3><div class="o-sub">Too Small for Incumbents · 机制根据：增长数学（逻辑五 · 原书 Ch.6）</div></div></div>
+      <div class="o-body">
+        <p>2 亿的市场买不起巨头一个季度的增长，却买得起你的整个未来。<b>「太小」不是市场的属性，是市场相对于组织体量的属性</b>——巨头的评审会用数学把你保护到成年。</p>
+        <div class="o-grid">
+          <div class="o-cell"><h6>识别信号</h6><ul>
+            <li>目标市场用巨头收入倍数衡量约 ≤1%</li>
+            <li>巨头内部有人做过评估，结论是「等市场大了再看」</li>
+            <li>市场当前无懈可击的「不经济」，恰是结构性成本差异的来源</li>
+          </ul></div>
+          <div class="o-cell"><h6>原书根据 ↔ AI 时代例子【现代映射】</h6><ul>
+            <li>原书：小市场永远解决不了大公司的增长需要</li>
+            <li>映射：服务小语种、小行业、小人群的 AI 垂直工具——每个都「不值得」大厂立项</li>
+          </ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="opp rv" id="opp-d" data-t="D">
+      <div class="o-head"><span class="o-letter">D</span><div><h3>低毛利陷阱</h3><div class="o-sub">Low-margin Trap · 机制根据：毛利率阶梯与东北拉力（逻辑二、四 · 原书 Ch.2, 4）</div></div></div>
+      <div class="o-body">
+        <p>Minimill 用 20% 的成本优势从螺纹钢进场——综合钢厂不是打不过它，是<b>打它必须先撕毁自己的毛利纪律</b>。你的价格带留在对方毛利率门槛之下，它的财务系统会替你把门焊死。</p>
+        <div class="o-grid">
+          <div class="o-cell"><h6>识别信号</h6><ul>
+            <li>你的成本结构里有对方无法拆除的负重（渠道、服务团队、组织层级）</li>
+            <li>对方跟进你 = 主动拉低公司平均毛利率 = 触发其财务红线</li>
+            <li>你在低毛利区仍能健康活着，对方在那个价位必亏</li>
+          </ul></div>
+          <div class="o-cell"><h6>原书根据 ↔ AI 时代例子【现代映射】</h6><ul>
+            <li>原书：价值网络的毛利率阶梯是单向阀，资源只往高处流</li>
+            <li>映射：无服务、自助式、按用量计费的替代品 vs 依赖实施服务费的在位者</li>
+          </ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="opp rv" id="opp-e" data-t="E">
+      <div class="o-head"><span class="o-letter">E</span><div><h3>自我蚕食位 · 最值得深挖的一种</h3><div class="o-sub">Self-cannibalization · 机制根据：价值网络锁定 + 资源依赖（逻辑二、三 · 原书 Ch.2）</div></div></div>
+      <div class="o-body">
+        <p>五类机会里保护最强的一类：<b>你的产品若被巨头照抄，等于让它亲手拆自己的收入结构</b>——每卖一单，都在吃掉它原有的客单价、席位费、服务费或渠道利益。它不是看不见你，是它的财报每次审批会都投你的赞成票。</p>
+        <div class="o-grid">
+          <div class="o-cell"><h6>识别信号</h6><ul>
+            <li>你的单位经济是对方单位经济的直接减项（seat → 用量、人工 → 自动）</li>
+            <li>对方最大的收入来源，恰是你的免费/低价层</li>
+            <li>对方的渠道伙伴若卖你，等于叛变——渠道会先替它抵制你</li>
+          </ul></div>
+          <div class="o-cell"><h6>原书根据 ↔ AI 时代例子【现代映射】</h6><ul>
+            <li>原书：资源分配系统天然筛掉「客户不要 + 拉低毛利」的项目</li>
+            <li>映射：按结果计费的 AI 服务 vs 按人头计费的在位者——复制你即拆自己的定价地基（详见 AI 时代各行业的激励测试）</li>
+          </ul></div>
+        </div>
+        <div class="namecall" style="background:var(--ent-bg);margin-top:14px"><span class="nc-k">为什么它最值得深挖</span>A 类靠「够用」、B 类靠「门槛下降」、C 类靠「体量差」、D 类靠「成本差」——都会随时间稀释。<b>唯有 E 类的护城河由对手的利润结构亲自值守</b>：对手越成功、越大、越理性，就越无法跟进你。这是把「巨头的理性」从障碍变成围墙的唯一样式。</div>
+      </div>
+    </div>
+
+    <div class="takeaway rv" data-lens="derive">
+      <div class="tk-head"><h2>创业地图 · 三条收束</h2><span>ENTREPRENEUR'S RECAP</span></div>
+      <div class="tk"><span class="tk-n">一</span><p>机会的第一性问题不是「我能不能做得比它好」，而是<b>「它为什么不做」——答案若是它的理性，恭喜；若是它的疏忽，警惕</b>（疏忽会被修复，理性不会）。</p></div>
+      <div class="tk"><span class="tk-n">二</span><p>五种位置可以叠加：最肥的机会往往同时是 B+C+E——服务非消费者、市场暂时够小、且巨头跟进即自伤。</p></div>
+      <div class="tk"><span class="tk-n">三</span><p>记得给自己装同一个警报器：你成功后长出的流程与价值观，就是下一代的你的墙（逻辑七）。</p></div>
+    </div>
+  </div>
+</section>
+<!-- ══════════ Level 7 · AI 时代 ══════════ -->
+<section class="section sec-macro" id="ai">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 7</span>
+      <h2>AI 时代的 Innovator's Dilemma</h2>
+      <span class="en">AI-era Mapping</span>
+    </div>
+    <p class="sec-lede">Christensen 没写过 AI。本节全部是【我们的推导】：把原书机制当作透镜，逐个照向 AI 正在改写利润结构的行业。<strong>本节刻意不给你答案，只给你「在位者激励测试」——因为本刊反复验证的一课是：谁会赢，不看谁的技术强，看谁的利润结构允许它认真打。</strong>也请记住判据纪律：不是所有「新打败老」都叫颠覆——先问有没有换轴、有没有新价值网络、有没有向上迁移。</p>
+
+    <div class="industry rv">
+      <div class="i-head"><h3>① SaaS / 企业软件</h3><p>利润结构的锚：按席位收费（seat-based）+ 年度订阅 + 实施服务费。AI 冲击的不是功能，是计量单位本身。</p></div>
+      <div class="i-body">
+        <div class="i-col i-profit"><h6>⌖ 在位者的利润结构</h6><p>收入 = 人数 × 单价。客户公司员工越多、软件越贵——<b>「让一个岗位的人干五个人的活」在这套计价里是在位者的收入毒药</b>。</p></div>
+        <div class="i-col i-test"><h6>◎ 在位者激励测试（自己问，不给答案）</h6><ol>
+          <li>如果明天把计价从「每席位」换成「每结果/每用量」，我的收入会<em>先跌多少</em>？董事会能容忍几个季度？</li>
+          <li>我的销售提成表，允许卖一个「让客户买更少席位」的产品吗？</li>
+          <li>我最强的生态伙伴（实施商、渠道），在新计价下还赚谁的钱？</li>
+        </ol></div>
+        <div class="i-signal"><h6>◎ 观察信号</h6><p>出现真正按 <b>outcome / 用量</b>计费的新玩家，且它服务的第一批客户是在位者最不重视的小团队；在位者财报电话会里「AI 定价」措辞的含糊程度——含糊本身就是答案（逻辑三：真实资源配置）。</p></div>
+      </div>
+    </div>
+
+    <div class="industry rv">
+      <div class="i-head"><h3>② 咨询与专业服务</h3><p>利润结构的锚：按人天/小时计费。律所、会计、设计、代理机构的收入与「人贵」直接挂钩。</p></div>
+      <div class="i-body">
+        <div class="i-col i-profit"><h6>⌖ 在位者的利润结构</h6><p>收入 = 小时数 × 费率。AI 把单位工作的工时压掉 80%，等于把账单压掉 80%——<b>效率越高，收入越少，这是计价结构决定的，与意愿无关</b>（E 类自我蚕食位的标准形状）。</p></div>
+        <div class="i-col i-test"><h6>◎ 在位者激励测试</h6><ol>
+          <li>我的合伙人分红体系，奖励「用更少人天交付」还是「卖出更多人天」？</li>
+          <li>如果 AI 让初级行情消失，我的专业人才梯队从哪里长出来——我敢拆掉自己的培训体系吗？</li>
+          <li>客户开始质疑「为什么还按小时」，我涨费率还是换计价？换计价那一年，我的报表怎么见人？</li>
+        </ol></div>
+        <div class="i-signal"><h6>◎ 观察信号</h6><p>固定费/按结果计费的新服务所出现；在位者把 AI 包装成「提效工具」而非新计价（用 AI 维持旧计价 = 逻辑二的旧网络惯性）；初级岗位招聘量的方向变化。</p></div>
+      </div>
+    </div>
+
+    <div class="industry rv">
+      <div class="i-head"><h3>③ 编程 / 软件 creation</h3><p>利润结构的锚：开发工具按开发者席位收费；软件的价值稀缺性建立在「写代码很难」之上。</p></div>
+      <div class="i-body">
+        <div class="i-col i-profit"><h6>⌖ 在位者的利润结构</h6><p>工具商的客户是「专业开发者」——人数有限、预算集中。而「让不会编程的人造出能用的软件」意味着客户群从数百万专业者扩展到数亿非专业者：<b>典型的 B 类非消费者市场</b>（原书：液压挖机之于住宅承包商）。</p></div>
+        <div class="i-col i-test"><h6>◎ 在位者激励测试</h6><ol>
+          <li>服务非专业者，我的产品、定价、支持体系要重写多少？哪一部分是我的 Processes 在说不？</li>
+          <li>「人人都能做软件」若成真，我的核心资产（专业工具链）还稀缺吗？我敢先动手贬值它吗？</li>
+          <li>我的新客户（非专业者）第一年会贡献多少收入——够得起我的增长目标吗？（逻辑五的数学）</li>
+        </ol></div>
+        <div class="i-signal"><h6>◎ 观察信号</h6><p>非专业者作品的真实使用量（不是 demo 转发量）；专业工具商是否为非专业者单独立组织（逻辑七）；「够用」的简单产出在哪些场景已替代专业交付。</p></div>
+      </div>
+    </div>
+
+    <div class="industry rv">
+      <div class="i-head"><h3>④ 内容与品牌</h3><p>利润结构的锚：专业生产的高成本 = 内容稀缺性 = 分发与品牌的溢价。这是「专业者网络」的另一种形态。</p></div>
+      <div class="i-body">
+        <div class="i-col i-profit"><h6>⌖ 在位者的利润结构</h6><p>专业内容的生产成本与许可体系构成门槛。生成式内容把「达标的表达」的成本打到近零——<b>「够好」的内容供给突然无限，稀缺性迁移到信任、品味与分发位置</b>（逻辑一：性能过剩 → 竞争基点转移）。</p></div>
+        <div class="i-col i-test"><h6>◎ 在位者激励测试</h6><ol>
+          <li>当「及格线内容」免费无限，我卖的还是生产能力，还是判断、背书与责任？</li>
+          <li>拥抱生成内容会稀释我的品牌溢价，抵抗它会被成本曲线碾过——我的毛利结构允许我先选哪一边？</li>
+          <li>我的渠道（平台、媒介）在供给爆炸中是受益方还是贬值方？</li>
+        </ol></div>
+        <div class="i-signal"><h6>◎ 观察信号</h6><p>内容消费时长向「信任个体/小品牌」迁移的速度；在位媒体把 AI 用于降成本（守旧计价）还是开新产品线（换轴）；广告主预算的 CPM 结构变化。</p></div>
+      </div>
+    </div>
+
+    <div class="figure rv" data-lens="derive">
+      <div class="fig-head">
+        <span class="fig-no">图 11</span>
+        <h4>AI 颠覆机会地图：四个行业落在哪一格</h4>
+        <span class="fig-src">【我们的推导】定性示意 · 不代表任何预测</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 520" role="img" aria-label="横轴为对在位者的自我蚕食程度，纵轴为非消费者解锁程度，四个行业示意定位">
+          <defs>
+            <marker id="a11" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1C1A17"/></marker>
+          </defs>
+          <!-- 轴 -->
+          <line x1="90" y1="440" x2="950" y2="440" stroke="#1C1A17" stroke-width="2" marker-end="url(#a11)"/>
+          <line x1="90" y1="440" x2="90" y2="50" stroke="#1C1A17" stroke-width="2" marker-end="url(#a11)"/>
+          <text x="540" y="482" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="13" font-weight="600" fill="#4A463F">若在位者认真跟进 → 伤害自身利润结构的程度（自我蚕食度）→</text>
+          <text x="42" y="250" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="13" font-weight="600" fill="#4A463F" transform="rotate(-90 42 250)">解锁非消费者的程度 ↑</text>
+          <!-- 象限注记 -->
+          <text x="930" y="424" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">右下：D 类低毛利陷阱为主</text>
+          <text x="930" y="70" text-anchor="end" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">右上：E+B 叠加 · 最厚的机会区</text>
+          <text x="110" y="70" font-family="Inter,PingFang SC,sans-serif" font-size="11.5" fill="#8A8478">左上：B 类非消费者</text>
+          <!-- 行业点位 -->
+          <g font-family="Inter,PingFang SC,sans-serif">
+            <!-- 咨询 -->
+            <circle cx="760" cy="300" r="9" fill="#0B84A8"/>
+            <text x="760" y="328" text-anchor="middle" font-size="13" font-weight="700" fill="#0B84A8">② 咨询/专业服务</text>
+            <text x="760" y="346" text-anchor="middle" font-size="10.5" fill="#8A8478">自我蚕食最深 · 非消费者解锁中等</text>
+            <!-- SaaS -->
+            <circle cx="620" cy="230" r="9" fill="#0B84A8"/>
+            <text x="620" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#0B84A8">① SaaS</text>
+            <text x="620" y="258" text-anchor="middle" font-size="10.5" fill="#8A8478">计价单位冲突 · 解锁部分新用户</text>
+            <!-- 编程 -->
+            <circle cx="380" cy="120" r="9" fill="#0B84A8"/>
+            <text x="380" y="100" text-anchor="middle" font-size="13" font-weight="700" fill="#0B84A8">③ 编程/软件创造</text>
+            <text x="380" y="148" text-anchor="middle" font-size="10.5" fill="#8A8478">非消费者解锁最强 · 自我蚕食中等</text>
+            <!-- 内容 -->
+            <circle cx="470" cy="360" r="9" fill="#0B84A8"/>
+            <text x="470" y="390" text-anchor="middle" font-size="13" font-weight="700" fill="#0B84A8">④ 内容与品牌</text>
+            <text x="470" y="408" text-anchor="middle" font-size="10.5" fill="#8A8478">稀缺性迁移 · 位置随细分市场分化</text>
+          </g>
+          <!-- 虚线迁移箭头：示意各行业位置会移动 -->
+          <path d="M 620 230 C 690 180 730 150 780 130" fill="none" stroke="#8A8478" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#a11)"/>
+          <text x="800" y="120" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#8A8478">位置会移动：能力进步把各行业推向右上</text>
+          <text x="500" y="510" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">纵轴横轴均为定性判断（本刊推导视角），用于提问，不用于排名——每个行业内个体差异远大于行业间差异。</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>这张图的用法</b>：不要把它当结论背——把它当提问器。给自己关注的任何 AI 项目定位一次，然后问：它在哪个轴上得分？它的在位者对手在同一个轴上会不会自我蚕食？答案变动时，地图重画。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ Level 8 · 宏观栈 ══════════ -->
+<section class="section sec-macro" id="macro">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">Lv 8</span>
+      <h2>宏观栈：Perez × Christensen</h2>
+      <span class="en">Macro Stack</span>
+    </div>
+    <p class="sec-lede">两个透镜的分工：<strong>Carlota Perez（《技术革命与金融资本》）回答「浪为什么来、走到哪一段」——资本涌向新技术集群、铺设基建、能力成本随之下移；Christensen 回答「浪里谁被掀翻、谁从水底长出来」——新能力先服务没人服务的人，在位者因价值网络无法跟进。</strong>两层叠起来，就是一张自上而下的机会地图。连接两个框架为本刊【我们的推导】，两位作者本人未做此合著式的整合。</p>
+
+    <div class="figure rv" data-lens="derive">
+      <div class="fig-head">
+        <span class="fig-no">图 12</span>
+        <h4>宏观机会栈：从资本潮汐到利润池易主</h4>
+        <span class="fig-src">【我们的推导】Perez 框架 + Christensen 框架的连接</span>
+      </div>
+      <div class="fig-body">
+        <svg viewBox="0 0 1000 640" role="img" aria-label="宏观栈：佩雷斯三步在上，克里斯坦森五步在下，垂直贯通">
+          <defs>
+            <marker id="a12" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1C1A17"/></marker>
+          </defs>
+          <!-- 层标签 -->
+          <rect x="20" y="20" width="120" height="270" rx="10" fill="#1C1A17"/>
+          <text x="80" y="70" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="20" font-weight="900" fill="#FBFAF8">佩雷斯层</text>
+          <text x="80" y="96" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#B9B2A4">技术革命周期</text>
+          <text x="80" y="130" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#B9B2A4">回答：</text>
+          <text x="80" y="150" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#B9B2A4">浪为什么来</text>
+          <text x="80" y="170" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#B9B2A4">走到哪一段</text>
+          <rect x="20" y="330" width="120" height="290" rx="10" fill="#0B84A8"/>
+          <text x="80" y="385" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="17" font-weight="900" fill="#FBFAF8">克里斯坦森层</text>
+          <text x="80" y="411" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="10.5" fill="#DFEFF4">价值网络机制</text>
+          <text x="80" y="445" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#DFEFF4">回答：</text>
+          <text x="80" y="465" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#DFEFF4">谁被掀翻</text>
+          <text x="80" y="485" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#DFEFF4">谁从水底长出</text>
+
+          <!-- Perez 三步 -->
+          <g font-family="Inter,PingFang SC,sans-serif">
+            <rect x="170" y="20" width="250" height="76" rx="10" fill="#DFEFF4" stroke="#0B84A8" stroke-width="1.5"/>
+            <text x="295" y="50" text-anchor="middle" font-size="14.5" font-weight="700" fill="#0B6884">资本涌入新技术集群</text>
+            <text x="295" y="72" text-anchor="middle" font-size="11" fill="#4A463F">金融资本 → 生产资本 · 狂热期</text>
+            <rect x="440" y="20" width="250" height="76" rx="10" fill="#DFEFF4" stroke="#0B84A8" stroke-width="1.5"/>
+            <text x="565" y="50" text-anchor="middle" font-size="14.5" font-weight="700" fill="#0B6884">基础设施大规模铺设</text>
+            <text x="565" y="72" text-anchor="middle" font-size="11" fill="#4A463F">算力 / 网络 / 平台 / 链路</text>
+            <rect x="710" y="20" width="250" height="76" rx="10" fill="#DFEFF4" stroke="#0B84A8" stroke-width="1.5"/>
+            <text x="835" y="50" text-anchor="middle" font-size="14.5" font-weight="700" fill="#0B6884">能力成本大幅下降</text>
+            <text x="835" y="72" text-anchor="middle" font-size="11" fill="#4A463F">昔日昂贵能力 → 公共事业</text>
+          </g>
+          <g stroke="#0B84A8" stroke-width="2">
+            <line x1="420" y1="58" x2="436" y2="58" marker-end="url(#a12)"/>
+            <line x1="690" y1="58" x2="706" y2="58" marker-end="url(#a12)"/>
+          </g>
+
+          <!-- 层间贯通箭头 -->
+          <path d="M 565 96 C 565 130 560 150 555 176" fill="none" stroke="#1C1A17" stroke-width="2.4" marker-end="url(#a12)"/>
+          <text x="600" y="140" font-family="Inter,PingFang SC,sans-serif" font-size="12" font-weight="700" fill="#1C1A17">廉价的新能力落到谁手里？</text>
+
+          <!-- Christensen 五步 -->
+          <g font-family="Inter,PingFang SC,sans-serif">
+            <rect x="170" y="180" width="250" height="80" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="295" y="210" text-anchor="middle" font-size="14" font-weight="700" fill="#A8502A">新能力第一次服务</text>
+            <text x="295" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#A8502A">「过去无法消费的人」</text>
+            <text x="295" y="250" text-anchor="middle" font-size="10.5" fill="#4A463F">B 类机会 · 非消费者入场</text>
+            <rect x="440" y="180" width="250" height="80" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="565" y="210" text-anchor="middle" font-size="14" font-weight="700" fill="#A8502A">在位者因价值网络</text>
+            <text x="565" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#A8502A">理性地不跟进</text>
+            <text x="565" y="250" text-anchor="middle" font-size="10.5" fill="#4A463F">毛利率阶梯 + 客户绑架 + 增长数学</text>
+            <rect x="710" y="180" width="250" height="80" rx="10" fill="#F6E9E1" stroke="#A8502A" stroke-width="1.5"/>
+            <text x="835" y="210" text-anchor="middle" font-size="14" font-weight="700" fill="#A8502A">新公司从边缘小市场</text>
+            <text x="835" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#A8502A">生长 · 免打扰</text>
+            <text x="835" y="250" text-anchor="middle" font-size="10.5" fill="#4A463F">C 类机会 · 体量差护栏</text>
+          </g>
+          <g stroke="#A8502A" stroke-width="2">
+            <line x1="420" y1="220" x2="436" y2="220" marker-end="url(#a12)"/>
+            <line x1="690" y1="220" x2="706" y2="220" marker-end="url(#a12)"/>
+          </g>
+
+          <path d="M 835 260 C 835 300 830 320 826 348" fill="none" stroke="#1C1A17" stroke-width="2.4" marker-end="url(#a12)"/>
+          <text x="860" y="312" font-family="Inter,PingFang SC,sans-serif" font-size="12" font-weight="700" fill="#1C1A17">然后是那台老机器：</text>
+
+          <g font-family="Inter,PingFang SC,sans-serif">
+            <rect x="170" y="352" width="340" height="118" rx="10" fill="#FBFAF8" stroke="#1C1A17" stroke-width="1.6"/>
+            <text x="340" y="388" text-anchor="middle" font-size="15" font-weight="700" fill="#1C1A17">性能爬升 → 向上迁移</text>
+            <text x="340" y="412" text-anchor="middle" font-size="11.5" fill="#4A463F">图 1 的两条曲线 · 斜率兑现</text>
+            <text x="340" y="432" text-anchor="middle" font-size="11.5" fill="#4A463F">边缘市场 → 中端 → 主流</text>
+            <text x="340" y="454" text-anchor="middle" font-size="10.5" fill="#8A8478">硬盘 8″→3.5″ / minimill 螺纹钢→板材 / 液压斗容爬坡</text>
+            <rect x="540" y="352" width="340" height="118" rx="10" fill="#1C1A17"/>
+            <text x="710" y="392" text-anchor="middle" font-size="15.5" font-weight="900" fill="#FBFAF8">旧利润池被侵蚀</text>
+            <text x="710" y="418" text-anchor="middle" font-size="11.5" fill="#B9B2A4">上一代领导者让出王座</text>
+            <text x="710" y="440" text-anchor="middle" font-size="11.5" fill="#B9B2A4">新的利润结构在新价值网络里重建</text>
+          </g>
+          <g stroke="#1C1A17" stroke-width="2.4">
+            <line x1="510" y1="411" x2="536" y2="411" marker-end="url(#a12)"/>
+          </g>
+
+          <text x="500" y="530" text-anchor="middle" font-family="Newsreader,Noto Serif SC,serif" font-size="19" font-weight="900" fill="#1C1A17">Perez 帮我寻找浪潮 · Christensen 帮我寻找浪潮里的结构性输家与新赢家</text>
+          <text x="500" y="560" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#8A8478">宏观层告诉你资本与基建把哪种能力变便宜了；机制层告诉你便宜的能力会先在哪里创造非消费者、</text>
+          <text x="500" y="580" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="12" fill="#8A8478">哪家在位者的利润结构不允许它防守——两层都看对了，才谈得上「站在对的一边」。</text>
+          <text x="500" y="615" text-anchor="middle" font-family="Inter,PingFang SC,sans-serif" font-size="11" fill="#8A8478">注：Perez 部分概览自《技术革命与金融资本》的安装期/部署期框架；两层连接为本刊推导，非任一原作者的主张。</text>
+        </svg>
+      </div>
+      <div class="fig-note"><b>使用姿势</b>：先问宏观——「这轮周期把什么能力变成了公共事业？」再问机制——「谁在用这个能力服务过去的非消费者？谁的利润结构阻止它跟进？」两个问题都命中时，图 12 底部那个黑色方框才进入计时。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 术语表 + 收束 ══════════ -->
+<section class="section" id="terms">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="no">附录</span>
+      <h2>术语表 · 中英对照</h2>
+      <span class="en">Glossary</span>
+    </div>
+    <p class="sec-lede">ljg-read 的收尾纪律：术语中英并列，含义以原书用法为准。<b>「出处」列标注原书章节；标注「本刊」的是我们为方便转述而造的简称，不是 Christensen 的术语。</b></p>
+
+    <div class="tbl-scroll rv">
+      <table class="gloss">
+        <thead><tr><th style="width:24%">术语</th><th style="width:52%">本书含义（口径）</th><th style="width:24%">出处</th></tr></thead>
+        <tbody>
+          <tr><td>Disruptive technology<span class="zh">颠覆式技术</span></td><td>携带不同价值主张的技术：主流性能轴上更差，但在更便宜/更简单/更小/更方便的新轴上服务新客户或低端客户，并随性能爬升向上迁移。三要件：换轴 + 新价值网络 + 向上迁移。不是一切「新胜老」。</td><td>Ch.1–2 · 全书</td></tr>
+          <tr><td>Sustaining technology<span class="zh">延续性技术</span></td><td>沿主流客户已重视的性能轴持续改善——无论渐进或激进（含推倒重来的架构突破）。在位者在此战场几乎必胜。</td><td>Ch.1–2</td></tr>
+          <tr><td>Value network<span class="zh">价值网络</span></td><td>由客户、价格、成本结构、渠道、利润率与评价体系共同构成的「机会评分系统」。它不是产业链——它决定一家公司认为什么值得做。</td><td>Ch.2</td></tr>
+          <tr><td>Resource allocation<span class="zh">资源分配过程</span></td><td>组织内成千上万个日常小决策的总和（销售选择、预算审批、财务门槛），才是真实战略。被设计出来就是为了筛掉客户不想要的产品。</td><td>Ch.2–3</td></tr>
+          <tr><td>Resource dependence<span class="zh">资源依赖理论</span></td><td>组织研究理论，原书引用：组织受制于其资源提供者（客户、资本），管理者只是中介——客户和资本在借管理者的手配置资源。</td><td>Ch.3（引用）</td></tr>
+          <tr><td>Performance overshoot<span class="zh">性能过剩</span></td><td>技术供给的进步斜率超过需求增长斜率，产品越过「够用」线；用户不再为边际性能付溢价，竞争基点沿性能→可靠性→便利→价格下移。</td><td>Ch.1, 9</td></tr>
+          <tr><td>Upmarket migration<span class="zh">向上迁移</span></td><td>颠覆者从边缘市场沿性能与毛利阶梯向主流市场进攻的路径——硬盘、挖机、钢铁三案例的同一结局。</td><td>Ch.3–4</td></tr>
+          <tr><td>RPV: Resources / Processes / Values<span class="zh">资源 / 流程 / 价值观</span></td><td>组织能力三层：资源可交易、流程难复制、价值观几乎不可转移。同一 RPV 换价值网络即从能力变残疾。</td><td>Ch.8</td></tr>
+          <tr><td>Discovery-based planning<span class="zh">发现式规划</span></td><td>应对不可分析的新市场：把预测换成假设、按致命度排序、小成本买信息、尽早自负盈亏。以电动车假想案例演示。</td><td>Ch.7</td></tr>
+          <tr><td>Separate / independent organization<span class="zh">独立组织</span></td><td>在位者拥抱颠覆的唯一被验证姿势：另立组织、独立损益、绕开主流程与毛利纪律（Control Data 俄克拉荷马城、HP 温哥华喷墨、Micropolis 幸存转型）。</td><td>Ch.5</td></tr>
+          <tr><td>Incumbent / Entrant<span class="zh">在位者 / 新进入者</span></td><td>本刊统一译名：incumbent＝现有网络的在位企业；entrant＝携带新价值网络进场的新企业。胜负结构见图 10 四象限。</td><td>全书</td></tr>
+          <tr><td style="color:var(--law)">Northeast Pull<span class="zh">东北拉力</span></td><td><b>本刊简称</b>（原书 Ch.4 表述为更大客户→更高价格→更高毛利的上行结构）：把每个组织单元持续拉向高端的合力，同时令下行承受三重即时惩罚。</td><td>本刊 · 据 Ch.4</td></tr>
+          <tr><td style="color:var(--law)">低端真空<span class="zh">本刊用语</span></td><td><b>本刊造词</b>：在位者理性让出低端后留下的空白带。逐年扩大 = 进攻者的路线图。</td><td>本刊 · 据 Ch.4</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="finalq rv">
+      <div class="fq-k">FINAL QUESTIONS · 带走的两个问题</div>
+      <h3>一、在你的持仓清单和行业地图上，<em>谁现在赚得太舒服</em>，以至于它没有动力去服务下一批客户？</h3>
+      <h3>二、在你自己的领域里，<em>那个被巨头理性放弃的角落</em>——是否正好足够让你开始？</h3>
+      <p>这两个问题不用于回答，用于常备。每季财报季、每次产品发布、每次你听到「我们 all in XX」时，重新问一遍——答案会随时间移动，问题不会。</p>
+    </div>
+
+    <footer>
+      <div class="f-in">
+        <div>
+          <b>创新者的窘境 · 商业机会操作系统</b><br>
+          知识杂志 · 伴读特辑 · 2026-09<br>
+          方法：ljg-read 深读 × 金字塔重构 × huashu-design 排版
+        </div>
+        <div style="max-width:560px">
+          <b>资料纪律</b>：全书框架与案例出自 Clayton M. Christensen,《The Innovator's Dilemma》(Harvard Business School Press, 1997)；凡标注【我们的推导】【现代映射】的内容为本刊基于原书机制的引申，不代表 Christensen 的观点。图表为机制示意，不虚构数值；代际与年份为约数。「东北拉力」「低端真空」为本刊简称/造词。
+        </div>
+      </div>
+    </footer>
+  </div>
+</section>
+</main>
+<script>
+(function(){
+  'use strict';
+  var $ = function(s,c){ return (c||document).querySelector(s); };
+  var $$ = function(s,c){ return Array.prototype.slice.call((c||document).querySelectorAll(s)); };
+
+  /* ── 进度条 ── */
+  var pbar = $('#pbar');
+  function setPbar(){
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    pbar.style.width = (max > 0 ? (h.scrollTop / max * 100) : 0) + '%';
+  }
+  window.addEventListener('scroll', setPbar, {passive:true});
+  setPbar();
+
+  /* ── 回顶按钮 ── */
+  var topBtn = $('#top-btn');
+  if (topBtn) {
+    topBtn.addEventListener('click', function(){ window.scrollTo({top:0, behavior:'smooth'}); });
+    window.addEventListener('scroll', function(){
+      topBtn.classList.toggle('show', window.scrollY > 900);
+    }, {passive:true});
+  }
+
+  /* ── 导航高亮（scrollspy）── */
+  var navLinks = $$('.topnav a');
+  var sections = navLinks.map(function(a){ return $(a.getAttribute('href')); });
+  function spy(){
+    var pos = window.scrollY + 140, idx = -1;
+    sections.forEach(function(sec,i){ if (sec && sec.offsetTop <= pos) idx = i; });
+    navLinks.forEach(function(a,i){ a.classList.toggle('on', i === idx); });
+  }
+  window.addEventListener('scroll', spy, {passive:true});
+  spy();
+
+  /* ── 资料纪律透镜切换 ── */
+  var lensBtns = $$('.lens button');
+  lensBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      lensBtns.forEach(function(b){ b.classList.toggle('on', b === btn); });
+      var v = btn.getAttribute('data-lens');
+      document.body.classList.remove('lens-book','lens-derive');
+      if (v === 'book') document.body.classList.add('lens-book');
+      if (v === 'derive') document.body.classList.add('lens-derive');
+    });
+  });
+
+  /* ── 浮现动画 ── */
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, {rootMargin:'0px 0px -40px 0px', threshold:0.05});
+    $$('.rv').forEach(function(el){ io.observe(el); });
+  } else {
+    $$('.rv').forEach(function(el){ el.classList.add('in'); });
+  }
+
+  /* ── 硬盘案例推进器 ── */
+  var stepper = $('#hdd-stepper');
+  if (stepper) {
+    var tabs = $$('.step-tabs button', stepper);
+    var panels = $$('.step-panel', stepper);
+    function showStep(i){
+      tabs.forEach(function(t,j){ t.classList.toggle('on', i===j); });
+      panels.forEach(function(p,j){ p.classList.toggle('on', i===j); });
+    }
+    tabs.forEach(function(t,i){ t.addEventListener('click', function(){ showStep(i); }); });
+    $$('.step-next', stepper).forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var cur = tabs.findIndex(function(t){ return t.classList.contains('on'); });
+        showStep((cur + 1) % tabs.length);
+      });
+    });
+  }
+
+  /* ── 颠覆风险计分卡 ── */
+  var card = $('#scorecard');
+  if (card) {
+    var CLS = {1:'on-g', 2:'on-y', 3:'on-o', 4:'on-r'};
+    var NAME = {1:'绿', 2:'黄', 3:'橙', 4:'红'};
+    var KEY = 'id-scorecard-v1';
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch(e){ state = {}; }
+
+    var rows = $$('.sc-row', card);
+    var bandEl = $('#sc-band-el'), countsEl = $('#sc-counts'), verdictEl = $('#sc-verdict'), hotEl = $('#sc-hot');
+
+    var BANDS = [
+      {max:1.8, cls:'band-g', label:'绿 · 结构稳固', text:'<b>未发现成型的颠覆压力。</b>现有利润池暂时安全——但把这份计分卡放进例行体检：每季重答一次，重点盯 Q5 / Q7 / Q8 三题的移动方向。'},
+      {max:2.5, cls:'band-y', label:'黄 · 早期信号', text:'<b>颠覆的前置条件正在聚合。</b>用投资地图的逻辑逐题深挖：新玩家在哪根轴上积累？性能曲线爬到哪了？此时做研究最便宜，也最容易被忽略。'},
+      {max:3.2, cls:'band-o', label:'橙 · 正在爬升', text:'<b>攻击者已过「够用」线，正在向上迁移。</b>重新评估持有逻辑：incumbent 是真实改变了资源配置（Q10=绿）还是在发 PPT？这决定结局是 Micropolis 还是综合钢厂。'},
+      {max:99, cls:'band-r', label:'红 · 利润池受蚀', text:'<b>旧利润池已被侵入——这是确认信号而非预测。</b>核心问题从「会不会发生」变成「折价是否充分、新网络里的赢家是谁」。别急着抄底「便宜」的旧王座，先跑一遍图 10：它站对格子了吗？'}
+    ];
+
+    function render(){
+      var vals = rows.map(function(r,i){ return state[i]; });
+      // 选中态
+      rows.forEach(function(row,i){
+        $$('.sc-opt', row).forEach(function(opt){
+          opt.classList.remove('on-g','on-y','on-o','on-r');
+          if (state[i] === +opt.getAttribute('data-v')) opt.classList.add(CLS[state[i]]);
+        });
+      });
+      var answered = vals.filter(function(v){ return v; });
+      var counts = {1:0,2:0,3:0,4:0};
+      answered.forEach(function(v){ counts[v]++; });
+      if (!answered.length){
+        bandEl.className = 'band band-x'; bandEl.textContent = '待作答';
+        countsEl.innerHTML = ''; verdictEl.innerHTML = '逐题选择后，这里会汇总出风险档位、分布与最危险的三个信号。';
+        hotEl.innerHTML = ''; return;
+      }
+      var avg = answered.reduce(function(a,b){ return a+b; },0) / answered.length;
+      var band = BANDS.find(function(b){ return avg < b.max; });
+      bandEl.className = 'band ' + band.cls;
+      bandEl.textContent = band.label + ' · 均值 ' + avg.toFixed(2) + '（已答 ' + answered.length + '/10）';
+      countsEl.innerHTML = [1,2,3,4].map(function(v){
+        return '<span class="sc-count" style="background:' + ['#E2EEE7','#F5EDD6','#F6E8DA','#F5E3DF'][v-1] + ';color:' + ['#2F6B4F','#B98A18','#C06414','#A83A2A'][v-1] + '">' + NAME[v] + ' × ' + counts[v] + '</span>';
+      }).join('');
+      verdictEl.innerHTML = band.text;
+      // 最危险信号：红优先、橙次之，取前三
+      var hot = rows.map(function(row,i){ return {i:i, v:state[i]}; })
+        .filter(function(x){ return x.v >= 3; })
+        .sort(function(a,b){ return b.v - a.v; }).slice(0,3);
+      hotEl.innerHTML = hot.length
+        ? '<b>最危险的信号</b>：' + hot.map(function(x){
+            return 'Q' + (x.i+1) + '（' + NAME[x.v] + '）';
+          }).join('、') + ' —— 这几题的机制分别是：<b>' + hot.map(function(x){ return 'Q'+(x.i+1); }).length + '</b> 个正在兑现的结构裂缝，优先做深度研究。'
+        : '';
+    }
+
+    rows.forEach(function(row,i){
+      $$('.sc-opt', row).forEach(function(opt){
+        opt.addEventListener('click', function(){
+          var v = +opt.getAttribute('data-v');
+          if (state[i] === v) delete state[i]; else state[i] = v;
+          try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+          render();
+        });
+      });
+    });
+
+    $('#sc-reset').addEventListener('click', function(){
+      state = {};
+      try { localStorage.removeItem(KEY); } catch(e){}
+      render();
+    });
+    render();
+  }
+
+  /* ── 创业机会自测 ── */
+  var diag = $('#opp-diag');
+  if (diag) {
+    var boxes = $$('input[type="checkbox"]', diag);
+    var res = $('#diag-res');
+    var CARDS = {
+      A:{el:'#opp-a', name:'A · 被过度服务者'},
+      B:{el:'#opp-b', name:'B · 非消费者'},
+      C:{el:'#opp-c', name:'C · 对巨头太小的市场'},
+      D:{el:'#opp-d', name:'D · 低毛利陷阱'},
+      E:{el:'#opp-e', name:'E · 自我蚕食位（最厚护城河）'}
+    };
+    function upd(){
+      var hits = [], near = false;
+      boxes.forEach(function(b){
+        var t = b.getAttribute('data-t');
+        if (b.checked) { if (t === 'X') near = true; else if (CARDS[t]) hits.push(t); }
+      });
+      Object.keys(CARDS).forEach(function(t){
+        var el = $(CARDS[t].el);
+        if (el) el.classList.toggle('lit', hits.indexOf(t) >= 0);
+      });
+      if (!hits.length && !near){
+        res.textContent = '勾选你符合的描述（可多选），下方对应的机会卡会点亮。';
+      } else {
+        var parts = [];
+        if (hits.length) parts.push('命中的机会类型：<b>' + hits.map(function(t){ return CARDS[t].name; }).join('、') + '</b>');
+        if (near) parts.push('「主流轴更差但便宜/简单/方便」是所有颠覆者的入场姿势——它可与任意类型叠加，注意检查你命中的每一格里是否都用上了这根新轴');
+        res.innerHTML = parts.join('；') + '。';
+      }
+    }
+    boxes.forEach(function(b){ b.addEventListener('change', upd); });
+    upd();
+  }
+})();
+</script>
+</body>
+</html>

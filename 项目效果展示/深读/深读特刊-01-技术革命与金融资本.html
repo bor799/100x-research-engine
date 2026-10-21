@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深读特刊 №01 · 技术革命与金融资本 — Carlota Perez · 2026-09 增订版</title>
+<!--
+  深读特刊 №01：Carlota Perez《技术革命与金融资本》(2024 中文版)
+  设计假设（Junior Designer 备注）：
+  1. 版式系统直接继承《知识萃取特刊-2026-09》：纸白底 (--paper)、墨色标题、
+     Newsreader + Noto Serif SC 衬线正文、Inter + PingFang SC 无衬线界面字、
+     3px 实线报头、置顶胶囊导航、编号章节眉。特刊是同一本杂志的另一条产品线，不另起炉灶。
+  2. 语义配色：五个阶段各得一个色——爆发=绿(技术)、狂热=锈橙(赌场)、转折=深红(崩溃)、
+     协同=靛蓝(黄金时代)、成熟=灰(暮年)。全刊颜色只从这套语义出发，不做装饰性配色。
+  3. 出处纪律是本刊的编辑红线：【原书】【推导】【现代映射】三色徽标贯穿全文。
+  4. 所有数字均出自原书（中文版）或明确标注为现代映射，无虚构数据。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF8; --paper-deep:#F4F1EB; --paper-mid:#EFEBE2;
+  --ink:#1C1A17; --ink-soft:#4A463F; --ink-faint:#8A8478;
+  --rule:#E3DED4; --rule-strong:#C9C2B2;
+  /* 阶段语义色 */
+  --ph-irr:#2F6B4F; --ph-irr-bg:#EDF2EE;
+  --ph-fre:#A8502A; --ph-fre-bg:#F7EDE6;
+  --ph-tur:#8A2F2B; --ph-tur-bg:#F5E9E7;
+  --ph-syn:#274B8F; --ph-syn-bg:#EAEFF6;
+  --ph-mat:#6E6A5E; --ph-mat-bg:#EFEDE7;
+  --gold:#8F6A1E;
+  --serif:'Newsreader','Noto Serif SC','Songti SC',serif;
+  --sans:'Inter','PingFang SC','Hiragino Sans GB',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+section,footer{scroll-margin-top:64px}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.85;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:var(--ph-fre-bg);color:var(--ink)}
+a{color:inherit}
+.wrap{max-width:960px;margin:0 auto;padding:0 28px}
+.small{font-size:13.5px;color:var(--ink-faint);font-family:var(--sans);letter-spacing:.02em}
+
+/* ============ 报头 ============ */
+.masthead{border-bottom:3px solid var(--ink);padding:26px 0 18px}
+.masthead .row1{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--sans);
+  font-size:12px;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:14px}
+.masthead h1{font-family:var(--serif);font-weight:900;font-size:clamp(30px,5vw,46px);line-height:1.15;letter-spacing:.01em}
+.masthead .sub{margin-top:10px;font-size:15.5px;color:var(--ink-soft);font-style:italic}
+.masthead .sub b{font-style:normal;color:var(--ink);font-weight:600}
+
+/* ============ 置顶导航 ============ */
+.topnav{position:sticky;top:0;z-index:60;background:rgba(251,250,248,.93);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--rule)}
+.topnav .inner{max-width:960px;margin:0 auto;padding:0 20px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.topnav .inner::-webkit-scrollbar{display:none}
+.topnav a{font-family:var(--sans);font-size:13px;color:var(--ink-soft);text-decoration:none;
+  padding:11px 13px;white-space:nowrap;border-bottom:2px solid transparent}
+.topnav a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.topnav a.home{font-weight:700;color:var(--ink)}
+
+/* ============ 章节眉 ============ */
+.sec-head{display:flex;align-items:baseline;gap:14px;margin:86px 0 8px;border-top:2px solid var(--ink);padding-top:14px}
+.sec-head .no{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--paper);
+  background:var(--ink);padding:3px 9px;border-radius:999px;white-space:nowrap}
+.sec-head h2{font-size:clamp(23px,3.4vw,30px);font-weight:900;letter-spacing:.01em}
+.sec-head .en{font-family:var(--sans);font-size:12px;letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;margin-left:auto;white-space:nowrap}
+.kicker{font-family:var(--sans);font-size:12.5px;letter-spacing:.18em;color:var(--ph-fre);font-weight:700;margin:86px 0 6px;text-transform:uppercase}
+.lede{font-size:19px;line-height:1.8;color:var(--ink-soft);margin:14px 0 8px;font-style:italic}
+h3{font-size:21px;font-weight:700;margin:44px 0 10px}
+h4{font-size:17px;font-weight:700;margin:28px 0 8px}
+p{margin:12px 0}
+.prose p{text-align:justify}
+
+/* ============ 出处徽标 ============ */
+.tag{display:inline-block;font-family:var(--sans);font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  padding:1px 7px;border-radius:3px;vertical-align:2px;margin-left:6px;white-space:nowrap}
+.tag-book{background:var(--ink);color:var(--paper)}
+.tag-infer{border:1px solid var(--ink-faint);color:var(--ink-soft);background:transparent}
+.tag-modern{background:var(--ph-syn-bg);color:var(--ph-syn);border:1px solid var(--ph-syn)}
+.tag-fact{background:var(--ph-irr-bg);color:var(--ph-irr);border:1px solid var(--ph-irr)}
+.tag-you{background:#F6EFDF;color:var(--gold);border:1px solid var(--gold)}
+.tag-demo{border:1px dashed var(--ink-faint);color:var(--ink-faint);background:transparent}
+
+/* ============ 增订篇 · 实验组件 ============ */
+.part-divider{margin:96px 0 -56px;display:flex;align-items:baseline;gap:14px}
+.part-divider .pd-badge{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.18em;
+  color:var(--paper);background:var(--ph-fre);padding:4px 12px;border-radius:999px;white-space:nowrap}
+.part-divider .pd-t{font-size:clamp(19px,2.6vw,24px);font-weight:900}
+.part-divider .pd-sub{font-family:var(--sans);font-size:12.5px;color:var(--ink-faint);margin-left:auto;white-space:nowrap}
+
+.lab-btn{border:1.5px solid var(--ink);border-radius:999px;background:#fff;cursor:pointer;
+  font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--ink-soft);
+  padding:8px 16px;transition:all .12s ease;display:inline-flex;align-items:center;gap:8px}
+.lab-btn i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.lab-btn:hover{transform:translateY(-2px)}
+.lab-btn.on{color:#fff}
+.lab-btn.on.k1{background:var(--ph-irr);border-color:var(--ph-irr)}
+.lab-btn.on.k2{background:var(--ph-fre);border-color:var(--ph-fre)}
+.lab-btn.on.k3{background:var(--ph-syn);border-color:var(--ph-syn)}
+.lab-btn.on.k4{background:var(--gold);border-color:var(--gold)}
+.lab-controls{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 0}
+.lab-note{background:var(--paper-deep);border:1px solid var(--rule);border-left:4px solid var(--ink);
+  padding:15px 20px;margin:16px 0;font-size:15px;line-height:1.8;min-height:52px}
+.lab-note b{font-family:var(--sans);font-size:12px;letter-spacing:.12em;color:var(--ink-faint);display:block;margin-bottom:3px}
+
+.calc{background:#fff;border:1px solid var(--rule-strong);border-radius:8px;padding:24px 28px;margin:22px 0}
+.calc label{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink-soft)}
+.calc label output{color:var(--ph-fre);font-weight:700}
+.calc input[type=range]{width:100%;margin:10px 0 4px;accent-color:var(--ink)}
+.calc .assumption{font-family:var(--sans);font-size:13px;color:var(--ink-faint);margin:8px 0 4px}
+.calc .big{font-size:42px;font-weight:900;color:var(--ph-fre);line-height:1.3}
+.calc .big small{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink-soft)}
+
+.srcref{font-family:var(--sans);font-size:11px;font-weight:700;color:var(--ph-fre);
+  text-decoration:none;vertical-align:2px;margin-left:3px;white-space:nowrap}
+.srcref:hover{text-decoration:underline}
+
+details{border-top:1px dashed var(--rule-strong);margin:16px 0 0;padding:12px 0 6px}
+details:last-of-type{margin-bottom:22px}
+summary{cursor:pointer;font-family:var(--sans);font-size:14px;font-weight:700;color:var(--ink-soft);
+  list-style:none;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"＋";font-size:15px;color:var(--ink-faint);flex:none}
+details[open] summary::after{content:"－"}
+details>div{padding-top:9px;font-size:15px;line-height:1.85;color:var(--ink-soft);text-align:justify}
+details>div b{color:var(--ink)}
+
+.svg-wrap svg .surge-curve{fill:none;stroke-width:4;opacity:.22;transition:opacity .18s ease;stroke-linecap:round}
+
+/* ============ 首页总图 ============ */
+.hero{margin-top:44px}
+.hero .statement{background:var(--paper-deep);border:1px solid var(--rule);border-left:4px solid var(--ink);
+  padding:26px 30px;margin:26px 0}
+.hero .statement .s-label{font-family:var(--sans);font-size:11.5px;letter-spacing:.2em;font-weight:700;color:var(--ink-faint);margin-bottom:8px}
+.hero .statement .s-main{font-size:clamp(19px,2.6vw,23px);font-weight:700;line-height:1.7}
+.hero .statement .s-sub{margin-top:10px;font-size:15.5px;color:var(--ink-soft)}
+.svg-wrap{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:18px 12px 8px;margin:22px 0 8px;overflow-x:auto}
+.svg-wrap svg{display:block;min-width:760px;width:100%;height:auto}
+.figcap{font-family:var(--sans);font-size:12.5px;color:var(--ink-faint);margin:8px 0 0;line-height:1.6}
+.legend{display:flex;flex-wrap:wrap;gap:18px;margin:12px 0 0;font-family:var(--sans);font-size:13px;color:var(--ink-soft)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:22px;height:0;border-top:3px solid var(--ink);display:inline-block}
+.legend i.dash{border-top-style:dashed;border-top-color:var(--ph-fre)}
+
+/* 三入口 */
+.entries{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:30px 0 8px}
+.entry{border:1.5px solid var(--ink);border-radius:6px;padding:20px 20px 17px;text-decoration:none;display:block;
+  background:var(--paper);transition:transform .15s ease, box-shadow .15s ease}
+.entry:hover{transform:translateY(-3px);box-shadow:4px 6px 0 rgba(28,26,23,.14)}
+.entry .e-no{font-family:var(--sans);font-size:11px;letter-spacing:.16em;font-weight:700;margin-bottom:8px}
+.entry .e-t{font-size:19px;font-weight:900;margin-bottom:6px}
+.entry .e-d{font-size:14px;color:var(--ink-soft);line-height:1.7}
+.entry .e-q{font-size:13.5px;font-style:italic;color:var(--ink-faint);margin-top:10px;border-top:1px dashed var(--rule);padding-top:9px}
+.entry.e-a .e-no{color:var(--ph-irr)} .entry.e-b .e-no{color:var(--ph-syn)} .entry.e-c .e-no{color:var(--gold)}
+
+/* ============ 命题 ============ */
+.thesis{border:1px solid var(--rule-strong);border-radius:6px;background:#fff;margin:26px 0;overflow:hidden}
+.thesis-head{display:flex;align-items:baseline;gap:14px;padding:18px 24px 14px;background:var(--paper-deep);border-bottom:1px solid var(--rule)}
+.thesis-head .t-no{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--paper);background:var(--ink);padding:2px 9px;border-radius:999px}
+.thesis-head .t-t{font-size:19.5px;font-weight:900;line-height:1.5}
+.thesis-body{padding:18px 24px 20px}
+.thesis-body .t-claim{font-size:16.5px;line-height:1.85;margin-bottom:14px}
+.thesis-body .t-claim b{background:linear-gradient(transparent 62%,var(--ph-fre-bg) 62%)}
+.aspects{display:grid;grid-template-columns:1fr 1fr;gap:0 34px}
+.aspect{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:8.5px 0;border-top:1px dashed var(--rule);font-size:14.5px;line-height:1.75}
+.aspect>b{font-family:var(--sans);font-size:12px;font-weight:700;color:var(--ink-faint);letter-spacing:.06em;padding-top:3px}
+.aspect.inv b{color:var(--ph-syn)} .aspect.ent b{color:var(--gold)}
+
+/* ============ 流程链 ============ */
+.flow-chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:20px 0}
+.flow-chip{background:#fff;border:1.5px solid var(--ink);border-radius:5px;padding:9px 13px;font-size:14px;
+  font-weight:600;line-height:1.5;display:flex;align-items:center;text-align:center}
+.flow-chip small{display:block;font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink-faint);margin-top:2px}
+.flow-arrow{align-self:center;font-family:var(--sans);color:var(--ink-faint);font-size:16px;flex:none}
+.flow-chip.hl{background:var(--ink);color:var(--paper)}
+.flow-chip.hl small{color:rgba(251,250,248,.7)}
+
+/* ============ 表格 ============ */
+.tbl{width:100%;border-collapse:collapse;margin:20px 0;background:#fff;font-size:14.5px}
+.tbl th{font-family:var(--sans);font-size:12.5px;letter-spacing:.06em;text-align:left;padding:10px 14px;
+  border-bottom:2px solid var(--ink)}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.75}
+.tbl td:first-child{font-weight:700;white-space:nowrap}
+.tbl tr td:first-child{font-family:var(--sans);font-size:13px;color:var(--ink-soft)}
+.tbl .c-irr{color:var(--ph-irr);font-weight:700} .tbl .c-fre{color:var(--ph-fre);font-weight:700}
+.tbl .c-tur{color:var(--ph-tur);font-weight:700} .tbl .c-syn{color:var(--ph-syn);font-weight:700}
+.tbl .c-mat{color:var(--ph-mat);font-weight:700}
+.tbl-scroll{overflow-x:auto}
+
+/* ============ 阶段互动时间轴 ============ */
+.phase-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:24px 0 0}
+.phase-tab{border:1.5px solid var(--ink);border-radius:6px;background:#fff;padding:12px 10px;cursor:pointer;
+  font-family:var(--serif);text-align:center;transition:all .12s ease}
+.phase-tab .p-cn{font-size:17px;font-weight:900;display:block}
+.phase-tab .p-en{font-family:var(--sans);font-size:10.5px;letter-spacing:.1em;color:var(--ink-faint);display:block;margin-top:3px}
+.phase-tab .p-yr{font-family:var(--sans);font-size:11px;color:var(--ink-soft);display:block;margin-top:5px}
+.phase-tab:hover{transform:translateY(-2px)}
+.phase-tab.on.p1{background:var(--ph-irr);border-color:var(--ph-irr);color:#fff}
+.phase-tab.on.p2{background:var(--ph-fre);border-color:var(--ph-fre);color:#fff}
+.phase-tab.on.p3{background:var(--ph-tur);border-color:var(--ph-tur);color:#fff}
+.phase-tab.on.p4{background:var(--ph-syn);border-color:var(--ph-syn);color:#fff}
+.phase-tab.on.p5{background:var(--ph-mat);border-color:var(--ph-mat);color:#fff}
+.phase-tab.on .p-en,.phase-tab.on .p-yr{color:rgba(255,255,255,.82)}
+.phase-panel{display:none;border:1px solid var(--rule-strong);border-top:none;border-radius:0 0 8px 8px;background:#fff;padding:24px 28px}
+.phase-panel.show{display:block}
+.phase-panel .pp-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+.phase-panel .pp-head .pp-t{font-size:20px;font-weight:900}
+.phase-panel .pp-head .pp-motto{font-style:italic;color:var(--ink-soft);font-size:15px}
+.pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 34px;margin-top:10px}
+.pp-row{padding:9px 0;border-top:1px dashed var(--rule);font-size:14.5px;line-height:1.75}
+.pp-row>b{font-family:var(--sans);font-size:12px;font-weight:700;color:var(--ink-faint);display:block;letter-spacing:.06em;margin-bottom:2px}
+
+/* ============ 双轨图 ============ */
+.dual{border:1px solid var(--rule-strong);border-radius:8px;background:#fff;padding:24px 26px;margin:22px 0}
+.dual .d-track{margin:14px 0}
+.dual .d-label{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.14em;margin-bottom:10px}
+.dual .d-real .d-label{color:var(--ph-syn)} .dual .d-paper .d-label{color:var(--ph-fre)}
+.dual .d-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dual .d-chip{border:1.5px solid var(--ph-syn);color:var(--ph-syn);border-radius:999px;padding:5px 13px;font-size:13.5px;font-weight:600;background:var(--ph-syn-bg)}
+.dual .d-paper .d-chip{border-color:var(--ph-fre);color:var(--ph-fre);background:var(--ph-fre-bg)}
+.dual .d-sep{display:flex;gap:6px;align-items:center;justify-content:center;margin:6px 0;font-family:var(--sans);font-size:12.5px}
+.dual .d-sep .band{flex:1;border-top:1px dashed var(--rule-strong);text-align:center;padding-top:6px;color:var(--ink-faint)}
+.dual .d-sep .band.b1{color:var(--ph-irr)} .dual .d-sep .band.b2{color:var(--ph-fre)}
+.dual .d-sep .band.b3{color:var(--ph-tur)} .dual .d-sep .band.b4{color:var(--ph-syn)}
+
+/* ============ 案例 ============ */
+.case-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:24px 0 0}
+.case-tab{border:1.5px solid var(--ink);border-radius:6px;background:#fff;padding:11px 8px;cursor:pointer;text-align:center;transition:all .12s ease}
+.case-tab .cs-yr{font-family:var(--sans);font-size:15px;font-weight:700;display:block}
+.case-tab .cs-n{font-size:13px;font-weight:700;display:block;margin-top:2px;line-height:1.4}
+.case-tab .cs-nm{font-family:var(--sans);font-size:10.5px;color:var(--ink-faint);display:block;margin-top:3px}
+.case-tab:hover{transform:translateY(-2px)}
+.case-tab.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.case-tab.on .cs-nm{color:rgba(251,250,248,.75)}
+.case-panel{display:none;border:1px solid var(--rule-strong);border-top:none;border-radius:0 0 8px 8px;background:#fff;padding:26px 30px}
+.case-panel.show{display:block}
+.case-panel .cp-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:6px}
+.case-panel .cp-head .cp-t{font-size:22px;font-weight:900}
+.case-panel .cp-head .cp-m{font-size:14px;color:var(--ink-soft);font-style:italic}
+.qa{border-left:3px solid var(--rule-strong);padding:4px 0 4px 18px;margin:18px 0}
+.qa .q{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ink-soft);letter-spacing:.04em;margin-bottom:4px}
+.qa .a{font-size:15.5px;line-height:1.85}
+.qa.hl{border-left-color:var(--ph-fre)}
+.story{background:var(--paper-deep);border:1px solid var(--rule);border-radius:6px;padding:18px 22px;margin:18px 0}
+.story .st-t{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ph-fre);margin-bottom:8px}
+.story p{font-size:15.5px;line-height:1.9;text-align:justify}
+.story p:first-of-type::first-letter{font-size:2.6em;font-weight:900;float:left;line-height:1;margin:4px 10px 0 0;font-family:var(--serif)}
+
+/* ============ 重点框 ============ */
+.takeaway{background:var(--paper-deep);border:1px solid var(--rule-strong);border-radius:6px;padding:18px 24px;margin:22px 0}
+.takeaway .tk-t{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.18em;color:var(--ink);margin-bottom:8px}
+.takeaway p{font-size:15.5px;margin:6px 0}
+.underwater{background:var(--ink);color:#EDE9E0;border-radius:8px;padding:24px 28px;margin:26px 0}
+.underwater .uw-t{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.2em;color:#B9B29F;margin-bottom:10px}
+.underwater p{font-size:16.5px;line-height:1.9;color:#F2EFE7}
+.underwater p b{color:#fff}
+.underwater .src{color:#B9B29F}
+
+/* ============ AI 诊断表 ============ */
+.diag th{background:var(--ink);color:var(--paper);border-bottom:none}
+.diag td:first-child{white-space:normal;min-width:120px}
+
+/* ============ 清单 ============ */
+.check-intro{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin:18px 0 10px}
+.check-counter{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ph-fre);letter-spacing:.06em}
+.checklist{background:#fff;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden}
+.check-item{display:grid;grid-template-columns:34px 34px 1fr;gap:0 12px;align-items:start;padding:15px 20px 13px;
+  border-bottom:1px solid var(--rule);cursor:pointer;transition:background .12s;user-select:none}
+.check-item:last-child{border-bottom:none}
+.check-item:hover{background:var(--paper-deep)}
+.check-item .ck-box{width:20px;height:20px;border:2px solid var(--ink);border-radius:4px;margin-top:4px;position:relative;flex:none}
+.check-item .ck-no{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ink-faint);padding-top:5px}
+.check-item .ck-q{font-size:15.5px;font-weight:600;line-height:1.7}
+.check-item .ck-d{grid-column:3;font-size:14px;color:var(--ink-soft);line-height:1.75;margin-top:3px}
+.check-item.done{background:var(--paper-mid)}
+.check-item.done .ck-q{text-decoration:line-through;text-decoration-thickness:1.5px;color:var(--ink-faint)}
+.check-item.done .ck-box{background:var(--ink)}
+.check-item.done .ck-box::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--paper);font-size:13px;font-weight:700}
+
+/* ============ 拆书 ============ */
+.dd-item{border-top:1px solid var(--rule-strong);padding:18px 0 20px;display:grid;grid-template-columns:170px 1fr;gap:20px}
+.dd-item:first-of-type{border-top:2px solid var(--ink)}
+.dd-item .dd-t{font-size:17px;font-weight:900;line-height:1.6}
+.dd-item .dd-t small{display:block;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--ink-faint);margin-top:4px}
+.dd-item .dd-b{font-size:15.5px;line-height:1.9;text-align:justify}
+.dd-item .dd-b b{background:linear-gradient(transparent 62%,var(--ph-syn-bg) 62%)}
+
+/* ============ 页脚 ============ */
+footer{margin-top:96px;border-top:3px solid var(--ink);padding:30px 0 60px;background:var(--paper-deep)}
+footer .f-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:40px}
+footer h5{font-family:var(--sans);font-size:12px;letter-spacing:.16em;font-weight:700;margin-bottom:12px}
+footer p,footer li{font-size:13.5px;line-height:1.9;color:var(--ink-soft)}
+footer ul{list-style:none}
+footer li::before{content:"— ";color:var(--ink-faint)}
+
+@media (max-width:820px){
+  .entries{grid-template-columns:1fr}
+  .aspects,.pp-grid{grid-template-columns:1fr}
+  .phase-tabs,.case-tabs{grid-template-columns:repeat(2,1fr)}
+  .dd-item{grid-template-columns:1fr;gap:8px}
+  footer .f-grid{grid-template-columns:1fr}
+  .sec-head .en{display:none}
+  .check-item{grid-template-columns:34px 34px 1fr}
+  .check-item .ck-d{grid-column:3}
+  .part-divider .pd-sub{display:none}
+  .part-divider{flex-wrap:wrap;gap:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= 报头 ================= -->
+<header class="masthead">
+  <div class="wrap">
+    <div class="row1">
+      <span>知识杂志 · 深读特刊 Deep-Read</span>
+      <span>№01 · 2026-09 · 增订版</span>
+    </div>
+    <h1>技术革命与金融资本</h1>
+    <p class="sub">Carlota Perez · <b>《技术革命与金融资本：泡沫与黄金时代的动力学》</b>（2024 中文版）深读拆解 —— 一份给「投资人 + 创业者」的世界观工具。<b>2026-09-12 增订：</b>并入「当下映射」篇——把书的框架对准 AI 的建设、应用与市场定价（§05–§09）。</p>
+  </div>
+</header>
+
+<nav class="topnav">
+  <div class="inner">
+    <a href="#overview" class="home">总览</a>
+    <a href="#theses">五命题</a>
+    <a href="#logic">六个逻辑</a>
+    <a href="#cases">五次革命</a>
+    <a href="#ai">拿它看AI</a>
+    <a href="#ruler">尺子与时钟</a>
+    <a href="#curves">曲线与成本</a>
+    <a href="#nowstate">当下状态</a>
+    <a href="#you">你的判断</a>
+    <a href="#profit">利润与案例</a>
+    <a href="#investor">投资清单</a>
+    <a href="#founder">创业清单</a>
+    <a href="#deconstruct">拆书</a>
+    <a href="#discipline">出处</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ================= §00 总览 ================= -->
+<section id="overview" class="hero">
+
+  <div class="statement">
+    <div class="s-label">一句话世界观</div>
+    <p class="s-main">每场技术革命都要分两步走：先用金融狂热把基础设施铺完——泡沫破裂、投资者血本无归，但铁路、光缆、芯片厂留在了地里；再用生产资本把这些廉价的基础设施摊开成整个经济的黄金时代。半个世纪一轮。<span class="tag tag-book">原书主线</span></p>
+    <p class="s-sub">于是有这把尺子：<b>看到一个时代的钱往哪里流，就知道它正在建设什么；看到它正在建设什么，就能判断下一阶段社会会长出什么生意。</b></p>
+  </div>
+
+  <!-- 总图：巨潮全景 -->
+  <div class="svg-wrap">
+    <svg viewBox="0 0 1000 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="发展巨潮全景图：导入期、转折点、展开期">
+      <!-- 顶部主导权条 -->
+      <rect x="40" y="14" width="390" height="26" rx="3" fill="#F7EDE6" stroke="#A8502A" stroke-width="1.2"/>
+      <text x="235" y="31" text-anchor="middle" font-family="Inter,PingFang SC" font-size="12.5" font-weight="700" fill="#A8502A">导入期 INSTALLATION · 金融资本掌舵</text>
+      <rect x="438" y="14" width="64" height="26" rx="3" fill="#F5E9E7" stroke="#8A2F2B" stroke-width="1.2"/>
+      <text x="470" y="31" text-anchor="middle" font-family="Inter,PingFang SC" font-size="11.5" font-weight="700" fill="#8A2F2B">转折点</text>
+      <rect x="510" y="14" width="450" height="26" rx="3" fill="#EAEFF6" stroke="#274B8F" stroke-width="1.2"/>
+      <text x="735" y="31" text-anchor="middle" font-family="Inter,PingFang SC" font-size="12.5" font-weight="700" fill="#274B8F">展开期 DEPLOYMENT · 生产资本掌舵</text>
+
+      <!-- 阶段底色带 -->
+      <rect x="40"  y="52" width="180" height="210" fill="#EDF2EE" opacity=".55"/>
+      <rect x="220" y="52" width="200" height="210" fill="#F7EDE6" opacity=".7"/>
+      <rect x="420" y="52" width="100" height="210" fill="#F5E9E7" opacity=".8"/>
+      <rect x="520" y="52" width="230" height="210" fill="#EAEFF6" opacity=".6"/>
+      <rect x="750" y="52" width="230" height="210" fill="#EFEDE7" opacity=".7"/>
+
+      <!-- 阶段分隔虚线 -->
+      <line x1="220" y1="52" x2="220" y2="262" stroke="#8A8478" stroke-width="1" stroke-dasharray="3 4"/>
+      <line x1="420" y1="52" x2="420" y2="262" stroke="#8A8478" stroke-width="1" stroke-dasharray="3 4"/>
+      <line x1="520" y1="52" x2="520" y2="262" stroke="#8A8478" stroke-width="1" stroke-dasharray="3 4"/>
+      <line x1="750" y1="52" x2="750" y2="262" stroke="#8A8478" stroke-width="1" stroke-dasharray="3 4"/>
+
+      <!-- 真实财富曲线（实线墨色 S 型） -->
+      <path d="M 40,292 C 120,288 190,280 240,268 C 320,248 380,242 420,230 C 460,220 480,224 520,214 C 600,192 680,152 760,132 C 830,116 900,110 980,106"
+            fill="none" stroke="#1C1A17" stroke-width="3.2" stroke-linecap="round"/>
+      <!-- 账面财富曲线（锈橙虚线：跟随→飙升→崩落→再跟随） -->
+      <path d="M 40,294 C 110,290 170,284 220,272 C 270,258 310,230 350,190 C 385,155 408,110 422,72 C 430,52 436,46 442,48 C 452,52 458,86 464,130 C 470,180 478,212 492,222 C 540,238 600,206 680,168 C 760,134 840,120 900,112 C 930,108 955,100 980,88"
+            fill="none" stroke="#A8502A" stroke-width="2.6" stroke-dasharray="7 5" stroke-linecap="round"/>
+      <!-- 崩溃闪电 -->
+      <path d="M 448,60 l -9,16 h 8 l -10,18 l 17,-15 h -9 l 10,-17 z" fill="#8A2F2B"/>
+
+      <!-- 曲线标注 -->
+      <text x="855" y="98" font-family="Inter,PingFang SC" font-size="12.5" font-weight="700" fill="#1C1A17">真实财富</text>
+      <text x="855" y="113" font-family="Inter,PingFang SC" font-size="10.5" fill="#4A463F">产能·收入·利润·现金流</text>
+      <text x="968" y="76" text-anchor="end" font-family="Inter,PingFang SC" font-size="12.5" font-weight="700" fill="#A8502A">账面财富</text>
+      <text x="968" y="91" text-anchor="end" font-family="Inter,PingFang SC" font-size="10.5" fill="#A8502A">股价·估值·资本利得</text>
+      <text x="470" y="70" text-anchor="middle" font-family="Inter,PingFang SC" font-size="11" font-weight="700" fill="#8A2F2B">泡沫破裂</text>
+
+      <!-- 泡沫区标注 -->
+      <text x="330" y="120" text-anchor="middle" font-family="Noto Serif SC,serif" font-size="12.5" font-style="italic" fill="#A8502A">泡沫：账面与真实</text>
+      <text x="330" y="136" text-anchor="middle" font-family="Noto Serif SC,serif" font-size="12.5" font-style="italic" fill="#A8502A">的脱钩区</text>
+      <text x="635" y="170" text-anchor="middle" font-family="Noto Serif SC,serif" font-size="12.5" font-style="italic" fill="#274B8F">黄金时代：在廉价基础设施上</text>
+      <text x="635" y="186" text-anchor="middle" font-family="Noto Serif SC,serif" font-size="12.5" font-style="italic" fill="#274B8F">「以递减的成本大规模应用」</text>
+
+      <!-- 底部阶段标签 -->
+      <g font-family="Inter,PingFang SC" font-size="13" font-weight="700" text-anchor="middle">
+        <a href="#phases"><text x="130" y="284" fill="#2F6B4F">爆发 IRRUPTION</text></a>
+        <a href="#phases"><text x="320" y="284" fill="#A8502A">狂热 FRENZY</text></a>
+        <a href="#phases"><text x="470" y="284" fill="#8A2F2B">转折 TURNING</text></a>
+        <a href="#phases"><text x="635" y="284" fill="#274B8F">协同 SYNERGY</text></a>
+        <a href="#phases"><text x="865" y="284" fill="#6E6A5E">成熟 MATURITY</text></a>
+      </g>
+      <g font-family="Inter,PingFang SC" font-size="10.5" fill="#8A8478" text-anchor="middle">
+        <text x="130" y="300">技术的时代</text>
+        <text x="320" y="300">金融的时代·赌场经济</text>
+        <text x="470" y="300">清算与制度重组</text>
+        <text x="635" y="300">生产的时代·黄金时代</text>
+        <text x="865" y="300">市场饱和·下一场革命的土壤</text>
+      </g>
+      <!-- 时间轴 -->
+      <line x1="40" y1="318" x2="980" y2="318" stroke="#8A8478" stroke-width="1.4"/>
+      <g font-family="Inter,PingFang SC" font-size="10" fill="#8A8478">
+        <text x="40" y="308">≈0年</text><text x="235" y="308">≈10年</text><text x="460" y="308">≈20–30年</text><text x="640" y="308">≈30–40年</text><text x="905" y="308">≈40–60年</text>
+      </g>
+    </svg>
+  </div>
+  <p class="figcap">发展巨潮（Great Surge）全景。曲线为示意结构而非数据：<span style="color:#1C1A17;font-weight:700">实线</span>是真实财富的慢链条，<span style="color:#A8502A;font-weight:700">虚线</span>是账面财富的快链条——狂热期两者脱钩到不可持续，崩溃强制耦合，展开期在泡沫遗留的廉价基础设施上重新同步。五次巨潮的大崩溃都出现在「大爆炸」之后二三十年。阶段划分依据原书第 4–5 章。<span class="tag tag-book">结构：原书</span><span class="tag tag-infer">曲线形状：推导示意</span></p>
+
+  <!-- 三个入口 -->
+  <div class="entries">
+    <a class="entry e-a" href="#theses">
+      <div class="e-no">入口 A · 理解社会规律</div>
+      <div class="e-t">为什么钱每半个世纪<br>疯一次</div>
+      <div class="e-d">五个核心命题 + 六个逻辑框架：技术革命如何变成巨潮，泡沫为什么是这套系统的融资机制而不是意外。</div>
+      <div class="e-q">「金融资本好似被浪费了……但它为以后将要全面展开的技术革命创造了基本的外部环境。」</div>
+    </a>
+    <a class="entry e-b" href="#investor">
+      <div class="e-no">入口 B · 辅助投资判断</div>
+      <div class="e-t">钱在建设什么，<br>利润会迁移到哪</div>
+      <div class="e-d">投资者十二条自查 + AI 诊断仪表盘：判断一场革命走到哪一步，账面与真实脱钩了几个身位。</div>
+      <div class="e-q">「证券分析师相信公司是造钱的。公司其实是造鞋的！」——德鲁克，原书第 11 章引</div>
+    </a>
+    <a class="entry e-c" href="#founder">
+      <div class="e-no">入口 C · 寻找创业机会</div>
+      <div class="e-t">哪些路已经有人<br>替你烧钱修好</div>
+      <div class="e-d">创业者八问：在别人烧掉的钱上建立高 ROIC 生意——泡沫的建设性遗产就是下一批公司的免费午餐。</div>
+      <div class="e-q">股票可以跌 90%，但基础设施可能永久留在社会里。</div>
+    </a>
+  </div>
+
+  <div class="takeaway">
+    <div class="tk-t">这份特刊怎么用</div>
+    <p>这不是书摘，是一台<b>取景框</b>。全书拆成四层：先给一句话与五个命题（§01），再给六个可复用的逻辑框架（§02），然后落到五次革命的原始案例（§03）与对 AI 的诊断提问（§04）。随后是 <b>2026-09-12 增订的「当下映射」篇（§05–§09）</b>：修订尺子、拆开四条曲线、核对当下证据，把「你的判断」变成可以更新的假设，并落到利润迁移与 Oracle / Agent 案例。最后收进两张可打勾的决策清单（§10–11）与拆书五问（§12）。所有内容带出处徽标——<span class="tag tag-book">原书</span>=佩雷斯明确论述；<span class="tag tag-infer">推导</span>=用她的框架做的合理推论；<span class="tag tag-modern">现代映射</span>=延伸到当代市场，与作者观点严格分开；增订篇另加 <span class="tag tag-fact">公开事实</span>=有日期与出处的资料快照、<span class="tag tag-you">你的假设</span>=读者自己的判断、<span class="tag tag-demo">教学示意</span>=纯教学模型不代表实测。</p>
+  </div>
+</section>
+
+<!-- ================= §01 五个核心命题 ================= -->
+<section id="theses">
+  <div class="sec-head"><span class="no">§01</span><h2>五个核心命题</h2><span class="en">Five Theses</span></div>
+  <p class="lede">全书两百多页，压成五句话。每句按同一把尺子展开：为什么、钱怎么流、谁受益、谁担风险、何时失效，以及投资镜与创业镜。</p>
+
+  <div class="thesis">
+    <div class="thesis-head"><span class="t-no">命题一</span><span class="t-t">技术革命不是一项发明，是一整套「新常识」的爆发——半个世纪一换</span></div>
+    <div class="thesis-body">
+      <p class="t-claim">每轮革命 = <b>创新集群 + 一种廉价的通用核心投入品（棉纱·钢铁·石油·芯片）+ 新基础设施</b>。它们合起来形成一套「技术-经济范式」：关于怎么生产、怎么组织、什么便宜、什么值得投资的常识。旧常识是为上一代技术设计的，拦不住也接不住新范式。<span class="tag tag-book">原书 ch2</span></p>
+      <div class="aspects">
+        <div class="aspect"><b>为什么</b><span>单项技术推不动巨潮；集群彼此放大。核心投入品一旦持续降价，所有生意都有动力围着它重做一遍。</span></div>
+        <div class="aspect"><b>钱怎么流</b><span>钱冲的从来不是「发明」，是「用新范式把所有旧生意重做一遍」的机会——钢铁便宜了，船、轨、楼、桥全部重做；芯片便宜了，同理。</span></div>
+        <div class="aspect"><b>谁受益</b><span>抢先换脑的先行者。谁担风险：押注单点改良、无视范式切换的人——1872 年后还在种茜草的农户，十年内被煤焦油合成染料整个抹掉。<span class="tag tag-book">原书 ch9</span></span></div>
+        <div class="aspect"><b>何时失效</b><span>范式成熟：核心投入品成本降无可降、市场饱和、利润机会枯竭——下一场革命的土壤。<span class="tag tag-book">原书 ch8</span></span></div>
+        <div class="aspect inv"><b>投资镜</b><span>先问标的存在于范式的哪一层——核心投入品、基础设施、还是应用层。应用层的空间大小，取决于投入品还能便宜多久。</span></div>
+        <div class="aspect ent"><b>创业镜</b><span>新范式是一张「重做所有旧生意」的许可证。去旧产业和新常识的交叉点上找生意，那里全是还没换脑的对手。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="thesis">
+    <div class="thesis-head"><span class="t-no">命题二</span><span class="t-t">金融资本与生产资本是两种动物——分离让革命得以融资，也批量生产泡沫</span></div>
+    <div class="thesis-body">
+      <p class="t-claim">金融资本是<b>财富再分配的代理人</b>：无根基、可退出、以钱生钱；生产资本是<b>建设者</b>：扎根于具体产品和地域、路径依赖、退无可退。<span class="tag tag-book">原书 ch7</span>两者关系一轮一循环：爆发期「恋爱」→ 狂热期「脱钩」→ 崩溃强制耦合 → 协同期「联姻」→ 成熟期再陷困境。</p>
+      <div class="aspects">
+        <div class="aspect"><b>为什么</b><span>革命需要海量试错资本。在位的生产资本保守且赔不起，只有无根基的金融资本愿意为「预感」付钱——熊彼特：资本主义是「通过借贷而实现创新的私有制经济」。<span class="tag tag-book">原书 ch7 引</span></span></div>
+        <div class="aspect"><b>钱怎么流</b><span>爆发期钱追着新企业家跑；狂热期企业家反过来追着股市标准跑；崩溃后标准交还给利润；成熟期钱再度外流找新猎物。</span></div>
+        <div class="aspect"><b>谁受益</b><span>狂热期金融资本短期通吃，账面财富惊人；但长期真正沉淀为社会财富的，是生产资本建下的产能与能力。</span></div>
+        <div class="aspect"><b>谁担风险</b><span>泡沫末期进场的散户、被吸入核心国股市的边缘国资本、以及按股市标准改造自己的实业公司。</span></div>
+        <div class="aspect inv"><b>投资镜</b><span>先判断现在是哪种资本掌舵：金融掌舵期，估值与叙事是主角；生产掌舵期，现金流与分红是主角。用错年代的尺子，两头挨打。</span></div>
+        <div class="aspect ent"><b>创业镜</b><span>爆发期向金融资本讲故事拿钱，协同期向生产资本逻辑交作业（单位经济、利润、复购）。知道自己正面对哪种资本，决定你优化什么。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="thesis">
+    <div class="thesis-head"><span class="t-no">命题三</span><span class="t-t">泡沫不是意外，是这套系统的融资机制</span></div>
+    <div class="thesis-body">
+      <p class="t-claim">五次巨潮的大崩溃都出现在「大爆炸」后二三十年，且泡沫全都以基础设施命名：运河热、铁路热、互联网热。<span class="tag tag-book">原书 ch7 图7-2</span>原因很冷：基建投入巨大、回报遥远、成败未知——<b>只有泡沫级的贪婪，才能在短时间内把足够多的钱吸进足够贵的地基里</b>。</p>
+      <div class="aspects">
+        <div class="aspect"><b>为什么</b><span>理性定价吓不倒也不够用：没人能事先算清全国铁路网或全国光缆网的价值，只有「别人也在抢」能完成这种规模的众筹。</span></div>
+        <div class="aspect"><b>钱怎么流</b><span>闲置资金 → 新产业与基建 + 纯投机对象 → 账面财富膨胀 → 崩溃 → 地基以极低价格留给社会：2001 年欧美地下光缆仅 1%–2% 被点亮，破产接管人卖出价不足原建造成本的 10%。<span class="tag tag-book">原书 ch10</span></span></div>
+        <div class="aspect"><b>谁受益</b><span>下一阶段的所有使用者——他们以近零价格继承了网络的接入权。</span></div>
+        <div class="aspect"><b>谁担风险</b><span>泡沫末段的接盘者、被造势公司收割的散户、借钱给边缘国家的债权人（1837 年美国六州违约）。<span class="tag tag-book">原书 ch13</span></span></div>
+        <div class="aspect inv"><b>投资镜</b><span>别问「是不是泡沫」（历史答案是：总是）；问「泡沫在建设什么、建设到哪一步、崩溃后谁捡走」。</span></div>
+        <div class="aspect ent"><b>创业镜</b><span>泡沫废墟是免费午餐：廉价基建 + 被训练过的人才 + 被教育过的市场。铁路热崩了，在铁路上做生意的好日子才开始。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="thesis">
+    <div class="thesis-head"><span class="t-no">命题四</span><span class="t-t">崩溃之后不是自动黄金时代——转折点是政治，黄金时代是选择的结果</span></div>
+    <div class="thesis-body">
+      <p class="t-claim">狂热末期有三种结构性紧张撑破泡沫：<b>账面财富 vs 真实财富、潜在供给 vs 需求规模（收入集中导致市场过早饱和）、被排斥群体 vs 泡沫获益者</b>。<span class="tag tag-book">原书 ch11</span>技术此时已经就位，但制度还是为上一代技术设计的——钟摆从极端个人主义摆向集体福利，靠制度重组完成，不靠市场自愈。</p>
+      <div class="aspects">
+        <div class="aspect"><b>为什么</b><span>黄金时代需要的不只是产能，是「能买单的大众」：收入再分配、福利、监管、国际秩序——每一样都是政治工程。<span class="tag tag-book">原书 ch12</span></span></div>
+        <div class="aspect"><b>钱怎么流</b><span>崩溃先蒸发账面财富，监管再把金融资本关进笼子，钱被迫回到生产与真实利润。战后美国公司约四分之三资本需求靠内部融资满足，股市一度「完全不能反映国家的经济繁荣」。<span class="tag tag-book">原书 ch12</span></span></div>
+        <div class="aspect"><b>谁受益</b><span>重组成功的社会的中位数居民（战后黄金时代的工人阶级、维多利亚繁荣的中产）。</span></div>
+        <div class="aspect"><b>谁担风险</b><span>所有人：重组失败就是 1930 年代的美国（萧条延长）、1933 年的德国（战争经济——协同阶段的黑暗形态）。苏联路径则因缺少金融/生产资本分离而失去调适能力。<span class="tag tag-book">原书 ch11·中文版序</span></span></div>
+        <div class="aspect inv"><b>投资镜</b><span>转折点的长度与方向由政治决定，不可预测、不可重仓。制度重组未完成前，「黄金时代叙事」只是叙事。</span></div>
+        <div class="aspect ent"><b>创业镜</b><span>转折点期的政策方向（绿色、监管、再分配）就是下一阶段的市场边界——读政策，等于提前读需求。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="thesis">
+    <div class="thesis-head"><span class="t-no">命题五</span><span class="t-t">利润会从「修路的」迁移到「在路上做生意的」</span></div>
+    <div class="thesis-body">
+      <p class="t-claim">导入期，利润与估值集中在核心投入品和基础设施（钢、铁路、芯片、光缆）；转折点之后，主导设计锁定、基建过剩，核心投入品<b>以递减的成本</b>供给全社会——协同阶段的定义就是「在泡沫铺设的基础设施上，以递减的成本进行大规模的应用」<span class="tag tag-book">原书 ch12</span>，利润随之向应用层与「衍生分支」扩散。</p>
+      <div class="aspects">
+        <div class="aspect"><b>为什么</b><span>基建一过剩就贱，投入品一贱，应用的单位经济才成立。1890 年代廉价钢材与低廉运输撑起跨洲市场；廉价石油燃料、电力与公路撑起战后大众市场。<span class="tag tag-book">原书 ch12</span></span></div>
+        <div class="aspect"><b>钱怎么流</b><span>狂热期：钢厂、路网、光缆公司吃掉资本；协同期：用钢的、用路的、用网的生意吃掉利润。汽车长在廉价钢铁上，互联网生意长在廉价带宽与芯片上。</span></div>
+        <div class="aspect"><b>谁受益</b><span>应用层与「使用安排」创新者——把技术真正变得可用、可负担、可组合的人（阿瑟语）。<span class="tag tag-book">原书 ch12 引 Arthur</span></span></div>
+        <div class="aspect"><b>何时失效</b><span>应用层饱和、工艺创新的边际收益递减时，利润再次变稀，资本重新外流觅食（成熟阶段）。</span></div>
+        <div class="aspect inv"><b>投资镜</b><span>盯住利润迁移的扳机：核心投入品价格曲线何时陡降、主导设计何时锁定、监管框架何时落地。三件事齐了，应用层的黄金窗口才开。<span class="small">（2026-09-12 增订修订：三件事不必先后齐备，窗口可以交错开启——见 §05。）</span></span></div>
+        <div class="aspect ent"><b>创业镜</b><span>本刊的核心口号来自这里：<b>重资本（Heavy CAPEX）已由别人承担的位置，才能建立高 ROIC 的生意。</b>别去修路，去数路上会跑什么。</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= §02 六个逻辑框架 ================= -->
+<section id="logic">
+  <div class="sec-head"><span class="no">§02</span><h2>六个逻辑框架</h2><span class="en">Six Frames</span></div>
+  <p class="lede">五个命题回答「是什么」，六个框架回答「怎么用」。每一个都可以单独拎出来对任何一个时代校表。</p>
+
+  <h3>框架 ① · 因果链：从大爆炸到下一次大爆炸</h3>
+  <p>把两百多年五次巨潮压成一条链。链条的每一环都有历史实证，环与环的次序是全书的骨架：<span class="tag tag-book">结构：原书 ch14</span></p>
+  <div class="flow-chain">
+    <div class="flow-chip">旧范式利润枯竭<small>成熟期闲置资金堆积</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">大爆炸<small>新技术集群亮相</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">金融资本涌入<small>为新企业家融资</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip hl">泡沫安装基建<small>账面财富飙升</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip hl">崩溃·衰退<small>账面强制回归真实</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">制度重组<small>监管+再分配</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip hl">黄金时代<small>递减成本·大规模应用</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">市场饱和<small>利润变稀·资本外流</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">孕育下一次大爆炸<small>≈ 半个世纪</small></div>
+  </div>
+
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>巨潮</th><th>大爆炸（象征事件）</th><th>核心投入品</th><th>标志性基建</th><th>领导国</th><th>大崩溃</th></tr>
+    <tr><td>第一次</td><td>1771 · 阿克莱特纺纱厂（克罗姆福德）</td><td>棉纱</td><td>运河、水力、工厂制</td><td>英国</td><td class="c-fre">1798 运河恐慌</td></tr>
+    <tr><td>第二次</td><td>1829 · 「火箭号」蒸汽机车（利物浦—曼彻斯特）</td><td>煤·铁</td><td>铁路、电报、蒸汽船</td><td>英国</td><td class="c-fre">1847 铁路恐慌</td></tr>
+    <tr><td>第三次</td><td>1875 · 卡内基贝塞麦钢厂（匹兹堡）</td><td>廉价钢材</td><td>钢轨、跨洋航线、全球电报、电网</td><td>英德美三角</td><td class="c-fre">1873（美/德）·1890 巴林</td></tr>
+    <tr><td>第四次</td><td>1908 · 福特 T 型车（底特律）</td><td>廉价石油</td><td>公路、电网、炼油、郊区化</td><td>美国</td><td class="c-fre">1929 大崩溃</td></tr>
+    <tr><td>第五次</td><td>1971 · 英特尔微处理器（圣克拉拉）</td><td>廉价芯片</td><td>互联网、光缆、数据中心、移动网</td><td>美国</td><td class="c-fre">2000 纳斯达克</td></tr>
+  </table>
+  </div>
+  <p class="figcap">五次巨潮的时间锚点与崩溃年份，均出自原书第 2、7 章。「领导国」在第三次为英（金融）—德美（产业）三角错位，详见 §03 案例三。<span class="tag tag-book">原书</span></p>
+
+  <h3>框架 ② · 导入期 vs 展开期：修路的年代 vs 在路上做生意的年代</h3>
+  <div class="takeaway">
+    <div class="tk-t">社会故事版</div>
+    <p>导入期是「修路」：钱疯了一样砸向路基、钢轨、光缆、芯片厂，修路的人先富得流油，也先破产。展开期是「在路上做生意」：路已经便宜到没人再谈路，谈的是运什么货、开什么店、载什么客。<b>两个年代用两套完全不同的记分牌</b>——用错记分牌，就是把修路年代的估值方法用在开店年代（或反过来）。</p>
+  </div>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>维度</th><th class="c-fre">导入期 Installation（≈ 前 20–30 年）</th><th class="c-syn">展开期 Deployment（≈ 后 20–30 年）</th></tr>
+    <tr><td>掌舵者</td><td>金融资本（个人最大化）</td><td>生产资本（社会潜在福利最大化）</td></tr>
+    <tr><td>主要任务</td><td>安装新范式的基础设施：试错、选路、铺地基</td><td>在新地基上大规模应用：扩散、降本、铺满全经济</td></tr>
+    <tr><td>财富的主要来源</td><td>账面财富：资本利得、资产膨胀、金融工程</td><td>真实财富：产能、利润、就业、收入增长</td></tr>
+    <tr><td>分配趋势</td><td>两极分化加剧（富者愈富的赌场）</td><td>趋同与共享（福利、充分就业、中产扩张）</td></tr>
+    <tr><td>主导气质</td><td>自由放任、弱监管、镀金时代伦理</td><td>强监管、协商、集体福祉共识</td></tr>
+    <tr><td>结局方式</td><td>以泡沫崩溃 + 衰退收场</td><td>以市场饱和 + 社会不满收场（成熟期）</td></tr>
+    <tr><td>对的动作</td><td>参与建设、持有核心资产、忍受波动</td><td>压注应用、要利润与分红、远离赌场</td></tr>
+  </table>
+  </div>
+  <p class="figcap">七行对照综合自原书第 4、5、10–12 章；末行「对的动作」为本刊按投资/创业视角的推导整理。<span class="tag tag-book">前六行：原书</span><span class="tag tag-infer">末行：推导</span></p>
+
+  <h3 id="phases">框架 ③ · 五个阶段：每一阶段的钱、公司、错误与动作</h3>
+  <p>四阶段（爆发·狂热·协同·成熟）加一个转折点，是巨潮的标准切法。点开每个阶段看四个视角：<b>资本关心什么 / 公司关心什么 / 投资者典型错误 / 创业者动作</b>。阶段事实出自原书第 5、9–12 章；四列行动视角是本刊的推导整理。<span class="tag tag-book">阶段：原书</span><span class="tag tag-infer">行动列：推导</span></p>
+
+  <div class="phase-tabs">
+    <button class="phase-tab p1 on" data-target="pp1"><span class="p-cn">爆发</span><span class="p-en">IRRUPTION</span><span class="p-yr">大爆炸后 ≈10–20 年</span></button>
+    <button class="phase-tab p2" data-target="pp2"><span class="p-cn">狂热</span><span class="p-en">FRENZY</span><span class="p-yr">导入期后半 · 泡沫</span></button>
+    <button class="phase-tab p3" data-target="pp3"><span class="p-cn">转折点</span><span class="p-en">TURNING POINT</span><span class="p-yr">崩溃 + 制度重组</span></button>
+    <button class="phase-tab p4" data-target="pp4"><span class="p-cn">协同</span><span class="p-en">SYNERGY</span><span class="p-yr">展开期前半 · 黄金时代</span></button>
+    <button class="phase-tab p5" data-target="pp5"><span class="p-cn">成熟</span><span class="p-en">MATURITY</span><span class="p-yr">展开期后半 · 暮年</span></button>
+  </div>
+
+  <div class="phase-panel show" id="pp1">
+    <div class="pp-head"><span class="pp-t" style="color:var(--ph-irr)">爆发 · 技术的时代</span><span class="pp-motto">金融资本与新范式「谈恋爱」——一切旧指标开始失灵</span></div>
+    <div class="pp-grid">
+      <div class="pp-row"><b>发生了什么（原书 ch5/9）</b>新旧范式共存：新兴产业增长率惊人但体量很小，旧产业停滞、失业上升、社会撕裂。金融资本发明新工具（第一次的乡村银行、铁路的股份公司、钢铁时代的投行、微电子的风险投资），银行总是新技术最早的客户。</div>
+      <div class="pp-row"><b>资本关心什么</b>新企业家的高利润率与「下一个大故事」；同时旧产业挤出的大量闲置资金在寻找出口。</div>
+      <div class="pp-row"><b>公司关心什么</b>新公司抢技术、抢人才、抢先证明可行性；旧巨头开始试探用新技术给自己续命（钢替换铁、汽车业的自动化与微电子改造）。</div>
+      <div class="pp-row"><b>投资者典型错误</b>用旧范式的估值尺量新产业（觉得贵得离谱而全程踏空），或用新产业的增速尺去量旧资产（觉得便宜而接飞刀）。</div>
+      <div class="pp-row"><b>创业者动作</b>进场窗口：技术壁垒还在、金融资本饥渴、在位者迟钝。此时定义品类的成本是一生中最低的。</div>
+      <div class="pp-row"><b>阶段末发生什么</b>导入期中段常有一次「中场危机」（1836 英 / 1882 法 / 1920、1987 美），预演账面与真实的脱钩。<span class="tag tag-book">原书 ch9</span></div>
+    </div>
+  </div>
+
+  <div class="phase-panel" id="pp2">
+    <div class="pp-head"><span class="pp-t" style="color:var(--ph-fre)">狂热 · 金融的时代</span><span class="pp-motto">赌场经济 + 镀金时代：钱生钱成为主流信仰</span></div>
+    <div class="pp-grid">
+      <div class="pp-row"><b>发生了什么（原书 ch10）</b>金融资本「脱钩」独自腾飞：倒金字塔收购、衍生品、房地产投机、造势公司横行。1995 年衍生品名义交易量 64 万亿美元 ≈ G17 全部债券股权银行资产 68 万亿；雅虎市值超过柯达；东京地价神话；LTCM 47 亿美元本金借入 1200 亿。</div>
+      <div class="pp-row"><b>资本关心什么</b>资本利得与退出通道。基本面退居次要，「更大的傻瓜」定价法接管一切。</div>
+      <div class="pp-row"><b>公司关心什么</b>股票市值高过真实利润：CEO 被迫按赌场标准经营——回购、拼故事、迎合分析师。德鲁克：「证券分析师相信公司是造钱的。公司其实是造鞋的！」<span class="tag tag-book">原书 ch11 引</span></div>
+      <div class="pp-row"><b>投资者典型错误</b>把周期当趋势：认为「新经济」废除了周期；在最后也是最陡的拉升段加杠杆。沃伯格 1929、巴布森 1929、《经济学家》1990 年代末的警告全部被市场嘲笑。<span class="tag tag-book">原书 ch11</span></div>
+      <div class="pp-row"><b>创业者动作</b>可以拿泡沫的钱（这是社会在补贴未来），但要把钱花在崩溃后仍有价值的东西上：产能、网络、用户习惯、主导设计。为估值而估值的，活不过转折点。</div>
+      <div class="pp-row"><b>阶段末发生什么</b>三种结构性紧张撑破泡沫 → 崩溃。泡沫以基建命名：运河热→1798，铁路热→1847，股市+房地产热→1929，互联网热→2000。<span class="tag tag-book">原书 ch7/10</span></div>
+    </div>
+  </div>
+
+  <div class="phase-panel" id="pp3">
+    <div class="pp-head"><span class="pp-t" style="color:var(--ph-tur)">转折点 · 清算与重组</span><span class="pp-motto">不是事件是过程；不是市场问题，是政治问题</span></div>
+    <div class="pp-grid">
+      <div class="pp-row"><b>发生了什么（原书 ch11）</b>账面财富蒸发，衰退迫使金融资本回到现实。监管在崩溃的废墟上获得社会授权：1844 银行法案、1846 废除谷物法、1933 玻璃-斯蒂格尔、SEC、FDIC、布雷顿森林。钟摆从个人主义摆向集体福利。1926–1929 信托投资公司占纽交所新股从 2% 涨到 37%，崩盘后灰飞烟灭。</div>
+      <div class="pp-row"><b>资本关心什么</b>保命、修复资产负债表、接受被监管——只有在崩溃蒸发掉快钱之后，金融资本才可能接受规则。<span class="tag tag-book">原书 ch11</span></div>
+      <div class="pp-row"><b>公司关心什么</b>现金与生存。狂热期的叙事公司批量消失，基础设施公司以一折易主。</div>
+      <div class="pp-row"><b>投资者典型错误</b>两个方向：抄底「跌 90% 的叙事」（多数归零）；或彻底离场，错过一生中最好的建仓窗口（基建与核心资产在废墟里换手）。</div>
+      <div class="pp-row"><b>创业者动作</b>捡尸窗口：人才、设备、用户全在打折。同时读政策——重组写下的规则就是下一阶段的产业地图。</div>
+      <div class="pp-row"><b>阶段末发生什么</b>重组成功→黄金时代；重组失败→萧条延长（美国 1930s）或黑暗形态（德国 1933 战争经济）。作者明确：结果由政治决定，不可预测。<span class="tag tag-book">原书 ch11</span></div>
+    </div>
+  </div>
+
+  <div class="phase-panel" id="pp4">
+    <div class="pp-head"><span class="pp-t" style="color:var(--ph-syn)">协同 · 生产的时代</span><span class="pp-motto">黄金时代：以递减的成本大规模应用</span></div>
+    <div class="pp-grid">
+      <div class="pp-row"><b>发生了什么（原书 ch12）</b>生产资本掌舵，金融资本当促进者。范式铺满全经济：核心产业扩张、基建铺开、旧产业现代化、「衍生分支」爆发（第四次的服务业、第五次的知识与媒介经济）。战后的美国公司约 3/4 资本需求靠内部融资；1947 年起「华尔街完全不能反映这个国家的经济繁荣」。</div>
+      <div class="pp-row"><b>资本关心什么</b>真实利润与分红（A/B/C 型金融创新回归基本准则）。账面与真实重新同步。<span class="tag tag-book">原书 ch13</span></div>
+      <div class="pp-row"><b>公司关心什么</b>市场份额、工艺改良、可靠性、成本削减。研发实验室成为大公司标配；「使用安排」创新把技术做进每个人的日常（阿瑟）。</div>
+      <div class="pp-row"><b>投资者典型错误</b>把黄金时代当成永久状态（第二种幻觉）；在一片祥和里丢失周期感，为「稳定」支付过高溢价。</div>
+      <div class="pp-row"><b>创业者动作</b>最大众的窗口：收入分配改善后，把狂热期只服务富人的奢侈品做成大众 affordability（高端丰厚利润 + 低端现金牛）。<span class="tag tag-book">原书 ch12</span></div>
+      <div class="pp-row"><b>阶段末发生什么</b>外部性渐强、增长趋稳，随后市场渐饱和、利润变稀——成熟期在拐角处等着。</div>
+    </div>
+  </div>
+
+  <div class="phase-panel" id="pp5">
+    <div class="pp-head"><span class="pp-t" style="color:var(--ph-mat)">成熟 · 质疑与自满</span><span class="pp-motto">市场饱和、承诺跳票、闲置资本再度出海</span></div>
+    <div class="pp-grid">
+      <div class="pp-row"><b>发生了什么（原书 ch8/12）</b>投资机会收窄，利润率承压，出现某种「中期危机」（1857 英国、1960s 美国）。垄断并购换市场份额；资本外流：英国在成熟/狂热期海外资本形成占 40–53%，协同/爆发期 >70% 在国内。技术探索孕育下一次革命（苏伊士 1869、T 型车后的福特主义扩散、1960s 电子资金）。</div>
+      <div class="pp-row"><b>资本关心什么</b>E 型转手生意、对外贷款（B 型）、F 型灰色操作。贷款标准一路放宽松，债务危机的种子在这里埋下。<span class="tag tag-book">原书 ch8/13</span></div>
+      <div class="pp-row"><b>公司关心什么</b>护城河与现金流；多元化并购；把成熟产能搬到边缘国家降成本。</div>
+      <div class="pp-row"><b>投资者典型错误</b>为「永远增长的现金牛」付永续价；追逐边缘国家高息债（拉美贷款周期每 50–60 年一轮，违约在下一次导入期兑现）。</div>
+      <div class="pp-row"><b>创业者动作</b>在资本与在位者都懒得看的缝隙里，伺候下一次大爆炸（1960s 的电子、19 世纪 60 年代的贝塞麦钢）。</div>
+      <div class="pp-row"><b>阶段末发生什么</b>社会不满爆发（1968、罢工潮）；技术探索收敛成集群；下一次大爆炸在闲置资金的追逐中点火。</div>
+    </div>
+  </div>
+
+  <h3>框架 ④ · 金融资本 vs 生产资本：一张表认出两种动物</h3>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>维度</th><th class="c-fre">金融资本 Financial Capital</th><th class="c-syn">生产资本 Production Capital</th></tr>
+    <tr><td>本质角色</td><td>财富再配置与再分配的代理人</td><td>通过生产创造新财富的建设者</td></tr>
+    <tr><td>财富来源</td><td>利息、股息、资本利得——目的是让货币形态的财富增值</td><td>利润——来自产品、工艺、市场的真实能力</td></tr>
+    <tr><td>根基</td><td>无根基：可以投资一个项目而对项目本身知之甚少</td><td>扎根：特定设备、特定地域、特定供应商与客户网络</td></tr>
+    <tr><td>风险姿态</td><td>广泛选择、可退出、逃避风险</td><td>路径依赖、退无可退、直面每场风暴</td></tr>
+    <tr><td>时间视野</td><td>短期：流动性是信仰</td><td>长期：能力积累是信仰</td></tr>
+    <tr><td>与技术革命</td><td>点火者与泡沫制造者：助力新企业家，也制造崩溃</td><td>展开者：把潜力铺成黄金时代，但也变得保守</td></tr>
+    <tr><td>极端形态</td><td>赌场经济、镀金时代（狂热期）</td><td>管理资本主义（战后美国）</td></tr>
+    <tr><td>一句判词</td><td>钱在找更快的钱</td><td>能力在找更大的市场</td></tr>
+  </table>
+  </div>
+  <p class="figcap">前七行全部出自原书第 7、10、12 章的定义与论述；末行「一句判词」为本刊压缩。<span class="tag tag-book">原书</span></p>
+
+  <h3>框架 ⑤ · 账面财富 vs 真实财富：双轨脱钩图</h3>
+  <div class="dual">
+    <div class="d-track d-paper">
+      <div class="d-label">账面财富 · 快链条（金融的逻辑）</div>
+      <div class="d-chips">
+        <span class="d-chip">股价·估值</span><span class="d-chip">资本利得</span><span class="d-chip">市盈率幻想</span><span class="d-chip">衍生品名义值</span><span class="d-chip">房地产</span><span class="d-chip">倒金字塔收购</span><span class="d-chip">造势公司</span>
+      </div>
+    </div>
+    <div class="d-sep">
+      <span class="band b1">爆发：两条轨道尚且同步</span>
+      <span class="band b2">狂热：剧烈脱钩（泡沫区）</span>
+      <span class="band b3">转折：强制再耦合</span>
+      <span class="band b4">协同：重新同步</span>
+    </div>
+    <div class="d-track d-real">
+      <div class="d-label">真实财富 · 慢链条（生产的逻辑）</div>
+      <div class="d-chips">
+        <span class="d-chip">产能</span><span class="d-chip">收入与就业</span><span class="d-chip">利润与现金流</span><span class="d-chip">基础设施</span><span class="d-chip">技能与组织</span><span class="d-chip">用户习惯</span>
+      </div>
+    </div>
+  </div>
+  <p class="figcap">原书第 10–11 章的全部狂热期证据都发生在上面那条轨道：64 万亿美元衍生品 ≈ 68 万亿 G17 金融资产；雅虎（几乎无实物资产）市值 &gt; 柯达；东京地价神话；1999 年最富 1/5 与最穷 1/5 国家人均 GNP 之比 74:1（1960 年为 30:1）。<b>判断泡沫不靠情绪，靠两条轨道的开口宽度。</b><span class="tag tag-book">原书 ch10/11</span></p>
+
+  <h3>框架 ⑥ · 泡沫的建设性遗产：为什么亏掉的钱没有蒸发</h3>
+  <div class="underwater">
+    <div class="uw-t">原书核心引文 · CONSTRUCTIVE LEGACY</div>
+    <p>「金融资本好似被浪费了，也可能投入过度，它对很多人来说是痛苦的，<b>但是它为以后将要全面展开的技术革命创造了基本的外部环境</b>，增进了社会对它的深入认识。」<span class="src">—— 第 10 章</span></p>
+    <p>「泡沫经济的影响之一在于，它已经在基础设施方面投入了大量资金……它提供的基础覆盖面能够<b>以递减的成本进行大规模的应用</b>。」<span class="src">—— 第 12 章</span></p>
+  </div>
+  <div class="flow-chain">
+    <div class="flow-chip hl">泡沫烧钱<small>投资者的钱大量蒸发</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">基建留在地里<small>铁路网·公路网·光缆·数据中心</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">主导设计锁定<small>试错结束·路径收敛</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">核心投入品成本陡降<small>钢·油·带宽·算力</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">使用安排成熟<small>把技术做进日常</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip hl">大规模应用<small>黄金时代的燃料</small></div>
+  </div>
+  <p>三个原书细节说明「留下的是什么」：1840 年代英国马匹数量在铁路热之后继续增长了 50 多年——最后一公里的运输仍靠马力，铁路改变的是干线的成本结构<span class="tag tag-book">原书 ch4 脚注</span>；汽车的到来把房地产业从城市中心与铁路沿线的限制中「解放」出来，任何区域接通公路即可抬升地价<span class="tag tag-book">原书 ch10 脚注</span>；2001 年光缆 1–2% 点亮、残值不足一成——但正是这堆「价值万亿美元的废料堆」让此后二十年带宽价格趋近于零，养大了整代互联网公司<span class="tag tag-book">原书 ch10</span><span class="tag tag-modern">后一句延伸：Google/Amazon 享用的正是这些光缆</span>。</p>
+</section>
+
+<!-- ================= §03 五次革命 ================= -->
+<section id="cases">
+  <div class="sec-head"><span class="no">§03</span><h2>五次革命：每轮都问同样六个问题</h2><span class="en">Five Revolutions</span></div>
+  <p class="lede">框架说完，回到历史现场。五次巨潮各按同一张问卷作答：新技术是什么 → 资本为什么涌 → 钱建设了什么 → 什么被炒过头 → 泡沫后留下什么 → 下一阶段谁赚大钱。答案全部出自原书。<span class="tag tag-book">原书 ch2·8–12</span></p>
+
+  <div class="case-tabs">
+    <button class="case-tab on" data-target="case-1"><span class="cs-yr">1771</span><span class="cs-n">棉纺与运河</span><span class="cs-nm">英国 · Industrial Revolution</span></button>
+    <button class="case-tab" data-target="case-2"><span class="cs-yr">1829</span><span class="cs-n">蒸汽与铁路</span><span class="cs-nm">英国 · Steam & Railways</span></button>
+    <button class="case-tab" data-target="case-3"><span class="cs-yr">1875</span><span class="cs-n">钢铁与电力</span><span class="cs-nm">英德美 · Steel & Electricity</span></button>
+    <button class="case-tab" data-target="case-4"><span class="cs-yr">1908</span><span class="cs-n">石油与汽车</span><span class="cs-nm">美国 · Oil & Mass Production</span></button>
+    <button class="case-tab" data-target="case-5"><span class="cs-yr">1971</span><span class="cs-n">芯片与网络</span><span class="cs-nm">美国 · ICT</span></button>
+  </div>
+
+  <!-- 案例一 -->
+  <div class="case-panel show" id="case-1">
+    <div class="cp-head"><span class="cp-t">第一次巨潮 · 工业革命</span><span class="cp-m">1771 阿克莱特纺纱厂（克罗姆福德）→ 1798 运河恐慌 · 领导国：英国</span></div>
+    <div class="qa"><div class="q">① 新技术是什么</div><div class="a">棉纺机械化 + 水力 + 工厂制。核心投入品是<b>廉价的棉纱</b>：机械化把纺织成本打穿地板，工厂把生产从家庭搬进厂房，一套全新的组织常识从这里开始。</div></div>
+    <div class="qa"><div class="q">② 资本为什么涌进去</div><div class="a">这次不一样：棉纺机械化<b>不需要巨额固定资本</b>。家庭积蓄、对外贸易赚来的「那波布」财富就够下注，配合乡村银行放款、90 天循环公开信用支撑棉布贸易。钱涌进来，是因为利润率高到肉眼可见，且门槛低到人人可试。</div></div>
+    <div class="qa"><div class="q">③ 钱建设了什么基础设施</div><div class="a">运河网（把煤和原料的运输成本砍下来）、水力设施、工厂建筑，以及一整套乡村银行网络——金融本身也第一次完成了「基础设施建设」。</div></div>
+    <div class="qa hl"><div class="q">④ 什么被炒过头</div><div class="a">运河热。运河修得「宽度、深度各异，线路规划也效率低下」——没人协调，人人抢着修，1798 年运河恐慌收场。同一时期，借英国资金修运河和收费公路的美国六个州在 1837 年违约，「整个国家陷入持续 7 年的经济萧条」。</div></div>
+    <div class="qa"><div class="q">⑤ 泡沫崩溃后什么永久留下</div><div class="a">运河水运网、工厂制、机械化生产的常识。拿破仑战争期间的订单撑住了第一次的协同阶段；战争一结束，市场萎缩，成熟期到来——但工厂这套东西已经改不回去了。</div></div>
+    <div class="qa"><div class="q">⑥ 下一阶段谁赚大钱</div><div class="a">用运河运货的贸易商、以及照着棉纺工厂模板改造其他行业的所有后来者。棉布打穿成本之后「充斥全球市场，甚至美洲种植园中的奴隶都穿着它们」——第一批赚到大钱的应用层，是拿着廉价棉纱做全世界的生意的人。</div></div>
+  </div>
+
+  <!-- 案例二 -->
+  <div class="case-panel" id="case-2">
+    <div class="cp-head"><span class="cp-t">第二次巨潮 · 蒸汽与铁路时代</span><span class="cp-m">1829「火箭号」（利物浦—曼彻斯特）→ 1847 铁路恐慌 · 领导国：英国</span></div>
+    <div class="story">
+      <div class="st-t">关键故事 · 铁路热：第一场全国规模的众筹</div>
+      <p>1840 年代的英国，铁路是看得见的印钞机。第一批线路修在「需求明确和施工切实可行」的路线上，赚到钱，故事传开。第二批修到「需求存疑且工程上问题重重的路线」。第三批最妙：一些公司成立的目的，就是让造势者「在适当的时候以高价抛出他们的股票」。政府官员靠帮人拿铁路「权」收佣金，报纸上每天都有新的线路图。运河热五十年前的剧本，这次「以更大的规模重演」——资本更廉价，股东更盲目。</p>
+      <p>1847 年恐慌来了。铁路公司成批倒下，账面财富蒸发。但铁路在地里。此后五十多年，英国的马匹数量不降反增——从火车站到旅店、住宅、码头，最后一公里全靠马车；铁路改变的不是「运输」这个行为，是干线运输的成本结构。崩溃后的十几年里，1844 年《银行法案》把货币业务和信贷业务分开，1846 年废除《谷物法》打开自由贸易，伦敦清算中心接纳股份银行——维多利亚协同阶段的地基，一半是铁路，一半是铁路崩盘换来的监管。</p>
+      <p>1850 年代，英国超过七成的资本形成回到了国内。修路的人破产了，在路上做生意的人接场：分销网络、支票支付、股份公司制度，全在廉价铁路网长出来。镀金时代死掉的钱，变成了维多利亚繁荣的入场券。</p>
+    </div>
+    <div class="qa"><div class="q">① 新技术是什么</div><div class="a">蒸汽机车 + 铁路 + 电报 + 蒸汽船。核心投入品是煤与铁。1829 年「火箭号」跑通利物浦—曼彻斯特线，宣告速度与运力可以按数量级提升。</div></div>
+    <div class="qa"><div class="q">② 资本为什么涌进去</div><div class="a">铁路和棉纺相反：<b>一开工就需要巨额资本，单个企业几乎负担不起</b>。于是股份公司登场——集中资本、分散风险；股票市场还不够发达，就由个人推动者四处认购。最大一笔资金来自兰开夏已经成熟的棉纺业：旧范式的利润，喂养新范式的地基。</div></div>
+    <div class="qa"><div class="q">③ 钱建设了什么基础设施</div><div class="a">全国铁路网、电报网（信息第一次跑赢马车）、蒸汽船航线、跨洋贸易通道，加上股份公司与有限责任这套<b>制度基础设施</b>——此后所有巨潮的基建融资都站在它上面。</div></div>
+    <div class="qa hl"><div class="q">④ 什么被炒过头</div><div class="a">铁路股票本身：真实需求路线 → 存疑路线 → 纯造势公司，三段式升级（兰塞姆的观察）；配套的还有收取佣金的「铁路权」中介生意。边缘端同步爆雷：1837 年美国六州运河贷款违约，英国资本撤离，萧条七年。</div></div>
+    <div class="qa"><div class="q">⑤ 泡沫崩溃后什么永久留下</div><div class="a">铁路网与电报网（实物遗产）；银行法案、谷物法废除、清算中心、股份银行制度（制度遗产）。马匹继续增长 50 多年这个细节最有味道——留下的不是「取代马」，是<b>干线成本结构的永久改变</b>。</div></div>
+    <div class="qa"><div class="q">⑥ 下一阶段谁赚大钱</div><div class="a">维多利亚协同阶段（1850 年代）：在铁路与电报上做生意的——全国性分销、贸易金融、出口制造业；受益者是中产阶级的众多群体。英国国内资本形成占比回升到七成以上：钱回家了，回家做应用。</div></div>
+  </div>
+
+  <!-- 案例三 -->
+  <div class="case-panel" id="case-3">
+    <div class="cp-head"><span class="cp-t">第三次巨潮 · 钢铁、电力与重工业时代</span><span class="cp-m">1875 卡内基贝塞麦钢厂（匹兹堡）→ 1873 美/德 · 1890 巴林危机 · 领导权错位的一轮</span></div>
+    <div class="qa"><div class="q">① 新技术是什么</div><div class="a">贝塞麦炼钢法让钢取代易碎易锈的铁，发动机功率与速度大幅飞跃；电力把工厂从传动带网络中解放出来；化工用煤焦油合成染料。核心投入品是<b>廉价钢材</b>，配电网与全球电报是它的神经网络。</div></div>
+    <div class="qa"><div class="q">② 资本为什么涌进去</div><div class="a">重工业的资本门槛把金融逼成了机构：1878 年爱迪生就从年轻的摩根银行拿到钱；到 19 世纪末的德国与美国，金融资本干脆直接控制工业，「权力从工业资本家向金融资本家转移」。而这轮最拧巴的是英国——金融资本在上一轮学会了海外超额利润，这次不肯回国谈这场恋爱。</div></div>
+    <div class="qa"><div class="q">③ 钱建设了什么基础设施</div><div class="a">钢轨与钢船、苏伊士运河（1869）加速的跨洋航线、全球电报网、城市电网与照明、电话（1878）。第三次是第一次真正的全球化基建：运输、通信、能源三张网同时铺开。</div></div>
+    <div class="qa hl"><div class="q">④ 什么被炒过头</div><div class="a">两处。美国与德国：1873 年崩盘前用旧式铸铁技术抢修铁路，泡沫破裂后大批消失。阿根廷：蒸汽船 + 冷藏航运让它成为英国的肉仓与麦仓，「伦敦金融城甚至预言阿根廷可能会是下一个美国」——1890 年巴林危机把这轮全球贷款热掀翻，同类爆雷的还有澳大利亚、南非、埃及、奥斯曼。英国本土因为钱都在国外，反而没有典型的国内狂热——<b>泡沫出逃了</b>。而美国真正的股市疯狂发生在其赶超繁荣期：1903 年「富人的恐慌」到 1907 年崩盘之间，镀金时代的做法一直撑到 1907。</div></div>
+    <div class="qa"><div class="q">⑤ 泡沫崩溃后什么永久留下</div><div class="a">三张全球网（钢运、电报、电力）、国际金本位、1883 年《巴黎公约》的全球专利与标准体系、俾斯麦开张后被各国效仿的社会保障立法。这轮的转折点不是一场崩溃能概括的——是贸易、货币、专利、劳工制度的整套重组。</div></div>
+    <div class="qa"><div class="q">⑥ 下一阶段谁赚大钱</div><div class="a">「美好年代」（1890s–1914）：用钢和电做生意的全部——电气工程成为与冶金、化工并列的分支；电力 + 钢缆让摩天大楼成为可能；有轨电车把城市撑大；剧院、酒店、街道在安全的灯光下热闹。1890 年代以后愈发廉价的钢材与低廉运输，加速了跨洲市场——这是「以递减的成本大规模应用」的教科书现场。</div></div>
+  </div>
+
+  <!-- 案例四 -->
+  <div class="case-panel" id="case-4">
+    <div class="cp-head"><span class="cp-t">第四次巨潮 · 石油、汽车与大规模生产时代</span><span class="cp-m">1908 福特 T 型车（底特律）→ 1929 大崩溃 · 领导国：美国</span></div>
+    <div class="story">
+      <div class="st-t">关键故事 · 从镀金二十年代到黄金五十年代</div>
+      <p>1920 年代的美国，大规模生产已经是看得见的魔术：流水线把汽车价格打下来，分期付款把买不起变成月供得起。哥伦比亚大学教授塞利格曼研究消费信用后写道：「我坚信理论和商业生活两方面都打开了全新的一章。」每个人都成了投资者——普通人贷款买股票，企业干脆从银行贷款转向发行证券。信托投资公司发行的新股占纽交所比例，1926 年不到 2%，1929 年超过 37%。崩盘两个月前，胡佛报告还在把这种活跃当作「新经济」的特征。沃伯格和巴布森的警告，被欢宴淹没。</p>
+      <p>1929 年 10 月，塞子拔了。三种结构性紧张一起兑现：账面财富与真实财富、供给潜力与需求规模、被排斥者与获益者。随后的重组是全书最重的一段政治：罗斯福新政被骂成「共产主义第一步」，监管迟迟落不了地，萧条被拉长；德国 1933 年把同一套大规模生产范式扭进战争经济——协同阶段的一种黑暗形态。美国的转折点最终是在二战的军工合作里完成的：资本家学会了与强势政府共存。</p>
+      <p>然后是黄金时代。战后美国公司约四分之三的资本需求靠内部融资满足，「华尔街完全不能反映这个国家的经济繁荣」（1947）——股价不涨，利润照涨。郊区化铺开，冰箱、洗衣机、电视进家，服务业成为「衍生分支」，工人阶级第一次从一场技术革命里分到大头。1929 年死掉的账面财富，变成了公路网、电网、郊区和你家厨房。</p>
+    </div>
+    <div class="qa"><div class="q">① 新技术是什么</div><div class="a">T 型车 + 流水线 + 廉价石油。核心投入品从钢换成油：以石油为基础的燃料、电力与公路运输，把「大规模生产—大规模消费」这对双胞胎绑在一起。</div></div>
+    <div class="qa"><div class="q">② 资本为什么涌进去</div><div class="a">范式肉眼可见：一条流水线的效率差距就是商场上生死的差距。金融端同步创新——分期付款把大众变成客户（塞利格曼：「经济科学和经济生活的另一场革命」），信托投资公司把杠杆卖给普通人，1926–1929 年其新股占比从 2% 冲到 37%。</div></div>
+    <div class="qa"><div class="q">③ 钱建设了什么基础设施</div><div class="a">公路网、电网、炼油与加油站体系、郊区化的城市本身。汽车的到来把房地产业「从城市中心和铁路沿线的限制中解放出来——任何区域都可以接通公路并被抬高地价」。</div></div>
+    <div class="qa hl"><div class="q">④ 什么被炒过头</div><div class="a">股市 + 房地产双热：贷款买股票、庞兹在佛罗里达的地产骗局、只涨不跌的「新经济」信仰。崩盘前两个月的胡佛报告仍在大唱繁荣。1929——本书模型里四次与巨潮直接相关的最大崩溃之一。</div></div>
+    <div class="qa"><div class="q">⑤ 泡沫崩溃后什么永久留下</div><div class="a">实物：公路网、电网、大规模生产体系。制度（在崩溃的授权下写出）：玻璃-斯蒂格尔分业经营、SEC、FDIC、1935 年《银行法案》、凯恩斯主义、布雷顿森林体系。这轮转折点最长也最贵——重组失败的那条岔路，通向 1933 年的德国。</div></div>
+    <div class="qa"><div class="q">⑥ 下一阶段谁赚大钱</div><div class="a">战后黄金时代的美国：大众消费品牌、郊区开发商、耐用消费品制造商、以及作为「衍生分支」蓬勃发展的服务业。记分牌彻底换掉：公司靠内部融资扩张，分红来自真实利润——在生产资本掌舵的年代，赌场逻辑退场。</div></div>
+  </div>
+
+  <!-- 案例五 -->
+  <div class="case-panel" id="case-5">
+    <div class="cp-head"><span class="cp-t">第五次巨潮 · 信息与通信技术时代</span><span class="cp-m">1971 英特尔微处理器（圣克拉拉）→ 2000 纳斯达克 · 领导国：美国 · 转折点悬而未决</span></div>
+    <div class="story">
+      <div class="st-t">关键故事 · 互联网热：一场按剧本走的泡沫</div>
+      <p>1971 年，微处理器在圣克拉拉问世。车库里的先行者靠个人积蓄和家人朋友起步；机会一显形，小额风险资本和冒险资本大量涌现——这是第五次的金融新工具，对应第一代的那波布财富、铁路的股份公司、钢铁时代的投行。1987 年的中场崩盘（与 1836、1882、1920 同构）预演了账面与真实的脱钩，然后是 1990 年代的全速狂热。</p>
+      <p>狂热期的标本今天看仍然刺眼：雅虎，一家几乎没什么物质资产的虚拟公司，市值超过整个柯达；1995 年衍生品名义交易量 64 万亿美元，约等于 G17 全部债券、股权和银行资产的总和（68 万亿）；一本叫《The Industry Standard》的互联网杂志 1998 年创刊，厚度超过 300 页，2000 年创下 7,558 个广告页的纪录，2001 年 8 月停刊，一个月后连名字带订阅负债拍出 50 万美元。丹·罗伯茨把通信业投资叫作「价值万亿美元的废料堆」——埋在欧美地下的光缆只有 1–2% 被点亮，破产接管人卖出这些资产时，只拿回不到 10% 的建造成本。2000 年 4 月纳斯达克破位，硅谷的风险投资人说 2001 年是「核冬天」。</p>
+      <p>按本书的剧本，接下来本该是转折点的制度重组与协同期。但作者在 2024 年中文版序里承认：这个转折点迟迟没有完成，世界仍悬在导入期与展开期之间的口子上。而那堆「废料堆」没有辜负剧本——此后二十年带宽与算力价格趋近于零，应用层的一切故事都长在上面。至于 AI 是不是「下一场技术革命」，作者自己给出了判断，见 §04。<span class="tag tag-modern">末句延伸为现代映射</span></p>
+    </div>
+    <div class="qa"><div class="q">① 新技术是什么</div><div class="a">微处理器 + 计算机 + 软件 + 互联网。核心投入品是<b>廉价芯片</b>：不断降价的算力与带宽，配一张覆盖全球的光缆与移动网络。</div></div>
+    <div class="qa"><div class="q">② 资本为什么涌进去</div><div class="a">旧范式先熄火：1970 年代滞胀，大规模生产利润耗尽，闲置资金四处找出口。微电子给出惊人增长率与利润率，风险资本作为对应工具成建制登场。银行还是老样子——最先用新技术武装自己：这次是即时全球交易与信用卡。</div></div>
+    <div class="qa"><div class="q">③ 钱建设了什么基础设施</div><div class="a">芯片厂、PC、互联网协议与光缆网、移动网络、数据中心，以及一套全球创业生态（VC、期权、纳斯达克）。这轮的特殊性：基建从一开始就是全球化的。</div></div>
+    <div class="qa hl"><div class="q">④ 什么被炒过头</div><div class="a">互联网股票与电信光缆：雅虎 &gt; 柯达、7,558 页广告的杂志、1–2% 点亮率的光缆、LTCM 的 47 亿本金撬 1,200 亿借款、东京地产神话、74:1 的全球贫富比（1960 年为 30:1）。2000 年 4 月，纳斯达克交卷。</div></div>
+    <div class="qa"><div class="q">⑤ 泡沫崩溃后什么永久留下</div><div class="a">光缆网、互联网、移动网、被训练过的工程师与被教育过的用户。按作者观察，留下的实物遗产无可争议；缺的是另一样——<b>制度重组迟迟没有完成</b>，这是第五次区别于前四次的悬而未决之处（中文版序）。</div></div>
+    <div class="qa"><div class="q">⑥ 下一阶段谁赚大钱</div><div class="a">作者的答案（2002 年预测 + 2024 年补充）：在廉价算力与带宽上展开的「知识与媒介经济」衍生分支，方向是「智能绿色」；前提是把转折点的制度做完——市场塑造型政策、方向性创新。这本书写作二十年后，她仍说黄金时代是「悬而未决」的，不是自动来的。</div></div>
+  </div>
+
+  <div class="takeaway">
+    <div class="tk-t">五案对照 · 一句话收束</div>
+    <p>五轮的剧本严丝合缝：泡沫都以基建命名（运河热→铁路热→股市+地产热→互联网热），崩溃都在大爆炸后二三十年，留下的都是「以递减成本大规模应用」的地基。唯一多变的是转折点——英国的干脆、美国三十年代的长痛、第五次的悬而未决。<b>规律在阶段顺序里，不确定性全在政治里。</b>这正是本刊把「读制度」和「读技术」放在同等位置的原因。</p>
+  </div>
+</section>
+
+<!-- ================= §04 拿它看AI ================= -->
+<section id="ai">
+  <div class="sec-head"><span class="no">§04</span><h2>拿它看 AI：先问什么，再问什么</h2><span class="en">Perez × AI</span></div>
+  <p class="lede">框架到手，人人都会想拿 AI 开刀。本刊的纪律是两条：先摆作者自己的判断，再给一张提问表——这是观察框架，不是判决书。</p>
+
+  <div class="takeaway">
+    <div class="tk-t">作者自己的位置 · 2024 中文版第 13 章专栏<span class="tag tag-book">原书</span></div>
+    <p>佩雷斯把 AI 的最新进展定位为「融入正在进行的技术革命中的一项重大创新」，并给了三个先例：塑料之于石油汽车时代、电气化之于钢铁电力时代、贝塞麦钢之于蒸汽铁路时代。合成材料「近乎无限用途」，很快渗透进所有行业——但「<b>尽管合成材料是一项革命性技术，它们本身并不是一场技术革命。</b>」任何单一技术，无论多么强大，都无法独自推动「长期的发展巨潮」；能推动巨潮的，是紧密交织的技术创新集群 + 一种廉价的通用核心投入品 + 新基础设施。她还明确说：ICT 革命持续的时间比以往的革命长得多。</p>
+  </div>
+
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>先例</th><th>出现在哪场巨潮的什么位置</th><th>它站在什么上面</th><th>它自己长成了什么</th></tr>
+    <tr><td>贝塞麦钢 · 1860s</td><td>蒸汽与铁路时代（第二次巨潮）中期</td><td>铁路与蒸汽船铺开的运输市场</td><td>平炉法等进一步降本后，钢成为<b>下一次</b>革命的核心投入品——它自己不是革命</td></tr>
+    <tr><td>电气化 · 1870s</td><td>钢铁、电力与重工业时代（第三次巨潮）开场</td><td>廉价钢铁——「如果没有钢铁，无论是电气设备还是长距离配电电缆都不可能被生产出来」</td><td>1890 年代起成为第三次革命内部的一个分支（电气工程，与冶金化工并列）</td></tr>
+    <tr><td>塑料 · 1930s</td><td>石油、汽车与大规模生产时代（第四次巨潮）中期</td><td>廉价石油与石油化工</td><td>渗透所有行业、改变生产与包装方式——「革命性技术，但本身不是一场技术革命」</td></tr>
+    <tr><td>AI · 现在</td><td>ICT 巨潮（作者明言这场比以往更长）</td><td>廉价算力、带宽与数据——<b>这是待观察项，不是结论</b></td><td>按作者的三类比定位：融入进行中巨潮的重大创新。是否构成独立巨潮，判据是她自己的定义——是否长出新的集群 + 自己的核心投入品 + 新基建</td></tr>
+  </table>
+  </div>
+  <p class="figcap">前三行全部出自 2024 中文版第 13 章专栏原文；第四行的定位是作者三类比的直接延伸，末句判据来自她自己的技术革命定义。<span class="tag tag-book">前三行：原书</span><span class="tag tag-modern">第四行：现代映射</span></p>
+
+  <h3>AI 观察仪表盘 · 八问</h3>
+  <p>八个问题全部从书中框架直接翻译而来，但每行的「现在去看什么」都发生在原书写作之后。这张表不回答「AI 是不是泡沫」——它回答：<b>要判断 AI 演到剧本第几幕，需要盯住什么。</b><span class="tag tag-modern">现代映射</span></p>
+  <div class="tbl-scroll">
+  <table class="tbl diag">
+    <tr><th>佩雷斯式问题</th><th>现在去看什么</th><th>历史对照（原书案例）</th></tr>
+    <tr><td>① 金融资本是否在疯狂涌入？</td><td>AI 融资额与估值、VC 投向、算力相关的信贷与债券</td><td>1840s 全民认购铁路股；1926–29 信托新股占比 2%→37%；1999 年 VC 36.5–48.3 亿美元（每 1000 美元 GDP 有 4–5 美元）</td></tr>
+    <tr><td>② 基础设施是否在大量安装？</td><td>GPU/HBM 在建产能、数据中心、电力缺口、光通信</td><td>运河、铁路、公路电网、光缆——五次泡沫全部以基建命名</td></tr>
+    <tr><td>③ CAPEX 是否跑赢了收入兑现？</td><td>云厂与巨头的资本开支 vs AI 收入的开口</td><td>导入期的定义就是钱先花在地基上：2001 年欧美光缆仅 1–2% 被点亮</td></tr>
+    <tr><td>④ 真实使用量是否在扩散？</td><td>企业 adoption、token 消耗、日活与留存</td><td>「使用安排」的成熟要以十年计：铁路通车后马匹又增 50 年；无纸化办公室至今没来</td></tr>
+    <tr><td>⑤ 利润此刻集中在哪一层？</td><td>芯片/设备 → 云/基建 → 模型 → 应用，逐层看利润表</td><td>利润迁移律：1870s 钱在钢厂，1890s 钱在用钢的；1990s 钱在光缆，2000s 钱在用网的</td></tr>
+    <tr><td>⑥ 核心投入品成本是否在陡降？</td><td>推理成本、单位算力价格、模型 API 价格</td><td>协同期的扳机：1890s 钢价、战后油价电价公路、2000s 带宽趋近于零</td></tr>
+    <tr><td>⑦ 应用层是否开始爆发？</td><td>新商业模式、生产率证据、大众可负担的产品</td><td>「衍生分支」：战后服务业爆发；作者预言的知识与媒介经济</td></tr>
+    <tr><td>⑧ 账面与真实脱钩了几个身位？</td><td>头部公司估值 vs 自由现金流；纯叙事标的的占比</td><td>雅虎市值 &gt; 柯达；64 万亿美元衍生品名义值 ≈ G17 全部金融资产 68 万亿</td></tr>
+  </table>
+  </div>
+
+  <div class="takeaway">
+    <div class="tk-t">这张表怎么用</div>
+    <p>①②③ 偏导入期的证据，⑥⑦ 偏展开期的扳机，⑧ 是泡沫的体温计。另有一个本书自带的悬念：作者在 2024 年中文版序里说第五次巨潮的转折点至今没有完成，专栏里又说 ICT 巨潮比以往更长——两句合起来，AI 的巨额投资发生在一场<b>尚未收官</b>的巨潮内部。这不是判决的理由，恰恰是这张表存在的理由：多问，慢断。<span class="tag tag-book">前两句：原书</span><span class="tag tag-infer">合起来：推导</span></p>
+  </div>
+</section>
+
+<!-- ================= 增订篇分隔 ================= -->
+<div class="part-divider">
+  <span class="pd-badge">增订篇 · 2026-09-12</span>
+  <span class="pd-t">当下映射：从书的框架，到 AI 的现场</span>
+  <span class="pd-sub">证据快照截至 2026-09-12 · §05–§09</span>
+</div>
+
+<!-- ================= §05 尺子与时钟 ================= -->
+<section id="ruler">
+  <div class="sec-head"><span class="no">§05</span><h2>尺子与时钟</h2><span class="en">The Ruler &amp; Two Clocks</span></div>
+  <p class="lede">拿框架对准当下之前，先修订尺子本身：两个时期是机制，不是一张倒计时表；而 AI 建了六年，它脚下的数字底座建了几十年。</p>
+
+  <h3>一 · 原书的尺子：两个时期，不是一张倒计时表</h3>
+  <p>先理解机制，再把现实放进去；避免用现实替模型补齐必然性。五个位置各自要观察的东西完全不同：<span class="tag tag-book">原书 ch4–5</span><a class="srcref" href="#src-2">↗2</a></p>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>位置</th><th>发生什么</th><th>要观察什么</th></tr>
+    <tr><td class="c-irr">导入 · 爆发</td><td>新技术集群进入旧经济；资本支持试错</td><td>技术能否成为可用产品</td></tr>
+    <tr><td class="c-fre">导入 · 狂热</td><td>投资加速，资产预期可能脱离兑现能力</td><td>融资、杠杆、产能和真实客户</td></tr>
+    <tr><td class="c-tur">转折 · 重组</td><td>危机、资产重估与制度重构的过程</td><td>谁承担损失，什么规则改变</td></tr>
+    <tr><td class="c-syn">展开 · 协同</td><td>技术被广泛采用，组织和制度逐渐适应</td><td>生产率、需求扩散和收益分配</td></tr>
+    <tr><td class="c-mat">展开 · 成熟</td><td>扩散趋缓，增长机会和回报分化</td><td>替代、饱和与下一轮创新</td></tr>
+  </table>
+  </div>
+  <p class="figcap">这是佩雷斯对历史发展巨潮的解释框架。转折涉及金融与社会制度，不能仅凭一次产品突破确认一个时代进入了下一个位置。</p>
+
+  <div class="takeaway">
+    <div class="tk-t">重要修订 · 本刊对上篇的修正<span class="tag tag-infer">推导</span></div>
+    <p>上篇「先铺完基础设施，再崩盘，再应用」以及命题五「三件事齐了，应用窗口才开」的叙述<b>过于整齐</b>。建设与应用可以重叠，调整可能多轮发生；历史类比不能给出下一次危机的日期。增订篇以下全部内容，都按这条修订后的尺子展开。</p>
+  </div>
+
+  <details>
+    <summary>＋ 概念：金融资本与生产资本怎么分？<span class="small">框架④的一条脚注</span></summary>
+    <div><p>看资金追求什么、承担什么责任。金融资本重视资产收益和流动性；生产资本扎根经营、能力建设与持续交付。同一家公司可能同时受到两种逻辑支配，不能简单把银行叫金融资本、科技公司叫生产资本。</p></div>
+  </details>
+
+  <h3>二 · 两只时钟：AI 建了六年，数字底座建了几十年</h3>
+  <p>以 GPT-3 为起点，是 AI 产品周期的观察方法，不是整场信息革命的重启。佩雷斯当前把互联网和 AI 看作信息通信技术革命的后续推动。<a class="srcref" href="#src-1">↗1</a><span class="tag tag-modern">现代映射</span>下表的年代是本刊便于理解的粗分，不是精确断代：</p>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>粗略波次</th><th>主要建设</th><th>今天继承了什么</th></tr>
+    <tr><td>1970—1990 年代</td><td>芯片、计算机、企业软件、数字通信</td><td>信息处理能力</td></tr>
+    <tr><td>1990—2000 年代初</td><td>互联网、光缆、服务器与接入</td><td>全球连接与分发</td></tr>
+    <tr><td>2000—2010 年代</td><td>云、移动网络、智能手机、支付</td><td>在线业务和数字入口</td></tr>
+    <tr><td>2010 年代</td><td>数据管线、GPU 计算、机器学习</td><td>训练能力与数字化流程</td></tr>
+    <tr><td>2020—2022 年</td><td>大模型、API、对话产品</td><td>通用能力调用入口</td></tr>
+    <tr><td>2023—2026 年</td><td>AI 集群、供电、互联、运行环境</td><td>大规模交付仍在补齐</td></tr>
+  </table>
+  </div>
+  <div class="takeaway">
+    <div class="tk-t">为什么一直「没建完」</div>
+    <p>任务在升级：问答 → 推理 → 多步骤工具操作。每次升级都会改变设备、能耗、延迟与监督需求。与此同时，不同地区、不同代际设备可能分别短缺或过剩——「建完」不是单一事件。</p>
+  </div>
+
+  <details>
+    <summary>＋ 历史映射的边界<span class="small">铁路类比在哪里失效</span></summary>
+    <div><p>铁路和光缆帮助理解「前期建设惠及后来使用者」；但 GPU、模型和软件的经济寿命与替代速度不同。留下资产不等于留下可盈利资产。不要把所有 AI 投入都当作永久有效的铁路。</p></div>
+  </details>
+</section>
+
+<!-- ================= §06 四条曲线与成本实验室 ================= -->
+<section id="curves">
+  <div class="sec-head"><span class="no">§06</span><h2>四条曲线与成本实验室</h2><span class="en">Four Curves &amp; Cost Lab</span></div>
+  <p class="lede">把「进展」拆成四条不同步的曲线——技术能力、交付总成本、企业资本回报、市场预期。点击图例看单条曲线为什么变化；再用一个可以拖动的成本模型，看 Token 便宜不等于整件工作便宜。</p>
+
+  <div class="lab-controls">
+    <button class="lab-btn on k1" data-curve="0"><i style="background:var(--ph-irr)"></i>技术能力</button>
+    <button class="lab-btn k2" data-curve="1"><i style="background:var(--ph-fre)"></i>交付总成本</button>
+    <button class="lab-btn k3" data-curve="2"><i style="background:var(--ph-syn)"></i>企业资本回报</button>
+    <button class="lab-btn k4" data-curve="3"><i style="background:var(--gold)"></i>市场预期</button>
+  </div>
+  <div class="svg-wrap">
+    <svg viewBox="0 0 920 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="四条不同步变化的示意曲线：技术能力、交付总成本、企业资本回报、市场预期" style="min-width:640px">
+      <path d="M 50,20 V 250 H 880" fill="none" stroke="#C9C2B2" stroke-width="1.6"/>
+      <path class="surge-curve" data-i="0" d="M 50,235 C 180,230 210,175 300,168 S 470,55 880,38" stroke="#2F6B4F"/>
+      <path class="surge-curve" data-i="1" d="M 50,38 C 190,44 160,135 310,140 S 560,215 880,222" stroke="#A8502A"/>
+      <path class="surge-curve" data-i="2" d="M 50,185 C 190,145 210,258 360,205 S 540,100 880,108" stroke="#274B8F"/>
+      <path class="surge-curve" data-i="3" d="M 50,218 C 150,192 205,-5 285,72 S 345,258 435,155 S 575,25 880,82" stroke="#8F6A1E"/>
+      <text x="56" y="272" font-family="Inter,PingFang SC" font-size="12" fill="#8A8478">推进过程 → 非时间刻度</text>
+    </svg>
+  </div>
+  <div class="lab-note" aria-live="polite"><b>当前解读</b><span id="curve-note-text">技术能力：在固定任务与条件下，成功率和可承担任务边界提高。模型发布不等于普通人可靠使用。</span></div>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>曲线</th><th>可测指标</th><th>会怎样错位</th></tr>
+    <tr><td class="c-irr">技术能力</td><td>固定任务成功率、人工接管率</td><td>能力进步，系统集成仍昂贵</td></tr>
+    <tr><td class="c-fre">交付成本</td><td>每项合格成果全部成本</td><td>Token 降价，返工成本不降</td></tr>
+    <tr><td class="c-syn">资本回报</td><td>利润、投入资本、维护更新支出</td><td>收入增长，投入增长更快</td></tr>
+    <tr><td class="c-mat">市场预期</td><td>价格隐含增长与利润要求</td><td>股价先涨，兑现后反而下跌</td></tr>
+  </table>
+  </div>
+  <p class="figcap">图形为机制示意，无数据标定、无日期与价格预测。<span class="tag tag-demo">教学示意</span></p>
+  <div class="takeaway">
+    <div class="tk-t">读图的关键</div>
+    <p>同一家公司可以需求上升、资本回报下降、股价上涨。三件事需要分别解释，而不是互相当作证明——这是对命题二「两种资本」与框架⑤「双轨脱钩」的操作化。</p>
+  </div>
+
+  <h3>成本实验室 · Token 便宜，整件工作未必便宜</h3>
+  <div class="calc">
+    <label for="mins">每次任务人工复核 <output id="min-out">60</output> 分钟</label>
+    <input type="range" id="mins" min="0" max="120" value="60" step="5">
+    <p class="assumption">假设：每次模型费 10 元；人工每小时 100 元；100 次尝试中有 80 项合格成果。仅为教学模型；失败损失、工具费和集成摊销仍须另加。</p>
+    <div class="big"><output id="cost">137.50</output> <small>元 / 合格成果</small></div>
+  </div>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>条件变化</th><th>每项合格成果成本</th><th>说明</th></tr>
+    <tr><td>模型费 10 元，复核 60 分钟</td><td>137.50 元</td><td>初始状态</td></tr>
+    <tr><td>模型费降到 1 元，仍复核 60 分钟</td><td>126.25 元</td><td>模型费降九成，总成本只降约 8%</td></tr>
+    <tr><td>模型费 20 元，复核降至 10 分钟</td><td>45.83 元</td><td>调用更贵，交付反而更便宜</td></tr>
+  </table>
+  </div>
+  <div class="takeaway">
+    <div class="tk-t">完整的比较口径<span class="tag tag-infer">推导</span></div>
+    <p>在质量、时限和风险要求固定的条件下：<b>全部尝试的模型、工具、人工、返工、失败损失和集成摊销之和 ÷ 最终合格成果数量</b>。这正是框架⑥「以递减成本大规模应用」里「成本」二字的正确读法。</p>
+  </div>
+  <details>
+    <summary>＋ 用自己的任务替换假设</summary>
+    <div><p>选一项反复发生的工作，记录原有人工作法和 AI 作法。避免只选最成功演示；记录失败任务和复核时间。先确认总成本真的下降，再讨论是否值得扩大使用。</p></div>
+  </details>
+</section>
+
+<!-- ================= §07 当下状态与三条路径 ================= -->
+<section id="nowstate">
+  <div class="sec-head"><span class="no">§07</span><h2>当下状态与三条路径</h2><span class="en">Where We Stand</span></div>
+  <p class="lede">扩建仍在进行，兑现已经开始。以下为本轮已核对的公开资料快照；不同年份、样本与口径不直接相加。</p>
+
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>观察</th><th>证据</th><th>允许的结论</th></tr>
+    <tr><td>固定能力成本</td><td>GPT-3.5 水平价格：2022-11 至 2024-10，从约 $20 降至 $0.07 / 百万 Token<a class="srcref" href="#src-3">↗3</a></td><td>不能说同等能力从未降价；不代表最新复杂任务同幅降价</td></tr>
+    <tr><td>组织采用</td><td>2026 AI Index：88% 受访组织采用 AI；几乎所有业务职能的 Agent 部署仍为个位数比例<a class="srcref" href="#src-4">↗4</a></td><td>用过工具与委托工作之间仍有差距</td></tr>
+    <tr><td>物理瓶颈</td><td>IEA 2026：电力、并网和先进芯片供应链约束仍突出<a class="srcref" href="#src-5">↗5</a></td><td>扩建未结束；不排除局部过剩</td></tr>
+    <tr><td>融资敏感性</td><td>IEA 指出规模化建设需要资本市场支持<a class="srcref" href="#src-5">↗5</a></td><td>市场预期能反过来影响建设速度</td></tr>
+    <tr><td>制度进度</td><td>欧盟规则分阶段适用，高风险用途仍有不同过渡期<a class="srcref" href="#src-8">↗8</a></td><td>不存在全球统一的监管开关</td></tr>
+  </table>
+  </div>
+  <p class="figcap">全部条目为有日期与出处的公开资料快照，截至 2026-09-12；较早研究不充当今日价格。<span class="tag tag-fact">公开事实</span></p>
+
+  <div class="takeaway">
+    <div class="tk-t">本期位置判断 · 中等确信<span class="tag tag-infer">推导</span></div>
+    <p>AI 子周期：资本密集扩建，叠加局部应用兑现与融资风险。尚不足以确定「狂热末期」，也不能确认全社会进入广泛协同——对应 §05 的尺子，这是一个「分领域分别判断」的位置，不是单一幕次。</p>
+    <p>会迫使判断更新的证据：持续付费与收益跨行业扩散；人工监督显著下降；或产能利用率、融资与客户兑现连续恶化。</p>
+  </div>
+
+  <h3>三条路径 · 没有唯一剧本</h3>
+  <p>选择情景查看更新信号。它们是可能路径，不是概率预测。<span class="tag tag-infer">推导</span></p>
+  <div class="lab-controls">
+    <button class="lab-btn on k1" data-scenario="0"><i style="background:var(--ph-irr)"></i>需求吸收扩建</button>
+    <button class="lab-btn k2" data-scenario="1"><i style="background:var(--ph-fre)"></i>建设超过需求</button>
+    <button class="lab-btn k3" data-scenario="2"><i style="background:var(--ph-syn)"></i>瓶颈长期存在</button>
+  </div>
+  <div class="lab-note" aria-live="polite" style="margin-top:16px"><b>当前路径</b><span id="scenario-note-text">需求吸收扩建：持续付费、利用率与回款增长，逐步吸收新增供给。应用和基础设施可能同时受益，不必先经历全行业崩盘。</span></div>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>路径</th><th>应看到什么</th><th>反向证据</th></tr>
+    <tr><td class="c-irr">需求吸收扩建</td><td>续费、付费负载、现金回收改善</td><td>增长依赖补贴和续融资</td></tr>
+    <tr><td class="c-fre">建设超过需求</td><td>利用率走弱、降价、减值、融资收紧</td><td>真实客户收益持续支撑扩容</td></tr>
+    <tr><td class="c-syn">瓶颈长期存在</td><td>局部短缺，应用和社会收益扩散缓慢</td><td>端到端交付开始低成本复制</td></tr>
+  </table>
+  </div>
+  <div class="takeaway">
+    <div class="tk-t">三个拐点必须分开</div>
+    <p>产品拐点：普通人反复用。商业拐点：客户与供应商经济账成立。金融 / 制度转折：资产重估、融资和规则重构。它们没有固定先后顺序——这是对 §01 命题四「转折点是政治」的操作化。</p>
+  </div>
+  <details>
+    <summary>＋ 为什么「等极端悲观再买」还不是规则？</summary>
+    <div><p>退出和重入是两次判断。需要预先定义观察指标、有效时间、交易成本、错误处理和不再等待的条件。本刊不把阶段标签转成清仓、抄底或收益承诺；短期行情截图也不能证明长期择时优势。</p></div>
+  </details>
+</section>
+
+<!-- ================= §08 你的判断 ================= -->
+<section id="you">
+  <div class="sec-head"><span class="no">§08</span><h2>你的判断：从直觉到可更新的假设</h2><span class="en">Your Hypotheses</span></div>
+  <p class="lede">「追踪瓶颈」很有解释力；把它变成投资结论前，还要补齐收益和价格。本节把读者在对话中给出的五条直觉，逐条拆成「保留什么 / 需要补什么」。</p>
+
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>你的想法 · 意译</th><th>保留什么</th><th>需要补什么</th></tr>
+    <tr><td>仍处于核心建设期</td><td>物理设施和组织能力仍在补齐</td><td>不同领域分别判断，不以未普及推断全行业短缺</td></tr>
+    <tr><td>核心资源带来定价权</td><td>替代难度影响议价</td><td>资源控制、合同、客户集中与成本传导</td></tr>
+    <tr><td>顶级智能仍然昂贵</td><td>复杂任务的总账单可能上升</td><td>固定质量、速度、成功率后比较总成本</td></tr>
+    <tr><td>Agent 普及是转折</td><td>可能成为产品与商业扩散拐点</td><td>不是金融泡沫破裂的必要前提</td></tr>
+    <tr><td>现在先投资，后来再创业</td><td>节制投入、保存精力是合理选择</td><td>不必等危机后才积累客户与交付能力</td></tr>
+  </table>
+  </div>
+  <p class="figcap">左列为读者本人在 2026-09 对话中给出的判断意译，非本刊或原书观点。<span class="tag tag-you">你的假设</span></p>
+
+  <div class="takeaway">
+    <div class="tk-t">目前不能推出的结论<span class="tag tag-infer">推导</span></div>
+    <p>「应用未普及 → 泡沫不会破 → 此前持续上涨」没有成立的因果桥梁。融资、折现率、竞争和市场预期都能先于产品普及发生变化——账面财富的崩落从来不需要等真实使用见顶（框架⑤）。</p>
+  </div>
+  <details>
+    <summary>＋ 如何保留想法，而不把它写成事实？</summary>
+    <div><p>写三行：① 我预计什么；② 什么观察会支持它；③ 什么观察会让我改想法。比如「Agent 将增加端侧需求」需要看到本地执行占比、端侧利用率和实际采购，而不只是 Agent 总调用量增长。</p></div>
+  </details>
+
+  <h3>阅读之后 · 五条观察线</h3>
+  <p>把阅读变成可重复的观察，不必等到全社会普及才开始积累。</p>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>观察线</th><th>记录什么</th><th>什么会改变判断</th></tr>
+    <tr><td>产业</td><td>交付、利用率、替代方案、供给时滞</td><td>旧瓶颈被缓解，新瓶颈出现</td></tr>
+    <tr><td>企业</td><td>成本传导、合同、投入、现金回收</td><td>收入增长却无法留下现金</td></tr>
+    <tr><td>市场</td><td>价格隐含的增长与利润要求</td><td>好消息不足以超越已计入预期</td></tr>
+    <tr><td>应用</td><td>固定任务成本、接管率、客户复用</td><td>能以低监督持续交付</td></tr>
+    <tr><td>个人积累</td><td>真实场景、失败样本、领域知识与信任</td><td>某类问题出现重复付费动机</td></tr>
+  </table>
+  </div>
+  <div class="takeaway">
+    <div class="tk-t">下一次更新只问四件事</div>
+    <p>新增了什么证据？它改变哪条曲线？它削弱哪个原有假设？下一次用什么观察来确认？</p>
+    <p>保存精力、积累 idea 是一种主动选择；同时可用小规模真实任务积累交付能力。投资与应用探索可以并行，不需要等待统一的时代开关。<span class="tag tag-you">你的假设</span></p>
+  </div>
+  <p class="figcap">证据标记速查：<span class="tag tag-book">原书框架</span>=解释历史机制；<span class="tag tag-fact">公开事实</span>=限定日期和口径；<span class="tag tag-you">你的假设</span>=对话中的想法与意译；<span class="tag tag-infer">分析推演</span>=条件式映射；<span class="tag tag-demo">教学示意</span>=曲线与数字不代表实测。</p>
+</section>
+
+<!-- ================= §09 利润迁移与三个案例 ================= -->
+<section id="profit">
+  <div class="sec-head"><span class="no">§09</span><h2>利润迁移与三个案例</h2><span class="en">Profit Migration &amp; Cases</span></div>
+  <p class="lede">关键、紧缺，还要能把收益留下。以下是条件式映射，不是各阶段利润排行榜——利润额、利润率和 ROIC 是三种不同指标。</p>
+
+  <h3>一 · 利润会停在哪一站</h3>
+  <p>命题五说利润会从「修路的」迁移到「在路上做生意的」；迁移的实际路径取决于每一站的瓶颈与反例：<span class="tag tag-infer">推导</span></p>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>阶段或状态</th><th>潜在瓶颈</th><th>可能受益者</th><th>主要反例</th></tr>
+    <tr><td>试错</td><td>技术、人才、工具链</td><td>稀缺技术与工具提供者</td><td>没有客户愿意付费</td></tr>
+    <tr><td>扩建</td><td>交付、互联、供电、容量</td><td>能按时交付的供应商</td><td>成本、扩产和融资吞噬收益</td></tr>
+    <tr><td>扩容与分化</td><td>效率、稳定性、客户合同</td><td>成本领先与运营领先者</td><td>增长还在，单位利润已降</td></tr>
+    <tr><td>应用扩散</td><td>流程、信任、入口、数据</td><td>平台、垂直应用、改造成功的原有企业</td><td>竞争让价值转移给客户</td></tr>
+    <tr><td>成熟</td><td>规模、渠道、存量关系</td><td>少数持续有优势者</td><td>替代与市场饱和</td></tr>
+  </table>
+  </div>
+  <div class="takeaway">
+    <div class="tk-t">利润归属的五个问题</div>
+    <p>客户必须用吗？能换别人吗？谁控制交付？谁决定价格与条款？扣掉持续投入之后还剩多少？</p>
+  </div>
+  <details>
+    <summary>＋ 为什么「物理上关键」不等于「财务上强」？</summary>
+    <div><p>受监管的公共服务可能极其关键，却不能自由涨价。缺货的部件若很快扩产，超额利润可能消失。看的是可持续的稀缺控制权，而不仅是这一季的短缺。</p></div>
+  </details>
+  <details>
+    <summary>＋ 轻资产也可以有定价权</summary>
+    <div><p>客户无法轻易迁移的数据、嵌入业务的软件、经验证的流程、认证和分销网络，都可能产生替代成本。物理资产所有权只是控制关键环节的一种方式。</p></div>
+  </details>
+
+  <h3>二 · 案例 A · ROIC：谁建机房，谁租能力做生意？</h3>
+  <p>假设案例。所有数字均为教学设定，不代表任何公司的实际回报。<span class="tag tag-demo">教学示意</span></p>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th></th><th>基础设施运营商</th><th>行业软件公司</th></tr>
+    <tr><td>投入资本</td><td>100 亿元</td><td>1,000 万元</td></tr>
+    <tr><td>年税后经营利润</td><td>10 亿元</td><td>300 万元</td></tr>
+    <tr><td>简化 ROIC</td><td>10%</td><td>30%</td></tr>
+    <tr><td>主要支出</td><td>设备、场地、维护与更新</td><td>研发、获客、交付、云和模型服务</td></tr>
+    <tr><td>失败方式</td><td>低利用率、更新投入、融资压力</td><td>没人续费、获客贵、缺少差异</td></tr>
+  </table>
+  </div>
+  <div class="takeaway">
+    <div class="tk-t">这句话应当怎样改写</div>
+    <p>外购标准化的重资产服务，把自身资本集中在客户愿意持续付费、难以替代的能力上，<b>有机会</b>提高资本回报。它不是高 ROIC 的充分条件，也不是唯一途径——对应 §11 创业清单的核心口号「重资本已由别人承担的位置，才能建立高 ROIC 的生意」。</p>
+  </div>
+  <details>
+    <summary>＋ 展开例子：报表服务</summary>
+    <div><p>一家服务公司租用云和模型，把客户数据转成经过审核的经营报表。云厂承担设备建设；服务公司仍须承担数据接入、错误复核、客户获取和交付。只有客户因省时、降低错误或改善决策而持续续费，这才是一门生意。模型费便宜本身不构成护城河。</p></div>
+  </details>
+  <details>
+    <summary>＋ 为什么不能只看 30%？</summary>
+    <div><p>轻资产公司的研发常计入费用，资产负债表可能没有完整反映自建无形资产。比较 ROIC 时需要统一口径。表中只解释「利润总额与资本回报率可以不同」，不能拿来进行公司估值排名。</p></div>
+  </details>
+
+  <h3>三 · 案例 B · Oracle：它出售的，不只是「转手服务」</h3>
+  <p>传统数据库与企业软件、云基础设施 OCI，应当分开看。数据库业务的价值来自软件能力、业务嵌入和迁移成本。OCI 提供实际的 GPU 计算、网络、存储和运行服务；官方产品包含 NVIDIA、AMD GPU 的裸金属和虚拟机服务。<a class="srcref" href="#src-6">↗6</a><span class="tag tag-fact">公开事实</span></p>
+  <div class="flow-chain">
+    <div class="flow-chip">上游设备 · 场地 · 能源<small>采购、租赁与合同</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip hl">OCI 可交付的计算服务<small>运营与保障</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">客户训练、推理与企业负载<small>使用合同与服务保障</small></div>
+  </div>
+  <div class="takeaway">
+    <div class="tk-t">真正要问</div>
+    <p>Oracle 是否控制客户需要、又难以替代的可用容量？客户价格怎样锁定？上游成本由谁承担？扩容投入什么时候收回来？</p>
+  </div>
+  <p>2026-09-10 财报披露，当季完成约 200 亿美元普通股融资，属于资本投资计划的一部分。它提醒我们检查资本需求与股东稀释，不能把 OCI 当作天然轻资产收费口。<a class="srcref" href="#src-7">↗7</a><span class="tag tag-fact">公开事实</span></p>
+  <details>
+    <summary>＋ 反例：需求增长，利润却受压</summary>
+    <div><p>假设客户合同锁定售价，而设备、电力和融资成本上涨。订单越多，交付承诺越重，现金压力也可能越大。只有可保留的服务价差、利用率与回款足以覆盖投入，需求才更可能变成股东收益。</p></div>
+  </details>
+  <details>
+    <summary>＋ 下一次财报读什么？</summary>
+    <div><p>分开看：云收入兑现、实际容量与利用率、客户预付、资本开支、融资与股数、经营现金流和自由现金流。RPO 是待履约合同口径，不能直接当现金或利润。单个项目融资有保障，也不等于整个公司自由现金流改善。</p></div>
+  </details>
+
+  <h3>四 · 案例 C · Agent：从回答问题，到完成可验收的工作</h3>
+  <p>「白领愿意放心使用」的判断，可以转化为一套任务级观察：<span class="tag tag-you">你的假设</span></p>
+  <div class="flow-chain">
+    <div class="flow-chip">任务与状态</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">模型推理</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip">工具执行</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-chip hl">验证结果</div>
+  </div>
+  <p class="figcap">观察反馈与修正：执行结果不通过验收时，回到推理与工具环节重来——Agent 的成本与可靠性都藏在这条回路上。</p>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <tr><th>执行路径</th><th>可能增加的需求</th><th>不能直接推出</th></tr>
+    <tr><td>云端执行</td><td>云计算、隔离环境、网络和服务运营</td><td>每台个人电脑必须大幅升级</td></tr>
+    <tr><td>端侧执行</td><td>NPU / GPU、内存带宽、功耗管理</td><td>所有组件需求按同样倍数增加</td></tr>
+    <tr><td>混合执行</td><td>路由、隐私、同步、端云协作</td><td>固定一种架构长期胜出</td></tr>
+  </table>
+  </div>
+  <p>CPU 常负责调度和工具程序；模型推理可能在 GPU、NPU、CPU 或云端加速器上。Synopsys 提供设计工具与 IP，其收入通过设计和授权活动传导，不直接按终端 Token 收费。<a class="srcref" href="#src-10">↗10</a></p>
+  <details>
+    <summary>＋ 国产算力与模型训练，不是一回事</summary>
+    <div><p>分开观察芯片来源、模型训练方法和部署硬件。「国产模型主要靠蒸馏」不能一概而论。Kimi K2 官方披露了大规模预训练和强化学习路线；该资料不能外推所有型号，也不证明训练硬件全部国产。<a class="srcref" href="#src-9">↗9</a></p></div>
+  </details>
+  <div class="takeaway">
+    <div class="tk-t">可用性门槛</div>
+    <p>固定真实任务，记录成功率、人工接管、等待时间、总成本与失败后恢复能力。「20% 的人使用」只是一个可讨论的采用阈值，不能独自证明生产率或商业回报发生转折。</p>
+  </div>
+</section>
+
+<!-- ================= §10 投资清单 ================= -->
+<section id="investor">
+  <div class="sec-head"><span class="no">§10</span><h2>投资者十二条</h2><span class="en">Perez Investment Checklist</span></div>
+  <p class="lede">以后看到任何技术浪潮，把十二条按顺序过一遍。打勾是给自己的纪律，不是给市场的判断。<span class="tag tag-infer">清单为本刊按原书框架整理</span></p>
+
+  <div class="check-intro"><span class="small">逐条点击打勾 · 刷新后重置</span><span class="check-counter" id="inv-counter">0 / 12</span></div>
+  <div class="checklist" id="inv-list">
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">01</div><div class="ck-q">这是产品创新，还是技术革命？</div><div class="ck-d">用命题一的尺子量：革命 = 集群 + 廉价核心投入品 + 新基建。产品创新按产品定价，只有范式切换配得上重估。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">02</div><div class="ck-q">钱正在建设什么？</div><div class="ck-d">看资本开支流向：地基（芯片、数据中心、基建）还是生意（应用、服务、毛利）。修路年代别用开店年代的估值表。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">03</div><div class="ck-q">谁在承担 CAPEX？</div><div class="ck-d">政府、巨头、VC 还是散户？谁出钱，谁在崩溃时流血——这是风险地图，不只是股权结构。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">04</div><div class="ck-q">谁正在拿走利润？</div><div class="ck-d">把价值链摊开——设备 → 投入品 → 基建 → 应用——问利润此刻停在哪一站，为什么停在这站。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">05</div><div class="ck-q">当前赢家是修路的，还是在路上做生意的？</div><div class="ck-d">导入期利润在路（钢、光缆、芯片），展开期利润在生意（用钢的、用网的）。方向搞反，就是站在利润迁移的逆风处。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">06</div><div class="ck-q">产能和需求，谁长得更快？</div><div class="ck-d">产能跑赢需求等于未来的贱卖：1875 年蒸汽船半价甩卖、2001 年光缆一折易手。数在建产能，别只数订单。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">07</div><div class="ck-q">股价领先基本面多少？</div><div class="ck-d">用框架⑤量账面与真实的开口宽度。两条轨道的开口，比任何情绪指标都诚实。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">08</div><div class="ck-q">金融条件撑得住 CAPEX 吗？</div><div class="ck-d">地基要修十年，融资周期只有三五年。利率与信用环境翻转时，修到一半的路最危险。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">09</div><div class="ck-q">融资成本上升，谁最先倒？</div><div class="ck-d">高杠杆、无现金流、纯叙事的标的先倒，下一层是借钱给它们的债权人。1837 年六州违约的顺序值得复看。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">10</div><div class="ck-q">泡沫破裂后，什么资产仍有价值？</div><div class="ck-d">留的地里的东西：基建、主导设计、技能组织、用户习惯。崩溃前写好这份清单，崩溃时才敢动手。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">11</div><div class="ck-q">下一阶段利润迁到哪里？</div><div class="ck-d">盯三个扳机：核心投入品价格陡降、主导设计锁定、监管框架落地。三件事齐了，应用层的窗口才开。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">12</div><div class="ck-q">还剩多少预期差？</div><div class="ck-d">剧本演到第几幕，市场定价在第几幕。阶段认错是最大的风险，认对是最大的机会。</div></div>
+  </div>
+</section>
+
+<!-- ================= §06 创业清单 ================= -->
+<section id="founder">
+  <div class="sec-head"><span class="no">§11</span><h2>创业者八问</h2><span class="en">Perez Entrepreneur Checklist</span></div>
+  <p class="lede">核心只有一句：<b>重资本（Heavy CAPEX）已由别人承担的位置，才能建立高 ROIC 的生意。</b>八问都是这句话的展开。<span class="tag tag-infer">清单为本刊按原书框架整理</span></p>
+
+  <div class="check-intro"><span class="small">逐条点击打勾 · 刷新后重置</span><span class="check-counter" id="fnd-counter">0 / 8</span></div>
+  <div class="checklist" id="fnd-list">
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">01</div><div class="ck-q">哪些基础设施已有人替我烧钱建好？</div><div class="ck-d">云、开源模型、支付、物流、移动网——先盘点免费的午餐，那是上一场泡沫的建设性遗产。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">02</div><div class="ck-q">哪些能力已经商品化？</div><div class="ck-d">曾经天价的（算力、地图、语音、翻译）如今按量计费。商品化的边界，就是你的成本地板。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">03</div><div class="ck-q">哪些成本正在陡降？</div><div class="ck-d">找到斜率最负的那条成本曲线，把生意建在上面——顺风的生意事半功倍。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">04</div><div class="ck-q">什么昂贵能力正在变成人人可用？</div><div class="ck-d">范式扩散的方向，就是把富人的奢侈品做成大众的日用品——协同阶段最赚钱的动作。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">05</div><div class="ck-q">哪里基建成熟、体验仍然很差？</div><div class="ck-d">路已通、店没开的地方。「使用安排」创新者的地盘——把技术做得真正可用、可负担。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">06</div><div class="ck-q">哪些新生活方式正在出现？</div><div class="ck-d">汽车养出郊区，网络养出电商。新习惯就是新需求，习惯迁移的路线图就是市场地图。</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">07</div><div class="ck-q">新基建会造出什么前所未有的需求？</div><div class="ck-d">铁路造出最后一公里的马车生意。问一句：这轮基建让什么「第一次成为可能」？</div></div>
+    <div class="check-item"><div class="ck-box"></div><div class="ck-no">08</div><div class="ck-q">哪里「卖铲子的」利润会流向「用铲子的」？</div><div class="ck-d">重资本由别人承担 + 你建高 ROIC 现金流——本刊核心口号的落地问法。</div></div>
+  </div>
+</section>
+
+<!-- ================= §07 拆书五问 ================= -->
+<section id="deconstruct">
+  <div class="sec-head"><span class="no">§12</span><h2>拆书五问</h2><span class="en">Deconstruct</span></div>
+  <p class="lede">换一种读法：不问这本书讲了什么，问作者靠什么站着。五段，每段都过一道替换测试——拿去拆同领域另一本书，不成立才算数。</p>
+
+  <div class="dd-item">
+    <div class="dd-t">一 · 核心问题与挠痒处<small>WHY SHE HAD TO WRITE IT</small></div>
+    <div class="dd-b">她答的问题：为什么资本主义约每半个世纪就疯一次——钱海啸一样涌向新技术，吹出泡沫，崩掉，然后又长出一段普遍繁荣。挠痒处在前言里写得直白：「令人惊奇的是，那些研究金融和研究技术变革的经济学家之间存在严重脱节。」熊彼特一派谈创新，不谈钱从哪来；明斯基、金德尔伯格一派谈危机，不谈技术装到了哪一步。英文版 2002 年出版，纳斯达克刚崩，一场完全可以按两百年剧本解释的崩溃，正被当成「新经济」的意外。她不写，这座桥就继续没人搭。</div>
+  </div>
+
+  <div class="dd-item">
+    <div class="dd-t">二 · 基础假设<small>WHAT SHE STANDS ON</small></div>
+    <div class="dd-b">四条不证之物。一，技术革命真的存在，且以约半个世纪的节奏集群到来——「大爆炸」的年份是分析的便利，不是精确的钟。二，金融资本与生产资本的分离是资本主义的常态结构，不是病态——正是这个分离让革命融得到资。三，制度可塑：技术潜力要靠制度重组才释放得了，政治选择有效。四，她自己亮出来的（第 15 章）：<b>模型是启发式，不是给历史穿紧身衣</b>——不能精确断代，个别危机归明斯基和金德尔伯格。最后这条最要紧：作者亲手写的免责声明。</div>
+  </div>
+
+  <div class="dd-item">
+    <div class="dd-t">三 · 取景框与铸词<small>HER LENS, HER VOCABULARY</small></div>
+    <div class="dd-b">取景框一句话：任何时代先问三个问题——<b>钱往哪流？流的钱在安装什么？安装到剧本第几幕？</b>她看铁路、看互联网、看 AI，用的都是这同一台框。铸的词一整套：发展巨潮（Great Surge）、大爆炸、技术-经济范式、导入期与展开期、爆发-狂热-转折点-协同-成熟、金融资本对生产资本、核心投入品。每个词自带阶段钟——说出「狂热」，你就知道账面财富正在脱钩真实财富；说出「协同」，你就知道该看利润、别看叙事。这些标签别人没有，是她的指纹。</div>
+  </div>
+
+  <div class="dd-item">
+    <div class="dd-t">四 · 最锋利的一句<small>THE ONE SHARP CLAIM</small></div>
+    <div class="dd-b">泡沫是技术革命的融资机制——投资者亏掉的钱没有蒸发，它变成了地下的光缆、地上的铁路网，下一阶段的整个经济站在上面。原话更狠（第 10 章）：「金融资本好似被浪费了，也可能投入过度，它对很多人来说是痛苦的，但是它为以后将要全面展开的技术革命创造了基本的外部环境。」还有反面的半句同样锋利：崩溃之后不是自动黄金时代，转折点是政治——1930 年代的美国和 1933 年的德国，都是真实存在过的选项。</div>
+  </div>
+
+  <div class="dd-item">
+    <div class="dd-t">五 · 只带走一件<small>ONE THING TO CARRY</small></div>
+    <div class="dd-b">一个取景框：半部金融史和半部产业史叠着看——钱先疯（导入期，金融掌舵，泡沫崩掉），路留下（基建以递减成本摊开），生意后到（展开期，生产掌舵，黄金时代）。为什么是这件：这是她看两百年五次革命用的同一副眼镜。戴上它，看到钱往哪流，就能猜到下一幕的布景。</div>
+  </div>
+
+  <div class="takeaway">
+    <div class="tk-t">灵魂三问 · 收束</div>
+    <p>不写不行的劲儿：两百年没人搭的桥，她在互联网泡沫的废墟上搭完了。最独占的 move：把金融资本的行为编进技术革命的生命周期——五幕剧本，配五种钱。带走的那一句：泡沫是技术革命的融资机制，钱被浪费了，路留在了地里。</p>
+  </div>
+</section>
+</main>
+
+<footer id="discipline">
+  <div class="wrap f-grid" style="grid-template-columns:1.1fr 1.3fr 1fr">
+    <div>
+      <h5>出处纪律 · SOURCE DISCIPLINE</h5>
+      <p>本刊区分六种陈述的等级，全文以徽标标注：</p>
+      <ul>
+        <li><span class="tag tag-book">原书</span> 佩雷斯明确论述或书中案例（2024 中文版，15 章 + 前言 + 结语 + 后记 + 中文版序）。</li>
+        <li><span class="tag tag-infer">推导</span> 用书中框架做的合理推论，不代表作者本意。</li>
+        <li><span class="tag tag-modern">现代映射</span> 对当代 AI 与市场的延伸应用，发生在原书写作之后。</li>
+        <li><span class="tag tag-fact">公开事实</span> 有日期与出处的公开资料快照（增订篇，截至 2026-09-12）。</li>
+        <li><span class="tag tag-you">你的假设</span> 读者本人在对话中给出的判断与意译，非本刊观点。</li>
+        <li><span class="tag tag-demo">教学示意</span> 纯教学模型：曲线与数字不代表实测。</li>
+      </ul>
+    </div>
+    <div>
+      <h5>增订来源 · SUPPLEMENT SOURCES</h5>
+      <ul style="line-height:1.7">
+        <li id="src-1"><a href="https://carlotaperez.org/research-project/" target="_blank" rel="noopener">佩雷斯：当前研究与 AI 定位 ↗</a></li>
+        <li id="src-2"><a href="https://carlotaperez.org/wp-content/downloads/new-book/blog/the-second-machine-age/TRFCChapter4.pdf" target="_blank" rel="noopener">原书第四章：导入与展开 ↗</a></li>
+        <li id="src-3"><a href="https://hai.stanford.edu/news/ai-index-2025-state-of-ai-in-10-charts?highlight=2025" target="_blank" rel="noopener">Stanford：固定能力的推理价格 ↗</a></li>
+        <li id="src-4"><a href="https://hai.stanford.edu/ai-index/2026-ai-index-report/economy" target="_blank" rel="noopener">Stanford 2026：经济与采用 ↗</a></li>
+        <li id="src-5"><a href="https://www.iea.org/reports/key-questions-on-energy-and-ai/executive-summary" target="_blank" rel="noopener">IEA 2026：能源、建设与融资 ↗</a></li>
+        <li id="src-6"><a href="https://www.oracle.com/cloud/compute/gpu/" target="_blank" rel="noopener">Oracle：OCI GPU 与集群服务 ↗</a></li>
+        <li id="src-7"><a href="https://www.oracle.com/news/announcement/q1fy27-earnings-release-2026-09-10/" target="_blank" rel="noopener">Oracle：2026-09-10 财报 ↗</a></li>
+        <li id="src-8"><a href="https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai" target="_blank" rel="noopener">欧盟：AI Act 实施进度 ↗</a></li>
+        <li id="src-9"><a href="https://github.com/MoonshotAI/Kimi-K2" target="_blank" rel="noopener">Kimi K2：官方技术资料 ↗</a></li>
+        <li id="src-10"><a href="https://www.synopsys.com/designware-ip/ip-market-segments/edge-ai.html" target="_blank" rel="noopener">Synopsys：端侧 AI 与芯片 IP ↗</a></li>
+      </ul>
+      <p class="small" style="margin-top:8px">正文中的 ↗n 角标指向本清单；来源核对基于 2026-09-12 当轮讨论。</p>
+    </div>
+    <div>
+      <h5>版本</h5>
+      <p>深读特刊 №01 · 初版 2026-09-06 · 增订 2026-09-12<br>增订内容：并入「当下映射」篇（§05–§09），替代原独立的交互增订版文件；修订上篇「先铺完基建再应用」的过于绝对的叙述。<br>原书：Carlota Perez,《技术革命与金融资本：泡沫与黄金时代的动力学》,中国人民大学出版社, 2024（Technological Revolutions and Financial Capital, 2002）<br>模型使用警告（原书第 15 章）：这是启发式框架，不是给历史穿紧身衣；不能精确断代，不解释个别危机（个别危机请用明斯基/金德尔伯格）。</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+// —— 阶段时间轴切换 ——
+document.querySelectorAll('.phase-tab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('.phase-tab').forEach(function(t){t.classList.remove('on')});
+    document.querySelectorAll('.phase-panel').forEach(function(p){p.classList.remove('show')});
+    tab.classList.add('on');
+    document.getElementById(tab.dataset.target).classList.add('show');
+  });
+});
+// —— 案例切换 ——
+document.querySelectorAll('.case-tab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('.case-tab').forEach(function(t){t.classList.remove('on')});
+    document.querySelectorAll('.case-panel').forEach(function(p){p.classList.remove('show')});
+    tab.classList.add('on');
+    document.getElementById(tab.dataset.target).classList.add('show');
+  });
+});
+// —— 清单打勾 ——
+function bindCheck(listId, counterId){
+  var items = document.querySelectorAll('#'+listId+' .check-item');
+  var counter = document.getElementById(counterId);
+  function update(){
+    var n = document.querySelectorAll('#'+listId+' .check-item.done').length;
+    counter.textContent = n + ' / ' + items.length;
+  }
+  items.forEach(function(it){
+    it.addEventListener('click', function(){ it.classList.toggle('done'); update(); });
+  });
+  update();
+}
+bindCheck('inv-list','inv-counter');
+bindCheck('fnd-list','fnd-counter');
+
+// —— 增订篇 · 曲线实验室 ——
+var curveNotes = [
+  '技术能力：在固定任务与条件下，成功率和可承担任务边界提高。模型发布不等于普通人可靠使用。',
+  '交付总成本：包括模型、工具、人工、返工和集成。固定验收条件后比较；Token 报价只是一部分。',
+  '企业资本回报：增长可能要求更大投入。利用率、维护更新和成本传导决定收入能留下多少收益。',
+  '市场预期：可以提前计入成功，也会受融资与折现率影响。没有技术倒退，估值也可能下跌。'
+];
+document.querySelectorAll('[data-curve]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('[data-curve]').forEach(function(x){ x.classList.remove('on'); });
+    btn.classList.add('on');
+    document.querySelectorAll('.surge-curve').forEach(function(p){
+      p.style.opacity = (p.dataset.i === btn.dataset.curve) ? '1' : '.16';
+    });
+    document.getElementById('curve-note-text').textContent = curveNotes[+btn.dataset.curve];
+  });
+});
+
+// —— 增订篇 · 三条路径 ——
+var scenarioNotes = [
+  '需求吸收扩建：持续付费、利用率与回款增长，逐步吸收新增供给。应用和基础设施可能同时受益，不必先经历全行业崩盘。',
+  '建设超过需求：利用率下降、价格压力与融资收紧，引发减值和整合。便宜资源能帮助使用者，但不能自动创造应用利润。',
+  '瓶颈长期存在：物理、组织和制度调整速度不同。局部平台获利与社会收益扩散不足可以长期共存。'
+];
+document.querySelectorAll('[data-scenario]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('[data-scenario]').forEach(function(x){ x.classList.remove('on'); });
+    btn.classList.add('on');
+    document.getElementById('scenario-note-text').textContent = scenarioNotes[+btn.dataset.scenario];
+  });
+});
+
+// —— 增订篇 · 成本实验室 ——
+document.getElementById('mins').addEventListener('input', function(e){
+  document.getElementById('min-out').textContent = e.target.value;
+  document.getElementById('cost').textContent = ((10 + 100 * e.target.value / 60) / 0.8).toFixed(2);
+});
+</script>
+</body>
+</html>

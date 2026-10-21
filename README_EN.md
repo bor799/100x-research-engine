@@ -6,6 +6,22 @@
 
 The problem is not a lack of information. It is the attention cost of filtering repeated, low-increment content. 100X organizes acquisition, scoring, extraction, queues, delivery, and runtime state into one durable research pipeline.
 
+<!-- DEMO:BEGIN -->
+## 📖 Live Demo · Read the magazine this engine produces
+
+A fully automated personal knowledge magazine, synced to GitHub Pages every Tuesday 19:00 (Asia/Shanghai):
+
+[![Magazine home](项目效果展示/screenshots/index.png)](https://bor799.github.io/100x-research-engine/)
+
+| Lane | Cadence | Latest issue |
+| --- | --- | --- |
+| Daily Wire | Weekdays | [每日短讯-2026-10-21](https://bor799.github.io/100x-research-engine/%E6%AF%8F%E6%97%A5%E7%9F%AD%E8%AE%AF/%E6%AF%8F%E6%97%A5%E7%9F%AD%E8%AE%AF-2026-10-21.html) |
+| Weekly Digest | Weekly (Tue) | [知识萃取周刊 2026-10-W3](https://bor799.github.io/100x-research-engine/%E7%9F%A5%E8%AF%86%E8%90%83%E5%8F%96/%E7%9F%A5%E8%AF%86%E8%90%83%E5%8F%96%E5%91%A8%E5%88%8A%202026-10-W3.html) |
+| Deep Read | Occasional | [2026-09-12 认知重编译-Grok Bot：AI产品的单位从对话变成同事](https://bor799.github.io/100x-research-engine/%E6%B7%B1%E8%AF%BB/2026-09-12%20%E8%AE%A4%E7%9F%A5%E9%87%8D%E7%BC%96%E8%AF%91-Grok%20Bot%EF%BC%9AAI%E4%BA%A7%E5%93%81%E7%9A%84%E5%8D%95%E4%BD%8D%E4%BB%8E%E5%AF%B9%E8%AF%9D%E5%8F%98%E6%88%90%E5%90%8C%E4%BA%8B.html) |
+
+**[→ Open the magazine](https://bor799.github.io/100x-research-engine/)** (47 issues archived) · ![last commit](https://img.shields.io/github/last-commit/bor799/100x-research-engine)
+<!-- DEMO:END -->
+
 ## What it does
 
 ```text

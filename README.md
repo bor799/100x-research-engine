@@ -8,6 +8,24 @@
 
 </div>
 
+<!-- DEMO:BEGIN -->
+## 📖 项目效果展示 · 在线阅读
+
+这条管线每周自动产出一份「知识杂志」——真实运行、真实存档，每周二 19:00 同步到 GitHub Pages：
+
+[![知识杂志首页](项目效果展示/screenshots/index.png)](https://bor799.github.io/100x-research-engine/)
+
+| 栏目 | 频率 | 最新一期 |
+| --- | --- | --- |
+| 每日短讯 | 每个工作日 | [每日短讯-2026-10-21](https://bor799.github.io/100x-research-engine/%E6%AF%8F%E6%97%A5%E7%9F%AD%E8%AE%AF/%E6%AF%8F%E6%97%A5%E7%9F%AD%E8%AE%AF-2026-10-21.html) |
+| 知识萃取周刊 | 每周二 | [知识萃取周刊 2026-10-W3](https://bor799.github.io/100x-research-engine/%E7%9F%A5%E8%AF%86%E8%90%83%E5%8F%96/%E7%9F%A5%E8%AF%86%E8%90%83%E5%8F%96%E5%91%A8%E5%88%8A%202026-10-W3.html) |
+| 深读特刊 | 不定期 | [2026-09-12 认知重编译-Grok Bot：AI产品的单位从对话变成同事](https://bor799.github.io/100x-research-engine/%E6%B7%B1%E8%AF%BB/2026-09-12%20%E8%AE%A4%E7%9F%A5%E9%87%8D%E7%BC%96%E8%AF%91-Grok%20Bot%EF%BC%9AAI%E4%BA%A7%E5%93%81%E7%9A%84%E5%8D%95%E4%BD%8D%E4%BB%8E%E5%AF%B9%E8%AF%9D%E5%8F%98%E6%88%90%E5%90%8C%E4%BA%8B.html) |
+
+**[→ 从首页进入在线杂志](https://bor799.github.io/100x-research-engine/)**（共 47 期存档）· ![last commit](https://img.shields.io/github/last-commit/bor799/100x-research-engine)
+
+*截图与链接由发布脚本每周自动刷新。想了解「效果是怎么产生的」，往下读。*
+<!-- DEMO:END -->
+
 真正的问题不是「信息不够」，而是注意力被大量重复、低增量内容占用。100X 把获取、筛选、萃取、排队、交付与运行状态组织成一条可以长期工作的研究管线。
 
 ```mermaid

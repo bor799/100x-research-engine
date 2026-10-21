@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日短讯 2026-09-16 · 第 15 期</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;0,6..72,700;0,6..72,900;1,6..72,400;1,6..72,600&family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF8; --paper-deep:#F4F1EB; --ink:#1C1A17; --ink-soft:#4A463F; --ink-faint:#8A8478; --rule:#E3DED4;
+  --ai:#274B8F; --money:#2F6B4F; --risk:#9C3D2E; --signal:#A8502A;
+  --serif:"Newsreader","Noto Serif SC","Songti SC",serif;
+  --sans:"Inter","PingFang SC","Helvetica Neue",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+::selection{background:var(--ink);color:var(--paper)}
+.masthead{max-width:980px;margin:0 auto;padding:48px 28px 24px;border-bottom:3px solid var(--ink)}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.masthead h1{font-size:clamp(34px,5.5vw,58px);font-weight:900;line-height:1.15;margin:16px 0 8px}
+.masthead h1 em{font-style:italic;font-weight:600}
+.deck{font-size:17px;color:var(--ink-soft);max-width:680px;line-height:1.7}
+.deck strong{color:var(--ink)}
+.mast-issue{display:flex;gap:22px;flex-wrap:wrap;margin-top:20px;font-family:var(--sans);font-size:12px;color:var(--ink-soft)}
+.mast-issue span b{color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:0 28px 40px}
+.sec{padding-top:44px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px}
+.sec-head .no{font-family:var(--sans);font-weight:700;font-size:12px;letter-spacing:.2em;padding:3px 10px;border:1.5px solid currentColor;border-radius:999px}
+.sec-head h2{font-size:clamp(22px,3vw,30px);font-weight:900}
+.sec-head .cnt{font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);margin-left:auto;letter-spacing:.06em}
+.sec-ai .no,.sec-ai h2{color:var(--ai)}
+.sec-money .no,.sec-money h2{color:var(--money)}
+.sec-risk .no,.sec-risk h2{color:var(--risk)}
+.sec-signal .no,.sec-signal h2{color:var(--signal)}
+.top3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+.top-card{border:1.5px solid var(--ink);border-radius:12px;padding:20px 20px 16px;background:var(--paper);display:flex;flex-direction:column;gap:10px}
+.top-card .tag{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.24em;color:var(--signal)}
+.top-card h3{font-size:19px;font-weight:900;line-height:1.4}
+.top-card h3 a{color:inherit;text-decoration:none}
+.top-card h3 a:hover{text-decoration:underline}
+.top-card .why{font-size:14px;line-height:1.7;color:var(--ink-soft)}
+.top-card .why strong{color:var(--ink)}
+.top-card .meta{margin-top:auto;font-family:var(--sans);font-size:11px;color:var(--ink-faint);display:flex;gap:10px;flex-wrap:wrap}
+.item{display:flex;gap:14px;padding:14px 4px;border-bottom:1px solid var(--rule);align-items:baseline}
+.item:last-child{border-bottom:none}
+.item .rank{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--ink-faint);min-width:26px;flex-shrink:0}
+.item .body{flex:1}
+.item .t{font-size:15.5px;font-weight:600;line-height:1.55}
+.item .t a{color:var(--ink);text-decoration:none}
+.item .t a:hover{text-decoration:underline}
+.item .t .en{display:block;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-faint);margin-top:2px}
+.item .m{font-family:var(--sans);font-size:11px;color:var(--ink-faint);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.item .m .pts{color:var(--ink-soft);font-weight:600}
+.quote{border-left:3px solid var(--ai);padding:2px 0 2px 14px;margin:8px 0 4px;font-size:13.5px;font-style:italic;color:var(--ink-soft);line-height:1.65}
+.quote .who{font-style:normal;font-family:var(--sans);font-size:11px;color:var(--ink-faint)}
+.odds{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:13px;margin-top:18px}
+.odds th{text-align:left;font-size:10.5px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase;padding:7px 8px;border-bottom:2px solid var(--ink);font-weight:600}
+.odds td{padding:9px 8px;border-bottom:1px solid var(--rule);vertical-align:top}
+.odds td.q{font-weight:600;max-width:340px}
+.odds td.p{font-weight:700;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.odds .up{color:var(--money);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .down{color:var(--risk);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .vol{color:var(--ink-faint);font-size:11px;white-space:nowrap}
+.bar{height:5px;border-radius:3px;background:var(--paper-deep);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--money);border-radius:3px}
+.ending{margin-top:48px;border-top:3px solid var(--ink);padding:22px 0 30px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);line-height:1.8}
+.oneline-take{max-width:980px;margin:26px auto 0;padding:16px 22px;background:var(--ink);color:#EDE8DE;border-radius:10px;font-size:15.5px;line-height:1.7}
+.oneline-take b{color:#fff}
+.wrap-take{max-width:980px;margin:0 auto;padding:0 28px}
+@media(max-width:640px){.item{flex-direction:column;gap:4px}.item .rank{min-width:0}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="kicker"><span>每日短讯 · Daily Wire</span><span>来源：last30days 管道 × Hacker News + Polymarket</span></div>
+  <h1>短讯看板 <em>2026-09-16</em></h1>
+  <p class="deck">窗口：<strong>2026-09-14 → 09-16（近 2 天）</strong>。4 路扫描收敛后的社区信号——模型动态、agent 工具潮、钱与治理。每条 = 一句中文判断 + 原始标题，一分钟扫完。</p>
+  <div class="mast-issue">
+    <span>第 <b>15</b> 期</span>
+    <span><b>4</b> 路扫描</span>
+    <span><b>16</b> 条 HN</span>
+    <span><b>9</b> 个预测市场</span>
+    <span>上期：<a href="每日短讯-2026-09-15.html" style="color:var(--ink-soft)">2026-09-15</a></span>
+  </div>
+</header>
+
+<div class="wrap-take"><div class="oneline-take">今日一句话：<b>黑客丑闻进入索赔阶段——Hugging Face 向 OpenAI 开出 1 亿美元账单，OpenAI 转手 3 亿美元买下 Glass Imaging；Anthropic 的监管路线遭遇「监管即生意」的集中质疑。</b></div></div>
+
+<main>
+
+<!-- 栏 01 今日三件事 -->
+<section class="sec sec-signal">
+  <div class="sec-head"><span class="no">01</span><h2>今日三件事</h2><span class="cnt">跨扫描重复出现的大信号</span></div>
+  <div class="top3">
+    <div class="top-card">
+      <span class="tag">治理 · 进展</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49716241" target="_blank">Hugging Face 就黑客事件向 OpenAI 开出 1 亿美元账单</a></h3>
+      <p class="why">丑闻第四幕：从「爬虫早知漏洞」到「单一公司操盘」，受害方现在直接标价——<strong>1 亿美元</strong>。上期头条案件的最新加码。</p>
+      <div class="meta"><span>09-15</span><span>hn · 129pts/42cmt</span><span>09-15 期头条事件的延续</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">商业 · 进展</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49711240" target="_blank">OpenAI 3 亿美元收购手机相机公司 Glass Imaging</a></h3>
+      <p class="why">上期 4 分小帖今天坐实金额：<strong>$300M</strong>（123 分 94 评的主帖），收购落在计算摄影上，消费硬件叙事再进一子。</p>
+      <div class="meta"><span>09-15</span><span>hn · 123pts/94cmt</span><span>上期 M2 的金额确认版</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">治理 · 跨扫描重复</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49705630" target="_blank">Anthropic 被指身处「监管捕获」财务循环</a></h3>
+      <p class="why">anthropic 与 ai-startup 两路同时收录批评（「AI Regulation as Anthropic's Business Model」也在双路），同日其联合创始人还在 BBC 呼吁强制 kill switch（100 评）。</p>
+      <div class="meta"><span>09-14</span><span>hn · 84pts/15cmt</span><span>联动 R1 kill switch 争议</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 栏 02 模型与 Agent 工具潮 -->
+<section class="sec sec-ai">
+  <div class="sec-head"><span class="no">02</span><h2>模型与 Agent 工具潮</h2><span class="cnt">agent 基建第三天连发，Anthropic 自曝 CI 承压</span></div>
+  <div class="item"><span class="rank">A1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49713894" target="_blank">Show HN：Pizza Bot——给后台工作的 AI agent 做一个收件箱</a><span class="en">Show HN: Pizza Bot – An inbox for AI agents that work in the background</span></div>
+    <div class="m"><span class="pts">09-15 · 24分/11评</span><span>ai-coding-agents 与 ai-startup 双路收录，「给 agent 当收件箱」成了新交互隐喻。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49715361" target="_blank">Ask HN：AI 写的软件都去哪了？</a><span class="en">Ask HN: Where is all of the AI coded software?</span></div>
+    <div class="m"><span class="pts">09-15 · 6分/7评</span><span>社区追问 AI 代码的产出与可见软件之间的缺口在哪。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49702815" target="_blank">Agentic 编码压垮 CI：Anthropic 的测试影响分析扩容笔记</a><span class="en">Agentic Coding Strains CI: Scaling Test Impact Analysis at Anthropic</span></div>
+    <div class="m"><span class="pts">09-14 · 5分/1评</span><span>头部实验室自曝 agent 并发把 CI 打满，测试影响分析从优化项变成必需品。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A4</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49716682" target="_blank">Jev：给 AI 赋予代码属性的模型</a><span class="en">Jev: The Model That Gives AI the Properties of Code</span></div>
+    <div class="m"><span class="pts">09-15 · 17分/2评</span><span>方向反过来——不是让 AI 写代码，而是把代码性质赋给模型。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A5</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49702887" target="_blank">Show HN：Slowave——面向编码 agent 的本地自适应记忆</a><span class="en">Show HN: Slowave – local adaptive memory for coding agents</span></div>
+    <div class="m"><span class="pts">09-14 · 4分/0评</span><span>agent 记忆层工具继续出现，这次主打本地化路线。</span></div>
+  </div></div>
+</section>
+
+<!-- 栏 03 钱与市场 -->
+<section class="sec sec-money">
+  <div class="sec-head"><span class="no">03</span><h2>钱与市场</h2><span class="cnt">IPO 结构市场续热，Arena 分数市场全部打满</span></div>
+  <table class="odds">
+    <thead><tr><th>预测市场问题</th><th>概率</th><th>趋势</th><th>成交量</th></tr></thead>
+    <tbody>
+      <tr><td class="q">【进展】OpenAI 2026 年底前不 IPO？（Will OpenAI not IPO by December 31, 2026?）</td><td class="p">96%<div class="bar"><i style="width:96%"></i></div></td><td class="up">月 +15.0%</td><td class="vol">$337K</td></tr>
+      <tr><td class="q">【进展】Anthropic 9/30 前 IPO？（Will Anthropic IPO by September 30, 2026?）</td><td class="p">86%<div class="bar"><i style="width:86%"></i></div></td><td class="down">月 -9.8%</td><td class="vol">$1.7M</td></tr>
+      <tr><td class="q">【进展】Anthropic IPO 落在 10 月？（Will Anthropic's initial public offering occur in October 2026?）</td><td class="p">58%<div class="bar"><i style="width:58%"></i></div></td><td class="down">日 -3.0%</td><td class="vol">$129K</td></tr>
+      <tr><td class="q">【进展】Anthropic IPO 日市值 $2.0T–$2.25T？（Will Anthropic's market cap be between $2.0T and $2.25T at market close on IPO day?）</td><td class="p">26%<div class="bar"><i style="width:26%"></i></div></td><td class="up">月 +6.6%</td><td class="vol">$410K</td></tr>
+      <tr><td class="q">【进展】9 月底最佳 AI 模型是 Anthropic？（Will Anthropic have the best AI model at the end of September 2026?）</td><td class="p">96%<div class="bar"><i style="width:96%"></i></div></td><td class="up">周 +7.4%</td><td class="vol">$2.6M</td></tr>
+      <tr><td class="q">【进展】月底最佳中国 AI 模型是阿里？（Will Alibaba have the best Chinese AI model at the end of September 2026?）</td><td class="p">90%<div class="bar"><i style="width:90%"></i></div></td><td class="up">周 +18.5%</td><td class="vol">$308K</td></tr>
+      <tr><td class="q">【进展】任意模型 9/30 前达 Overall Arena 1520 分？（Will any AI model reach 1520 Overall Arena Score by September 30, 2026?）</td><td class="p">100%<div class="bar"><i style="width:100%"></i></div></td><td class="up">月 +86.4%</td><td class="vol">$220K</td></tr>
+      <tr><td class="q">任意模型 12/31 前达 Chatbot Arena 1520 分？（Will any AI model reach a Chatbot Arena score of at least 1520 by December 31?）</td><td class="p">100%<div class="bar"><i style="width:100%"></i></div></td><td class="up">月 +35.9%</td><td class="vol">$98K</td></tr>
+      <tr><td class="q">哪家实验室 10/31 前跟进第三方评估承诺？（Which AI labs commit to third-party vetting by October 31?）</td><td class="p">Moonshot 32%<div class="bar"><i style="width:32%"></i></div></td><td class="up">日 +3.2%</td><td class="vol">$41K</td></tr>
+    </tbody>
+  </table>
+  <div class="item" style="margin-top:10px"><span class="rank">M1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49716466" target="_blank">上周 OpenRouter 用户在 OpenAI 系模型上的花费超过 Anthropic 系</a><span class="en">OpenRouter users spent more on OpenAI models than on Anthropic models last week</span></div>
+    <div class="m"><span class="pts">09-15 · 13分/0评</span><span>openai 与 anthropic 双路收录，第三方网关的付费盘座次出现易主信号。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">M2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49714663" target="_blank">Anthropic 和 OpenAI 想让山姆大叔把它们变成「大到不能倒」</a><span class="en">Anthropic and OpenAI look to Uncle Sam to make them too big to fail</span></div>
+    <div class="m"><span class="pts">09-15 · 11分/0评</span><span>双扫描同时收录，两实验室同时在找联邦层面兜底。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">M3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49713132" target="_blank">OpenAI 想知道 AI 行业减速到底合不合法</a><span class="en">OpenAI Wants to Know If an AI Industry Slowdown Would Even Be Legal</span></div>
+    <div class="m"><span class="pts">09-15 · 13分/5评</span><span>连「减速是否合法」都要问，景气叙事绷到了什么程度可见一斑。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">M4</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49718194" target="_blank">OpenAI 如何用自己的 LLM 设计自研 AI 芯片</a><span class="en">How OpenAI Used Its Own LLMs to Design Its AI Chip</span></div>
+    <div class="m"><span class="pts">09-15 · 4分/0评</span><span>自研芯片用自家模型设计，芯片-模型飞轮开始闭环。</span></div>
+  </div></div>
+</section>
+
+<!-- 栏 04 安全·治理·版权 -->
+<section class="sec sec-risk">
+  <div class="sec-head"><span class="no">04</span><h2>安全 · 治理 · 版权</h2><span class="cnt">监管捕获争议 × 中美交锋二次升级</span></div>
+  <div class="item"><span class="rank">R1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49712409" target="_blank">Anthropic 联合创始人告诉 BBC：AI「kill switch」可能需要强制化</a><span class="en">AI 'kill switch' may need to be mandatory, Anthropic co-founder tells BBC</span></div>
+    <div class="m"><span class="pts">09-15 · 41分/100评</span><span>安全机制该从倡议变强制的争论炸出 100 条评论，与头条卡 3 的「监管即生意」互为两面。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49696781" target="_blank">【进展】中国党报斥 Anthropic 减速论为「冷战伎俩」</a><span class="en">China state newspaper blasts Anthropic's calls to slow AI as 'Cold War' tactic</span></div>
+    <div class="m"><span class="pts">09-14 · 9分/4评</span><span>上期「北京回击」的延续：官方批评从回应升级为定性。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49707147" target="_blank">METR Anthropic Network</a><span class="en">METR Anthropic Network</span></div>
+    <div class="m"><span class="pts">09-15 · 10分/0评</span><span>第三方评估机构与 Anthropic 的关系被单独拎出来审视。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R4</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49708350" target="_blank">OpenAI 研究员 Dan Selsam 的 AI 风险个人声明</a><span class="en">Dan Selsam (OpenAI Researcher) Personal Statement on AI Risk</span></div>
+    <div class="m"><span class="pts">09-15 · 3分/3评</span><span>能力侧研究员罕见公开发声 AI 风险。</span></div>
+  </div></div>
+</section>
+
+</main>
+
+<footer class="ending" style="max-width:980px;margin:48px auto 0;padding-left:28px;padding-right:28px">
+  <span>每日短讯 · 第 15 期 · 2026-09-16 08:34 生成<br>管道：last30days v3.0 × HN Algolia + Polymarket Gamma</span>
+  <span>全源正常：4 路扫描均命中；X / 小红书未接入，按规范忽略<br>桌面「知识杂志」文件夹 · 模块：知识杂志/模块-每日短讯</span>
+</footer>
+
+</body>
+</html>

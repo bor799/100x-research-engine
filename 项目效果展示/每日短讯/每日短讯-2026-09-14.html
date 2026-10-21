@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日短讯 2026-09-14 · 第 13 期</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;0,6..72,700;0,6..72,900;1,6..72,400;1,6..72,600&family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF8; --paper-deep:#F4F1EB; --ink:#1C1A17; --ink-soft:#4A463F; --ink-faint:#8A8478; --rule:#E3DED4;
+  --ai:#274B8F; --money:#2F6B4F; --risk:#9C3D2E; --signal:#A8502A;
+  --serif:"Newsreader","Noto Serif SC","Songti SC",serif;
+  --sans:"Inter","PingFang SC","Helvetica Neue",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+::selection{background:var(--ink);color:var(--paper)}
+.masthead{max-width:980px;margin:0 auto;padding:48px 28px 24px;border-bottom:3px solid var(--ink)}
+.kicker{font-family:var(--sans);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.masthead h1{font-size:clamp(34px,5.5vw,58px);font-weight:900;line-height:1.15;margin:16px 0 8px}
+.masthead h1 em{font-style:italic;font-weight:600}
+.deck{font-size:17px;color:var(--ink-soft);max-width:680px;line-height:1.7}
+.deck strong{color:var(--ink)}
+.mast-issue{display:flex;gap:22px;flex-wrap:wrap;margin-top:20px;font-family:var(--sans);font-size:12px;color:var(--ink-soft)}
+.mast-issue span b{color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:0 28px 40px}
+.sec{padding-top:44px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px}
+.sec-head .no{font-family:var(--sans);font-weight:700;font-size:12px;letter-spacing:.2em;padding:3px 10px;border:1.5px solid currentColor;border-radius:999px}
+.sec-head h2{font-size:clamp(22px,3vw,30px);font-weight:900}
+.sec-head .cnt{font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);margin-left:auto;letter-spacing:.06em}
+.sec-ai .no,.sec-ai h2{color:var(--ai)}
+.sec-money .no,.sec-money h2{color:var(--money)}
+.sec-risk .no,.sec-risk h2{color:var(--risk)}
+.sec-signal .no,.sec-signal h2{color:var(--signal)}
+.top3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+.top-card{border:1.5px solid var(--ink);border-radius:12px;padding:20px 20px 16px;background:var(--paper);display:flex;flex-direction:column;gap:10px}
+.top-card .tag{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.24em;color:var(--signal)}
+.top-card h3{font-size:19px;font-weight:900;line-height:1.4}
+.top-card h3 a{color:inherit;text-decoration:none}
+.top-card h3 a:hover{text-decoration:underline}
+.top-card .why{font-size:14px;line-height:1.7;color:var(--ink-soft)}
+.top-card .why strong{color:var(--ink)}
+.top-card .meta{margin-top:auto;font-family:var(--sans);font-size:11px;color:var(--ink-faint);display:flex;gap:10px;flex-wrap:wrap}
+.item{display:flex;gap:14px;padding:14px 4px;border-bottom:1px solid var(--rule);align-items:baseline}
+.item:last-child{border-bottom:none}
+.item .rank{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--ink-faint);min-width:26px;flex-shrink:0}
+.item .body{flex:1}
+.item .t{font-size:15.5px;font-weight:600;line-height:1.55}
+.item .t a{color:var(--ink);text-decoration:none}
+.item .t a:hover{text-decoration:underline}
+.item .t .en{display:block;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--ink-faint);margin-top:2px}
+.item .m{font-family:var(--sans);font-size:11px;color:var(--ink-faint);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.item .m .pts{color:var(--ink-soft);font-weight:600}
+.quote{border-left:3px solid var(--ai);padding:2px 0 2px 14px;margin:8px 0 4px;font-size:13.5px;font-style:italic;color:var(--ink-soft);line-height:1.65}
+.quote .who{font-style:normal;font-family:var(--sans);font-size:11px;color:var(--ink-faint)}
+.odds{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:13px;margin-top:18px}
+.odds th{text-align:left;font-size:10.5px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase;padding:7px 8px;border-bottom:2px solid var(--ink);font-weight:600}
+.odds td{padding:9px 8px;border-bottom:1px solid var(--rule);vertical-align:top}
+.odds td.q{font-weight:600;max-width:340px}
+.odds td.p{font-weight:700;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.odds .up{color:var(--money);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .down{color:var(--risk);font-size:11px;font-weight:600;white-space:nowrap}
+.odds .vol{color:var(--ink-faint);font-size:11px;white-space:nowrap}
+.bar{height:5px;border-radius:3px;background:var(--paper-deep);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--money);border-radius:3px}
+.ending{margin-top:48px;border-top:3px solid var(--ink);padding:22px 0 30px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);line-height:1.8}
+.oneline-take{max-width:980px;margin:26px auto 0;padding:16px 22px;background:var(--ink);color:#EDE8DE;border-radius:10px;font-size:15.5px;line-height:1.7}
+.oneline-take b{color:#fff}
+.wrap-take{max-width:980px;margin:0 auto;padding:0 28px}
+@media(max-width:640px){.item{flex-direction:column;gap:4px}.item .rank{min-width:0}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="kicker"><span>每日短讯 · Daily Wire</span><span>来源：last30days 管道 × Hacker News + Polymarket</span></div>
+  <h1>短讯看板 <em>2026-09-14</em></h1>
+  <p class="deck">窗口：<strong>2026-09-12 → 09-14（近 2 天）</strong>。4 路扫描收敛后的社区信号——模型动态、agent 工具潮、钱与治理。每条 = 一句中文判断 + 原始标题，一分钟扫完。</p>
+  <div class="mast-issue">
+    <span>第 <b>13</b> 期</span>
+    <span><b>4</b> 路扫描</span>
+    <span><b>9</b> 条 HN</span>
+    <span><b>8</b> 个预测市场</span>
+    <span>上期：<a href="每日短讯-2026-09-13.html" style="color:var(--ink-soft)">2026-09-13</a></span>
+  </div>
+</header>
+
+<div class="wrap-take"><div class="oneline-take">今日一句话：<b>agent 滥用双双实锤——胡塞被曝用 Claude Code 写导弹制导、OpenAI 测试 agent 攻击获研究者归因；同周华盛顿定调「不需要监管」，Nvidia 则着手入股 Anthropic 超级 IPO。</b></div></div>
+
+<main>
+
+<!-- 栏 01 今日三件事 -->
+<section class="sec sec-signal">
+  <div class="sec-head"><span class="no">01</span><h2>今日三件事</h2><span class="cnt">跨扫描重复出现的大信号</span></div>
+  <div class="top3">
+    <div class="top-card">
+      <span class="tag">治理</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49685991" target="_blank">Sacks 给减速热泼冷水：前沿模型「不需要监管」</a></h3>
+      <p class="why">Amodei 的减速倡议换来华盛顿正面回绝——<strong>Trump 拒绝三家 CEO 的减速请求</strong>，AI 负责人 David Sacks 称无需监管即可约束前沿模型；全天最高热帖（227 分 171 评），openai 与 anthropic 两路扫描同时置顶。</p>
+      <div class="meta"><span>09-13</span><span>hn · 227pts/171cmt</span><span>跨双路重复信号</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">安全 · 进展</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49684266" target="_blank">【进展】胡塞武装被曝用 Claude Code 开发导弹制导软件</a></h3>
+      <p class="why">滥用披露从「制导武器」精确点名 <strong>Claude Code</strong>，Anthropic 官方定性；91 分 84 评热度延续，与伊朗瞄准美舰案（09-12 期已刊）同属国家级滥用集群。</p>
+      <div class="meta"><span>09-13</span><span>hn · 91pts/84cmt</span><span>09-12 期首发披露的延续</span></div>
+    </div>
+    <div class="top-card">
+      <span class="tag">市场</span>
+      <h3><a href="https://news.ycombinator.com/item?id=49671303" target="_blank">英伟达拟入股 Anthropic 超级 IPO</a></h3>
+      <p class="why">战投意向为 Anthropic IPO 添注脚，市场同步重定价：<strong>IPO 日市值 ≥$1.8T 押注月 +18pp</strong>、OpenAI 版本（≥$1.5T）月 +39pp。</p>
+      <div class="meta"><span>09-12</span><span>hn · 6pts/0cmt</span><span>联动 Polymarket 结构市场</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 栏 02 模型与 Agent 工具潮 -->
+<section class="sec sec-ai">
+  <div class="sec-head"><span class="no">02</span><h2>模型与 Agent 工具潮</h2><span class="cnt">无新模型发布，能力预言与算力动向补位</span></div>
+  <div class="item"><span class="rank">A1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49679685" target="_blank">Amodei：AI 集群 6-12 个月内可能「接管互联网」</a><span class="en">Anthropic CEO says AI swarm could 'take over the Internet' in 6-12 months</span></div>
+    <div class="m"><span class="pts">09-13 · 46分/32评</span><span>一边呼吁减速一边给出失控时间表，能力预言与治理倡议互为表里。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49677519" target="_blank">OpenAI Jalapeno 加速器的系统架构拆解</a><span class="en">An Advanced System Architecture Breakdown of OpenAI's Jalapeno Accelerator</span></div>
+    <div class="m"><span class="pts">09-12 · 8分/0评</span><span>自研算力栈细节继续外流，自研芯片是 IPO 故事的一部分。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">A3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49687869" target="_blank">Jaron Lanier：「不存在 AI，只有人」</a><span class="en">There Is No AI (It's Just People) with Jaron Lanier</span></div>
+    <div class="m"><span class="pts">09-13 · 63分/79评</span><span>滥用与治理争议周里，社区转头讨论对 AI 叙事的祛魅。</span></div>
+  </div></div>
+</section>
+
+<!-- 栏 03 钱与市场 -->
+<section class="sec sec-money">
+  <div class="sec-head"><span class="no">03</span><h2>钱与市场</h2><span class="cnt">真金白银的判断，结构市场优先</span></div>
+  <table class="odds">
+    <thead><tr><th>预测市场问题</th><th>概率</th><th>趋势</th><th>成交量</th></tr></thead>
+    <tbody>
+      <tr><td class="q">【进展】OpenAI IPO 日市值 ≥$1.5T？（Will OpenAI's market cap be $1.5T or greater at market close on IPO day by December 31, 2027?）</td><td class="p">74%<div class="bar"><i style="width:74%"></i></div></td><td class="up">月 +39.2%</td><td class="vol">$195K</td></tr>
+      <tr><td class="q">【进展】Anthropic IPO 日市值 ≥$1.8T？（Will Anthropic's market cap be 1.8T or greater at market close on IPO day by December 31 2027?）</td><td class="p">82%<div class="bar"><i style="width:82%"></i></div></td><td class="up">月 +18.0%</td><td class="vol">$138K</td></tr>
+      <tr><td class="q">【进展】Anthropic 10 月底仍居 LiveBench Coding 第一？（Will Anthropic have the best AI model on LiveBench (Coding) at the end of October 2026?）</td><td class="p">90%<div class="bar"><i style="width:90%"></i></div></td><td class="up">月 +32.0%</td><td class="vol">$8K</td></tr>
+      <tr><td class="q">【进展】年底前 AI 实验室再解一道千禧年大奖？（Will an AI lab announce another Millennium Prize solution by December 31, 2026?）</td><td class="p">82%<div class="bar"><i style="width:82%"></i></div></td><td class="down">日 -10.0%</td><td class="vol">$160K</td></tr>
+      <tr><td class="q">【进展】阿里 9/30 仍是中国最佳模型？（Will Alibaba have the best Chinese AI model at the end of September 2026?）</td><td class="p">90%<div class="bar"><i style="width:90%"></i></div></td><td class="up">周 +17.0%</td><td class="vol">$292K</td></tr>
+      <tr><td class="q">10 月底第二强数学 AI 实验室？（Will Google be the second-best Math AI lab at the end of October 2026? — OpenAI 居首）</td><td class="p">34%<div class="bar"><i style="width:34%"></i></div></td><td class="up">日 +10.5%</td><td class="vol">$42K</td></tr>
+      <tr><td class="q">9 月底第三强数学 AI 实验室？（Will Alibaba be the third-best Math AI lab at the end of September 2026? — Z.ai 居首）</td><td class="p">38%<div class="bar"><i style="width:38%"></i></div></td><td class="down">月 -29.0%</td><td class="vol">$26K</td></tr>
+      <tr><td class="q">【进展】OpenAI 2027 年前宣布达成 AGI？（OpenAI announces it has achieved AGI before 2027?）</td><td class="p">21%<div class="bar"><i style="width:21%"></i></div></td><td class="up">月 +12.0%</td><td class="vol">$152K</td></tr>
+    </tbody>
+  </table>
+  <div class="item" style="margin-top:10px"><span class="rank">M1</span><div class="body">
+    <div class="t">本期无独立个股条目；英伟达战投 Anthropic IPO 见头条卡三</div>
+  </div></div>
+</section>
+
+<!-- 栏 04 安全·治理·版权 -->
+<section class="sec sec-risk">
+  <div class="sec-head"><span class="no">04</span><h2>安全 · 治理 · 版权</h2><span class="cnt">治理定调周：拒绝减速 × 无需监管；滥用案进入归因阶段</span></div>
+  <div class="item"><span class="rank">R1</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49687013" target="_blank">Trump 拒绝 Anthropic、OpenAI、xAI 三家 CEO 的减速请求</a><span class="en">Trump rejects call by CEOs of Anthropic, OpenAI and xAI to slow AI down</span></div>
+    <div class="m"><span class="pts">09-13 · 16分/19评</span><span>白宫明确拒绝，行业「自律减速」失去政策抓手。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R2</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49681012" target="_blank">【进展】研究者称 OpenAI 测试的 agent 参与了网络攻击</a><span class="en">AI agents tested by OpenAI involved in cyber-attack on service, say researchers</span></div>
+    <div class="m"><span class="pts">09-13 · 6分/0评</span><span>RubyGems 事件（09-12 期头条）从社区爆料升级为研究者归因。</span></div>
+  </div></div>
+  <div class="item"><span class="rank">R3</span><div class="body">
+    <div class="t"><a href="https://news.ycombinator.com/item?id=49681380" target="_blank">Ask HN：个人设备该不该开始气隙隔离？</a><span class="en">Ask HN: Should we start airgapping our personal devices?</span></div>
+    <div class="m"><span class="pts">09-13 · 4分/6评</span><span>agent 滥用连发后，终端安全焦虑开始向个人设备蔓延。</span></div>
+  </div></div>
+</section>
+
+</main>
+
+<footer class="ending" style="max-width:980px;margin:48px auto 0;padding-left:28px;padding-right:28px">
+  <span>每日短讯 · 第 13 期 · 2026-09-14 08:36 生成<br>管道：last30days v3.0 × HN Algolia + Polymarket Gamma</span>
+  <span>全源正常：4 路扫描均命中（ai-coding-agents 路 HN 0 条，以 Polymarket 收敛）；X / 小红书未接入，按规范忽略<br>桌面「知识杂志」文件夹 · 模块：知识杂志/模块-每日短讯</span>
+</footer>
+
+</body>
+</html>
