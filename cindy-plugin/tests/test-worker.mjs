@@ -30,6 +30,11 @@ const dir = mkdtempSync(path.join(tmpdir(), 'mag-test-'));
 mkdirSync(path.join(dir, 'data'), { recursive: true });
 writeFileSync(path.join(dir, 'data', 'magazine-data.json'), JSON.stringify(FIXTURE));
 writeFileSync(path.join(dir, '今日-2099-01-02.html'), '<html></html>');
+// lane 目录：一条有期刊、一条空、一条带 index.html 路由页
+mkdirSync(path.join(path.dirname(dir), '每日短讯'), { recursive: true });
+writeFileSync(path.join(path.dirname(dir), '每日短讯', '每日短讯-2099-01-01.html'), '<html></html>');
+mkdirSync(path.join(path.dirname(dir), '深读'), { recursive: true });
+writeFileSync(path.join(path.dirname(dir), '深读', 'index.html'), '<html></html>');
 
 function rpc(lines) {
   const r = spawnSync('node', [WORKER], { input: lines.map((l) => JSON.stringify(l)).join('\n') + '\n',
@@ -43,10 +48,15 @@ const [a] = rpc([{ jsonrpc: '2.0', id: 1, method: 'magazine.data', params: { dir
 assert.equal(a.result.data.build.build_id, '2099-01-02-test0001');
 assert.ok(a.result.mtime);
 
-// 2 文件清单
+// 2 文件清单 + lane 扫描
 const [b] = rpc([{ jsonrpc: '2.0', id: 2, method: 'magazine.files', params: { dir } }]);
 assert.ok(b.result.files.some((f) => f.name === '今日-2099-01-02.html'));
 assert.equal(b.result.hasData, true);
+const lanes = Object.fromEntries((b.result.lanes || []).map((l) => [l.lane, l]));
+assert.ok(lanes['每日短讯'] && lanes['每日短讯'].files === 1
+  && lanes['每日短讯'].latest.name === '每日短讯-2099-01-01.html', 'lane 应列出期刊与最新期');
+assert.ok(lanes['深读'] && lanes['深读'].files === 0, 'index.html 不计入 lane 期数');
+assert.ok(lanes['知识萃取'] && lanes['知识萃取'].missing === true, '不存在的 lane 目录标 missing');
 
 // 3 defaultDir 方法
 const [c] = rpc([{ jsonrpc: '2.0', id: 3, method: 'magazine.defaultDir', params: {} }]);

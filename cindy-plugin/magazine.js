@@ -121,9 +121,18 @@ function renderArchive() {
   const files = state.files?.files || [];
   const rows = files.map(f => `<li><a href="#" data-open-file="${esc(f.name)}">${esc(f.name)}</a>
     <span class="meta-row">${(f.mtime || '').slice(0, 16).replace('T', ' ')}</span></li>`).join('');
+  const lanes = (state.files?.lanes || []).map(l => {
+    if (l.missing) return `<li>${esc(l.lane)}<span class="meta-row">目录缺失</span></li>`;
+    const latest = l.latest ? `${(l.latest.mtime || '').slice(0, 10)} · ${esc(l.latest.name)}` : '暂无期刊';
+    return `<li><a href="#" data-lane="${esc(l.lane)}">${esc(l.lane)}</a>
+      <span class="meta-row">${l.files} 期 · 最新 ${latest}</span></li>`;
+  }).join('');
   return `<h2 class="sec">往期<span class="sub">桌面存档</span></h2>
     <p class="thread">全部期刊存于 <code>~/Desktop/知识杂志/杂志/</code>，点击可在 Finder 中查看对应文件。</p>
     <ul class="arch">${rows || '<li>暂无存档</li>'}</ul>
+    <h2 class="sec">原始栏目<span class="sub">信息源收口 · 实时扫描</span></h2>
+    <p class="thread">四条上游栏目都在 <code>~/Desktop/知识杂志/</code> 下，与本页同一目录树；此处清单即时扫描，不依赖出刊批次。</p>
+    <ul class="arch">${lanes || '<li>暂无栏目</li>'}</ul>
     <p class="thread">桌面总入口：<code>~/Desktop/知识杂志/index.html</code>（与本页同一批次）。</p>`;
 }
 
@@ -133,6 +142,9 @@ function coverageHtml(d) {
     c.wire ? `每日短讯 ${esc(c.wire.date)}（${c.wire.items} 条）` : '',
     c.weekly ? `知识萃取周刊 ${esc(c.weekly.week)}（${c.weekly.articles} 篇）` : '',
     c.obsidian_week ? `Obsidian 周信源 ${c.obsidian_week.notes} 篇笔记` : '',
+    ...(c.lanes || []).map(x => x.missing
+      ? `栏目 ${esc(x.lane)}：目录缺失`
+      : `栏目 ${esc(x.lane)}：${x.files} 期，最新 ${esc((x.latest && x.latest.mtime || '').slice(0, 10))}`),
     ...(c.missing || []).map(x => `缺源：${esc(x)}`),
     ...(c.notes || []).map(x => esc(x)),
   ].filter(Boolean);
@@ -194,6 +206,13 @@ document.addEventListener('click', (ev) => {
     ev.preventDefault();
     const name = openFile.dataset.openFile;
     setStatus(`文件位于 ~/Desktop/知识杂志/杂志/${name}（插件内不直接打开本地 HTML，请到桌面查看）`);
+    return;
+  }
+  const lane = ev.target.closest('[data-lane]');
+  if (lane) {
+    ev.preventDefault();
+    const name = lane.dataset.lane;
+    setStatus(`栏目目录 ~/Desktop/知识杂志/${name}/（插件内不直接打开本地 HTML，请到桌面查看）`);
   }
 });
 

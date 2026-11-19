@@ -1,6 +1,11 @@
-:root{--paper:#f6f2e9;--card:#fffdf7;--ink:#201d17;--muted:#736c5f;--line:#ddd5c4;--rule:#28251e;--red:#a63228;--soft:#efe9da}
+:root{--paper:#FBFAF8;--card:#F4F1EB;--ink:#1C1A17;--muted:#8A8478;--line:#E3DED4;--rule:#1C1A17;--red:#a63228;--soft:#EFEBE2;color-scheme:light}
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:"Songti SC","STSong","Noto Serif SC",serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+/* 固定乳白纸底（与桌面 深读/每日短讯 老页面 #FBFAF8 一致）：宿主开壁纸时会向 mainView 注入
+   html,body{background-color:transparent!important}——它只覆盖 background-color；
+   实色 linear-gradient 属于 background-image，宿主不动它，因此任何壁纸/主题下视口都是
+   不透明乳白，不再跟随 Cindy 背景。 */
+html,body{margin:0;background-color:var(--paper);background-image:linear-gradient(#FBFAF8,#FBFAF8)}
+body{color:var(--ink);font-family:"Songti SC","STSong","Noto Serif SC",serif;line-height:1.75;-webkit-font-smoothing:antialiased}
 a{color:inherit}
 .skip{position:absolute;left:-9999px}
 .skip:focus{left:8px;top:8px;background:var(--card);padding:6px 10px;z-index:9}

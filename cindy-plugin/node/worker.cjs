@@ -8,6 +8,8 @@ const readline = require('node:readline');
 const DEFAULT_MAG = path.join(os.homedir(), 'Desktop', '知识杂志', '杂志');
 let MAG = DEFAULT_MAG;
 const dataPath = () => path.join(MAG, 'data', 'magazine-data.json');
+// 信息源收口：杂志目录旁的四条原始栏目 lane（只读列清单，不打开不写入）
+const LANES = ['每日短讯', '知识萃取', '深读', '研究简报'];
 
 function applyDir(dir) {
   if (dir && typeof dir === 'string' && path.isAbsolute(dir) && fs.existsSync(dir)) MAG = dir;
@@ -36,6 +38,23 @@ function listFiles() {
   return out;
 }
 
+function listLanes() {
+  const hub = path.dirname(MAG);
+  return LANES.map((lane) => {
+    const dir = path.join(hub, lane);
+    if (!fs.existsSync(dir)) return { lane, missing: true };
+    const issues = [];
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith('.html') || name === 'index.html') continue;
+      const st = fs.statSync(path.join(dir, name));
+      issues.push({ name, mtime: st.mtime.toISOString() });
+    }
+    issues.sort((a, b) => (a.mtime === b.mtime ? 0 : a.mtime < b.mtime ? 1 : -1));
+    return { lane, dir, files: issues.length,
+             latest: issues[0] ? { name: issues[0].name, mtime: issues[0].mtime } : null };
+  });
+}
+
 function reply(message) { process.stdout.write(JSON.stringify(message) + '\n'); }
 
 readline.createInterface({ input: process.stdin }).on('line', (line) => {
@@ -53,7 +72,7 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
       case 'magazine.files': {
         const files = listFiles();
         const hasData = fs.existsSync(dataPath());
-        reply({ jsonrpc: '2.0', id: req.id, result: { files, hasData, dir: MAG } });
+        reply({ jsonrpc: '2.0', id: req.id, result: { files, hasData, dir: MAG, lanes: listLanes() } });
         break;
       }
       case 'magazine.defaultDir': {
