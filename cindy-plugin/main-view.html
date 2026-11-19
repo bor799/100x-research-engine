@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>知识杂志</title>
+  <link rel="stylesheet" href="magazine.css">
+  <script src="magazine.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">跳至杂志内容</a>
+  <header class="masthead">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">刊</span>
+      <div><p class="eyebrow">KNOWLEDGE MAGAZINE</p>
+        <h1>知识杂志<span>今日变化 · 本周脉络 · 证据可回溯</span></h1></div></div>
+    <div class="header-actions">
+      <div class="timestamps"><span id="build-info">尚未载入</span><span id="data-time">数据时点 · —</span></div>
+      <button id="refresh" class="primary">重读最新一期</button>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="阅读视角">
+    <button id="tab-today" role="tab" aria-selected="true" data-tab="today">今日</button>
+    <button id="tab-week" role="tab" aria-selected="false" data-tab="week" tabindex="-1">本周</button>
+    <button id="tab-topics" role="tab" aria-selected="false" data-tab="topics" tabindex="-1">主题</button>
+    <button id="tab-archive" role="tab" aria-selected="false" data-tab="archive" tabindex="-1">往期</button>
+  </nav>
+  <div class="statusline" id="status" role="status" aria-live="polite">正在读取桌面杂志数据…</div>
+  <main id="workspace" tabindex="0"><div class="empty">正在打开今日合刊…</div></main>
+  <footer>判断 ≠ 已证实 · 单源与推断如实标注 · 与桌面 ~/Desktop/知识杂志 同一批次</footer>
+</body>
+</html>
