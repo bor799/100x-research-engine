@@ -1,0 +1,69 @@
+:root{--paper:#FBFAF8;--card:#F4F1EB;--ink:#1C1A17;--muted:#8A8478;--line:#E3DED4;--rule:#1C1A17;--red:#a63228;--soft:#EFEBE2;color-scheme:light}
+*{box-sizing:border-box}
+/* 固定乳白纸底（与桌面 深读/每日短讯 老页面 #FBFAF8 一致）：宿主开壁纸时会向 mainView 注入
+   html,body{background-color:transparent!important}——它只覆盖 background-color；
+   实色 linear-gradient 属于 background-image，宿主不动它，因此任何壁纸/主题下视口都是
+   不透明乳白，不再跟随 Cindy 背景。 */
+html,body{margin:0;background-color:var(--paper);background-image:linear-gradient(#FBFAF8,#FBFAF8)}
+body{color:var(--ink);font-family:"Songti SC","STSong","Noto Serif SC",serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:8px;top:8px;background:var(--card);padding:6px 10px;z-index:9}
+.masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:18px 22px 14px;border-top:6px solid var(--rule);border-bottom:1px solid var(--rule)}
+.brand{display:flex;gap:14px;align-items:center}
+.brand-mark{font-size:30px;font-weight:800;border:2px solid var(--rule);width:52px;height:52px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+.eyebrow{margin:0;font-family:"PingFang SC",sans-serif;font-size:11px;letter-spacing:.18em;color:var(--red)}
+.masthead h1{margin:2px 0 0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.masthead h1 span{display:block;font-size:12.5px;font-weight:400;color:var(--muted);letter-spacing:.02em}
+.header-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.timestamps{display:flex;flex-direction:column;font-family:"PingFang SC",sans-serif;font-size:11.5px;color:var(--muted);text-align:right}
+button{font-family:"PingFang SC",sans-serif;font-size:13.5px;min-height:38px;border:1px solid var(--rule);background:transparent;color:var(--ink);padding:7px 14px;cursor:pointer;border-radius:4px}
+button.primary{background:var(--rule);color:var(--paper)}
+button:hover{opacity:.85}
+.tabs{display:flex;gap:6px;padding:10px 22px 0;flex-wrap:wrap;font-family:"PingFang SC",sans-serif}
+.tabs button{border-radius:99px;min-height:34px;padding:5px 16px;font-size:13.5px}
+.tabs button[aria-selected="true"]{background:var(--rule);color:var(--paper)}
+.statusline{padding:8px 22px 0;font-family:"PingFang SC",sans-serif;font-size:12.5px;color:var(--muted)}
+main{padding:6px 22px 30px;max-width:980px}
+.empty{color:var(--muted);padding:30px 0}
+.verdict{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);padding:14px 18px;margin:14px 0 4px;font-size:16.5px;font-weight:600}
+h2.sec{font-size:18px;font-weight:800;margin:26px 0 2px}
+h2.sec .sub{font-weight:400;font-size:12.5px;color:var(--muted);margin-left:8px;font-family:"PingFang SC",sans-serif}
+.thread{color:var(--muted);font-size:13.5px;margin:2px 0 10px}
+.pick,.check,.topic{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin:10px 0}
+.pick .t,.check .claim,.topic h3{font-weight:800;font-size:15.5px;margin:0 0 4px}
+.topic h3{margin-top:8px}
+.pick .why,.check .row,.dev{font-size:14px}
+.check .row b,.note b{font-family:"PingFang SC",sans-serif;font-size:11px;color:var(--red);letter-spacing:.08em}
+.item{border-bottom:1px dotted var(--line);padding:10px 0}
+.item:last-child{border-bottom:none}
+.item .t{font-size:14.5px;font-weight:700;line-height:1.45}
+a{text-decoration:none;border-bottom:1px dotted var(--rule)}
+a:hover{color:var(--red)}
+.item .en{display:block;font-size:11.5px;color:var(--muted);font-family:"PingFang SC",sans-serif}
+.item .m{font-size:13.5px;margin-top:4px;color:#3d3a33}
+.meta-row{font-family:"PingFang SC",sans-serif;font-size:11.5px;color:var(--muted);margin-top:4px}
+.badge{display:inline-block;font-family:"PingFang SC",sans-serif;font-size:10.5px;letter-spacing:.06em;border:1px solid var(--rule);border-radius:99px;padding:0 7px;margin-right:5px;vertical-align:1px}
+.badge.fact{border-color:#5a7d5a;color:#3f5f3f}.badge.opinion{border-color:#b08a3e;color:#8a6a25}
+.badge.inference{border-color:var(--red);color:var(--red)}
+.badge.verify{background:var(--red);border-color:var(--red);color:#fff}
+.note{background:var(--soft);padding:8px 12px;margin:6px 0;font-size:13px;border-radius:4px}
+.deep{border-left:3px solid var(--rule);padding-left:14px;margin:12px 0}
+.deep .t{font-weight:800;font-size:14.5px}
+.deep .brief{font-size:13.5px;white-space:pre-wrap;color:#3d3a33;margin-top:4px}
+.dev{display:flex;gap:10px;padding:7px 0;border-bottom:1px dotted var(--line)}
+.dev .d{font-family:"PingFang SC",sans-serif;font-size:11.5px;color:var(--red);white-space:nowrap;padding-top:3px}
+.dev .s{font-family:"PingFang SC",sans-serif;font-size:11.5px;color:var(--muted);margin-top:3px}
+table.odds{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+table.odds th{font-family:"PingFang SC",sans-serif;font-size:11px;color:var(--muted);text-align:left;border-bottom:1px solid var(--rule);padding:5px 6px}
+table.odds td{border-bottom:1px dotted var(--line);padding:6px}
+.coverage{background:var(--soft);border-radius:6px;padding:12px 16px;margin-top:22px;font-family:"PingFang SC",sans-serif;font-size:12.5px}
+.coverage h4{margin:0 0 4px;font-size:11.5px;color:var(--muted);letter-spacing:.1em}
+.coverage ul{margin:2px 0;padding-left:16px}
+.arch{list-style:none;margin:6px 0;padding:0;columns:2;column-gap:30px}
+.arch li{break-inside:avoid;border-bottom:1px dotted var(--line);padding:6px 0;font-size:13.5px}
+footer{padding:14px 22px 26px;font-family:"PingFang SC",sans-serif;font-size:11.5px;color:var(--muted)}
+details{margin:6px 0}
+details summary{cursor:pointer;font-weight:700;font-size:13.5px;font-family:"PingFang SC",sans-serif}
+.copy-uri{font-family:"PingFang SC",sans-serif;font-size:11px;border:none;background:var(--soft);padding:2px 8px;border-radius:4px;margin-left:6px}
+@media(max-width:640px){.masthead{padding:14px 16px 10px}.tabs,main,.statusline,footer{padding-left:16px;padding-right:16px}.arch{columns:1}.dev{flex-direction:column;gap:1px}}
