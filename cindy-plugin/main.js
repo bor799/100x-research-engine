@@ -35,8 +35,8 @@ function compact(d) {
   return {
     build: d.build, material_date: d.material_date, week: d.week,
     verdict: t.verdict,
-    picks: (t.picks || []).map(p => ({ title: p.title, why: p.why, kind: p.kind, status: p.status,
-                                       sources: p.sources })),
+    picks: (t.picks || []).map(p => ({ title: p.title, why: p.why, why_md: p.why_md, kind: p.kind,
+                                       status: p.status, sources: p.sources })),
     topics: (w.topics || []).map(x => ({ slug: x.slug, title: x.title, thread: x.thread })),
     what_grew: w.what_grew,
     coverage: d.coverage,

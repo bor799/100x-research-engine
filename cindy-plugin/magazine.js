@@ -22,9 +22,10 @@ function request(action) {
 
 function srcLinks(sources = []) {
   return sources.map(s => {
+    const wd = s.wire_date ? `（${s.wire_date.slice(5)} 短讯）` : '';
     const tag = s.independent ? '（独立）' : (s.fetched ? '（实抓）' : '');
     const isObs = String(s.url || '').startsWith('obsidian://');
-    const label = esc(s.label || '来源');
+    const label = esc(s.label || '来源') + wd;
     if (isObs) {
       return `<a href="${esc(s.url)}">${label}</a>${tag}<button class="copy-uri" data-uri="${esc(s.uri || s.url)}" title="点击复制 Obsidian 链接">复制链接</button>`;
     }
@@ -38,13 +39,44 @@ function brief(b, n = 380) {
 }
 
 function badge(kind) { return kind ? `<span class="badge ${kind}">${KIND[kind] || kind}</span>` : ''; }
+const SAFE_HREF_JS = /^(https?:|obsidian:)/i;
+function mdRuns(rs) {
+  return (rs || []).map((r) => {
+    if (r.t === 'a') return SAFE_HREF_JS.test(r.href || '')
+      ? `<a href="${esc(r.href)}" ${r.href.startsWith('obsidian') ? '' : 'target="_blank"'}>${esc(r.text)}</a>` : esc(r.text);
+    if (r.t === 'b') return `<strong>${esc(r.text)}</strong>`;
+    if (r.t === 'i') return `<em>${esc(r.text)}</em>`;
+    if (r.t === 'code') return `<code>${esc(r.text)}</code>`;
+    return esc(r.text || '');
+  }).join('');
+}
+function mdBlocks(blocks) {
+  const out = []; let list = null, ord = null;
+  const closeList = () => { if (list) { out.push(`</${list}>`); list = null; } };
+  for (const b of blocks || []) {
+    if (b.type === 'li') {
+      const want = b.ordered ? 'ol' : 'ul';
+      if (list !== want) { closeList(); list = want; ord = String(!!b.ordered); out.push(`<${list} data-o="${ord}">`); }
+      out.push(`<li${(b.indent || 0) > 0 ? ' class="lv2"' : ''}>${mdRuns(b.runs)}</li>`);
+    } else {
+      closeList();
+      if (b.type === 'h') out.push(`<div class="md-h">${esc(b.text)}</div>`);
+      else if (b.type === 'quote') out.push(`<blockquote>${mdRuns(b.runs)}</blockquote>`);
+      else if (b.type === 'code') out.push(`<pre>${esc(b.text)}</pre>`);
+      else out.push(`<div class="md-p">${mdRuns(b.runs)}</div>`);
+    }
+  }
+  closeList();
+  return out.join('');
+}
+function rich(obj, key) { return obj && obj[key + '_md'] ? mdBlocks(obj[key + '_md']) : esc(obj ? obj[key] : '' || ''); }
 function verifyBadge(p) { return p === 'unverified' || p === 'single_source' ? '<span class="badge verify">待核</span>' : ''; }
 
 function renderToday() {
   const d = state.data, t = d.today || {};
   const picks = (t.picks || []).map(p => `
     <div class="pick"><div class="t">${esc(p.title)}</div>
-    <div class="why">${esc(p.why)}</div>
+    <div class="why">${rich(p, 'why')}</div>
     <div class="meta-row">${badge(p.kind)}${verifyBadge(p.status)}${srcLinks(p.sources)}</div></div>`).join('');
   const groups = (t.groups || []).map(g => {
     const items = g.items.map(it => `
@@ -52,7 +84,7 @@ function renderToday() {
       ${it.original ? `<span class="en">${esc(it.original)}</span>` : ''}</div>
       ${it.why ? `<div class="m">${esc(it.why)}</div>` : ''}
       <div class="meta-row">${badge(it.kind)}${(it.meta || []).map(esc).join(' · ')}</div>
-      ${it.note ? `<div class="note"><b>编辑注</b> ${esc(it.note)}</div>` : ''}</div>`).join('');
+      ${it.note ? `<div class="note"><b>编辑注</b> ${rich(it, 'note')}</div>` : ''}</div>`).join('');
     return `<h2 class="sec">${esc(g.title)}</h2>${g.thread ? `<p class="thread">${esc(g.thread)}</p>` : ''}${items}`;
   }).join('');
   const odds = (t.market_rows || []).length ? `
@@ -63,7 +95,7 @@ function renderToday() {
   const deeps = (t.new_notes || []).length ? `
     <h2 class="sec">值得深读<span class="sub">今日新增萃取 · ${t.new_notes.length} 篇</span></h2>
     ${(t.new_notes || []).map(a => `
-      <div class="deep"><div class="t">${esc(a.title)}</div><div class="brief">${esc(brief(a.brief))}</div>
+      <div class="deep"><div class="t">${esc(a.title)}</div><div class="brief">${rich(a, 'brief')}</div>
       <div class="meta-row">${esc(a.signal_tier || '')} · ${esc(a.final_score ?? '')}
       ${a.url ? ` · <a href="${esc(a.url)}" target="_blank">原始出处</a>` : ''}
       ${a.obsidian_url ? ` · <a href="${esc(a.obsidian_url)}">Obsidian 原文</a><button class="copy-uri" data-uri="${esc(a.obsidian_url)}">复制链接</button>` : ''}</div></div>`).join('')}` : '';
@@ -87,11 +119,11 @@ function renderWeek() {
     ((w.deep_reads || []).forEach(a => arts[a.article_id] = a));
     const devs = (t.developments || []).map(x => `
       <div class="dev"><span class="d">${esc((x.date || '').slice(5))}</span>
-      <div><div>${esc(x.event)}</div><div class="s">${srcLinks(x.sources)}</div></div></div>`).join('');
+      <div><div>${rich(x, 'event')}</div><div class="s">${srcLinks(x.sources)}</div></div></div>`).join('');
     const counters = (t.counterpoints || []).map(c => `<li>${esc(c)}</li>`).join('');
     const verifs = (t.to_verify || []).map(c => `<li>${esc(c)}</li>`).join('');
     const deeps = (t.deep_read_ids || []).filter(i => arts[i]).map(i => `
-      <div class="deep"><div class="t">${esc(arts[i].title)}</div><div class="brief">${esc(brief(arts[i].brief, 260))}</div>
+      <div class="deep"><div class="t">${esc(arts[i].title)}</div><div class="brief">${rich(arts[i], 'brief')}</div>
       <div class="meta-row">${arts[i].obsidian_url ? `<a href="${esc(arts[i].obsidian_url)}">Obsidian 原文</a><button class="copy-uri" data-uri="${esc(arts[i].obsidian_url)}">复制链接</button>` : ''}
       ${arts[i].url ? ` · <a href="${esc(arts[i].url)}" target="_blank">原始出处</a>` : ''}</div></div>`).join('');
     return `<div class="topic" id="topic-${esc(t.slug)}"><h3>${esc(t.title)}</h3>
@@ -102,7 +134,7 @@ function renderWeek() {
       </div>`;
   }).join('');
   const wires = ((w.week_wires || []).map(x => `<li>${esc((x.date || '').slice(5))}：${esc(x.oneline_take)}</li>`).join(''));
-  return `<div class="verdict">${esc(w.what_grew || '')}</div>
+  return `<div class="verdict">${rich(w, 'what_grew')}</div>
     <h2 class="sec">主题<span class="sub">跨日对照 · 发展 / 分歧 / 待核</span></h2>${topics}
     ${wires ? `<details><summary>本周各日短讯一句话</summary><ul>${wires}</ul></details>` : ''}`;
 }
@@ -151,12 +183,25 @@ function coverageHtml(d) {
   return `<div class="coverage"><h4>覆盖与缺口</h4><ul>${items.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
 }
 
+function pubStatusLine(st) {
+  if (!st) return '';
+  const bits = [];
+  if (st.marker && st.marker.match === false) bits.push('⚠ 批次标记不一致（等待下次出刊自愈）');
+  const att = st.publication && st.publication.last_attempt;
+  if (att && att.ok === false) bits.push(`上次出刊尝试失败（${esc(att.stage || '')} · ${esc(att.error || '')}），当前保留上一完整批次`);
+  if (st.pending && st.pending.wire_new) bits.push(`新材料待出刊：每日短讯已更新（当前期材料日 ${state.data?.material_date || '—'}）`);
+  if (st.pending && st.pending.weekly_new) bits.push('知识萃取周刊已出现更新一期');
+  return bits.length ? `<div class="pub-status">${bits.map(b => `<div>${b}</div>`).join('')}</div>` : '';
+}
+
 function paint() {
   const map = { today: renderToday, week: renderWeek, topics: renderTopics, archive: renderArchive };
   try {
     $('#workspace').innerHTML = map[state.tab]();
     document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)));
-    setStatus(`视角：${{today: '今日', week: '本周', topics: '主题', archive: '往期'}[state.tab]} · 批次 ${state.data?.build?.build_id || '—'} · 数据时点 ${state.dataMtime || '—'}`);
+    const base = `视角：${{today: '今日', week: '本周', topics: '主题', archive: '往期'}[state.tab]} · 批次 ${state.data?.build?.build_id || '—'} · 数据时点 ${state.dataMtime || '—'}`;
+    $('#publine').innerHTML = pubStatusLine(state.status);
+    setStatus(base);
   } catch (e) {
     $('#workspace').innerHTML = `<div class="empty">渲染失败：${esc(e.message)}</div>`;
   }
@@ -168,6 +213,7 @@ async function load(action) {
       const r = await request(action === 'refresh' ? 'refresh' : 'data');
       if (!r.ok) throw new Error(r.error);
       state.data = r.result.data;
+      state.status = r.result.status || null;
       state.dataMtime = (r.result.mtime || '').slice(0, 16).replace('T', ' ');
       const b = state.data.build || {};
       $('#build-info').textContent = `材料日 ${state.data.material_date} · 批次 ${b.build_id || '—'} · ${b.model || ''}`;
@@ -224,6 +270,9 @@ document.addEventListener('click', (ev) => {
 });
 
 $('#refresh').addEventListener('click', () => { setStatus('正在重读…'); load('refresh'); });
+// 停留自动刷新：90s 轮询 + 回到前台即读（出刊后页面不再陈旧）
+setInterval(() => { if (!document.hidden) load('data'); }, 90_000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load('data'); });
 
 try {
   state.channel = new BroadcastChannel('knowledge-magazine-v1');

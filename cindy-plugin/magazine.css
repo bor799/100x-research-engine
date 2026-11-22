@@ -66,4 +66,12 @@ footer{padding:14px 22px 26px;font-family:"PingFang SC",sans-serif;font-size:11.
 details{margin:6px 0}
 details summary{cursor:pointer;font-weight:700;font-size:13.5px;font-family:"PingFang SC",sans-serif}
 .copy-uri{font-family:"PingFang SC",sans-serif;font-size:11px;border:none;background:var(--soft);padding:2px 8px;border-radius:4px;margin-left:6px}
+.pub-status{margin:6px 22px 0;padding:8px 12px;border:1px solid #b08a3e;border-radius:6px;background:#f6efdd;font-family:"PingFang SC",sans-serif;font-size:12.5px;color:#6b5320}
+.why .md-p,.brief .md-p,.md-p{margin:2px 0}
+.md-h{font-weight:800;font-size:14px;margin:8px 0 2px;font-family:"PingFang SC",sans-serif}
+.why ul,.brief ul,.topic ul,.md-p+.md-p{margin:4px 0 4px 18px}
+.why ol,.brief ol,.topic ol{margin:4px 0 4px 20px}
+.why li,.brief li,.topic li{margin:2px 0}
+.why pre,.brief pre{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:6px 8px;overflow-x:auto;font-size:12px}
+.why blockquote,.brief blockquote{border-left:3px solid var(--line);margin:4px 0;padding-left:10px;color:#3d3a33}
 @media(max-width:640px){.masthead{padding:14px 16px 10px}.tabs,main,.statusline,footer{padding-left:16px;padding-right:16px}.arch{columns:1}.dev{flex-direction:column;gap:1px}}

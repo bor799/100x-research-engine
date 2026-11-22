@@ -28,8 +28,15 @@ const FIXTURE = {
 
 const dir = mkdtempSync(path.join(tmpdir(), 'mag-test-'));
 mkdirSync(path.join(dir, 'data'), { recursive: true });
-writeFileSync(path.join(dir, 'data', 'magazine-data.json'), JSON.stringify(FIXTURE));
+writeFileSync(path.join(dir, 'data', 'magazine-data.json'), JSON.stringify({ ...FIXTURE,
+  build: { ...FIXTURE.build, build_id: '2099-01-02-LEGACY00' } }));  // 旧固定路径批（不应被指针选中）
 writeFileSync(path.join(dir, '今日-2099-01-02.html'), '<html></html>');
+// 新结构：批次目录 + 指针
+mkdirSync(path.join(dir, 'batches', '2099-01-02-test0001'), { recursive: true });
+writeFileSync(path.join(dir, 'batches', '2099-01-02-test0001', 'magazine-data.json'), JSON.stringify(FIXTURE));
+writeFileSync(path.join(dir, 'batches', '2099-01-02-test0001', '今日-2099-01-02.html'), '<html>b1</html>');
+writeFileSync(path.join(dir, 'batch-pointer.js'),
+  'window.MAGAZINE_CURRENT_BATCH = {"schema":"knowledge-magazine-batch/2","build_id":"2099-01-02-test0001","material_date":"2099-01-02","built_at":"2099-01-02 08:00","dir":"batches/2099-01-02-test0001","files":{}};\n');
 // lane 目录：一条有期刊、一条空、一条带 index.html 路由页
 mkdirSync(path.join(path.dirname(dir), '每日短讯'), { recursive: true });
 writeFileSync(path.join(path.dirname(dir), '每日短讯', '每日短讯-2099-01-01.html'), '<html></html>');
@@ -43,18 +50,26 @@ function rpc(lines) {
   return r.stdout.trim().split('\n').map((l) => JSON.parse(l));
 }
 
-// 1 指定目录读数据
+// 1 指定目录读数据 + 出刊状态
 const [a] = rpc([{ jsonrpc: '2.0', id: 1, method: 'magazine.data', params: { dir } }]);
 assert.equal(a.result.data.build.build_id, '2099-01-02-test0001');
 assert.ok(a.result.mtime);
+assert.ok(a.result.status && typeof a.result.status.pending === 'object', 'data 响应应附带出刊状态');
+assert.equal(a.result.status.pending.wire_new, false, 'lane 最新短讯(01-01)不晚于材料日(01-02) → 无待出刊');
+// 新短讯到达（01-03）→ 待出刊为真（状态可见性核心场景）
+writeFileSync(path.join(path.dirname(dir), '每日短讯', '每日短讯-2099-01-03.html'), '<html></html>');
+const [a2] = rpc([{ jsonrpc: '2.0', id: '1b', method: 'magazine.data', params: { dir } }]);
+assert.equal(a2.result.status.pending.wire_new, true, '新短讯已到而材料日未跟进 → 新材料待出刊');
+
 
 // 2 文件清单 + lane 扫描
 const [b] = rpc([{ jsonrpc: '2.0', id: 2, method: 'magazine.files', params: { dir } }]);
 assert.ok(b.result.files.some((f) => f.name === '今日-2099-01-02.html'));
+assert.ok(b.result.files.some((f) => f.name === 'batches/2099-01-02-test0001/今日-2099-01-02.html'), '批次期刊入清单');
 assert.equal(b.result.hasData, true);
 const lanes = Object.fromEntries((b.result.lanes || []).map((l) => [l.lane, l]));
-assert.ok(lanes['每日短讯'] && lanes['每日短讯'].files === 1
-  && lanes['每日短讯'].latest.name === '每日短讯-2099-01-01.html', 'lane 应列出期刊与最新期');
+assert.ok(lanes['每日短讯'] && lanes['每日短讯'].files === 2
+  && lanes['每日短讯'].latest.name === '每日短讯-2099-01-03.html', 'lane 应列出全部期刊与最新期');
 assert.ok(lanes['深读'] && lanes['深读'].files === 0, 'index.html 不计入 lane 期数');
 assert.ok(lanes['知识萃取'] && lanes['知识萃取'].missing === true, '不存在的 lane 目录标 missing');
 
