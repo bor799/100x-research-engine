@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 3,
+  "minCindyVersion": "0.1.139",
+  "id": "knowledge-magazine",
+  "name": "知识杂志",
+  "description": "阅读「知识杂志」：今日变化、本周脉络、主题与往期，证据可回溯；与桌面同批。",
+  "whenToUse": "阅读知识杂志（今日/本周/主题/往期）、核对判断与出处、查看杂志覆盖缺口与最近出刊状态时使用。",
+  "version": "1.4.1",
+  "releaseNotes": "读取边界统一：插件与桌面路由同读 杂志/batch-pointer.js 单指针选批（批次目录不可变、指针原子切换），出刊失败两端同见上一完整批次；旧固定路径保留只读兼容。另含 1.4.0 的内容层统一：萃取简报等富文本字段安全解析为标题/列表/强调/链接（两出口共用同一块结构），不再裸露 Markdown 星号；出刊状态可见：新材料待出刊 / 上次尝试失败保留旧批 / 批次标记不一致三态直达主视图，90 秒自动重读同一批次状态源；周内证据可回溯到前几日短讯原始链接并标注期日。",
+  "kind": "chip",
+  "entry": "main.js",
+  "tools": [
+    {
+      "name": "get_magazine",
+      "description": "读取最新一期知识杂志的摘要：材料日与批次、今日总判断、主编精选（含来源链接）、本周主题与脉络、交叉核验清单、覆盖与缺口。数据与桌面 ~/Desktop/知识杂志 同一批次。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_archive",
+      "description": "列出桌面杂志存档（今日/本周各期 HTML 文件与数据时点），以及每日短讯/知识萃取/深读/研究简报四条原始栏目 lane 的期数与最新期。不打开文件，只返回清单。",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ],
+  "command": "knowledge-magazine",
+  "launch": "on-demand",
+  "mainView": {
+    "title": "知识杂志",
+    "icon": "calendar-days",
+    "html": "main-view.html"
+  },
+  "node": {
+    "entry": "node/worker.cjs",
+    "protocol": "json-rpc-stdio",
+    "lifecycle": "on-demand",
+    "idleTimeoutSeconds": 120
+  },
+  "settingsHtml": "settings.html",
+  "settingsHeight": 300
+}

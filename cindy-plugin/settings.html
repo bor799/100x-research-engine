@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:12px;font-family:'PingFang SC',sans-serif;font-size:13px;line-height:1.7">
+  <label for="dir">杂志数据目录（绝对路径）</label>
+  <input id="dir" placeholder="留空 = 默认 ~/Desktop/知识杂志/杂志"
+         style="width:100%;box-sizing:border-box;background:var(--surface,#fff);color:inherit;border:1px solid var(--border-default,#e4e4e0);padding:6px 8px;margin:4px 0 8px">
+  <div style="color:var(--text-muted,#888);font-size:12px">目录下需有 data/magazine-data.json 与各期 HTML。保存后插件立即改读新目录（只读，不写入该目录）。</div>
+  <div style="margin-top:10px"><button id="save">保存</button> <span id="msg" style="margin-left:8px"></span></div>
+  <script src="/settings.js"></script>
+</body>
+</html>
